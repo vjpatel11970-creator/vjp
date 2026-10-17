@@ -4,6 +4,19 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>શાળા વ્યવસ્થાપન સિસ્ટમ</title>
+<!-- મોબાઇલ એપ (PWA): Chrome ના "Install app / Add to Home screen" થી હોમ સ્ક્રીન પર આઇકન બને છે -->
+<link rel="manifest" id="pwaManifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1b5e4b">
+<link rel="icon" type="image/png" href="icon-192.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="શાળા">
+<script>
+/* વિદ્યાર્થીની લિંક (?result=1) પરથી ઇન્સ્ટોલ કરે તો એપ સીધી "પરિણામ" પાના પર ખૂલે,
+   એડમિન/શિક્ષકની સામાન્ય લિંકથી ઇન્સ્ટોલ કરે તો લોગિન પાના પર — બંને અલગ એપ તરીકે. */
+try{ if (/[?&]result=1/.test(location.search)) document.getElementById("pwaManifest").href = "manifest-student.webmanifest"; }catch(e){}
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gujarati:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
@@ -227,6 +240,7 @@ td.num,th.num{font-family:"Inter",sans-serif}
       <p class="hint" id="lg_msg" style="margin-bottom:0">શરૂઆતનો એડમિન પાસવર્ડ: 1234 (સીસ્ટમ › સેટિંગમાંથી બદલી શકાશે). નવા યુઝર માટે સીસ્ટમ › યુઝર બનાવવા.</p>
       <p class="hint" style="margin-top:10px"><a href="javascript:void(0)" id="lg_paylink">ફી ઓનલાઇન ભરો (વાલી માટે) →</a></p>
       <p class="hint" style="margin-top:6px"><a href="javascript:void(0)" id="lg_reslink">પરિણામ જુઓ (વિદ્યાર્થી માટે) →</a></p>
+      <p class="hint" style="margin-top:6px;display:none" id="lg_install_wrap"><a href="javascript:void(0)" id="lg_install">📱 આ એપ ફોનમાં ઇન્સ્ટોલ કરો</a></p>
     </div>
   </div>
 </div>
@@ -257,6 +271,7 @@ td.num,th.num{font-family:"Inter",sans-serif}
       </div>
       <div style="margin-top:12px"><button class="btn" id="rs_go">પરિણામ જુઓ</button></div>
       <p class="hint" id="rs_msg" style="margin-bottom:0"></p>
+      <p class="hint" style="margin:8px 0 0;display:none" id="rs_install_wrap"><a href="javascript:void(0)" id="rs_install">📱 પરિણામ એપ ફોનમાં ઇન્સ્ટોલ કરો</a></p>
     </div>
     <div id="rs_out"></div>
   </div>
@@ -302,8 +317,30 @@ try{
   }catch(e2){}
 }
 
+/* ---------- મોબાઇલ એપ (PWA): service worker + "ઇન્સ્ટોલ કરો" બટન ---------- */
+try{
+  if ("serviceWorker" in navigator && /^https?:$/.test(location.protocol)){
+    navigator.serviceWorker.register("sw.js").catch(function(){});
+  }
+}catch(e){}
+var PWA_PROMPT = null;
+window.addEventListener("beforeinstallprompt", function(ev){
+  ev.preventDefault(); PWA_PROMPT = ev;
+  var w = document.getElementById("lg_install_wrap"); if (w) w.style.display = "";
+  var rw = document.getElementById("rs_install_wrap"); if (rw) rw.style.display = "";
+});
+window.addEventListener("appinstalled", function(){
+  PWA_PROMPT = null;
+  ["lg_install_wrap","rs_install_wrap"].forEach(function(id){ var w = document.getElementById(id); if (w) w.style.display = "none"; });
+});
+function pwaInstall(){
+  if (!PWA_PROMPT) return;
+  PWA_PROMPT.prompt();
+  PWA_PROMPT.userChoice.then(function(){ PWA_PROMPT = null; }, function(){});
+}
+
 /* ---------- app data ---------- */
-var COLLS = ["students","staff","books","issues","ledger","exams","attendance","letters","lcs","payslips","holidays","rooms","heads","feeMaster","timetable","examtt","leaves","scholarships","increments","payM1","payM3","payM10","payM12","smsLog"];
+var COLLS =["students","staff","books","issues","ledger","exams","attendance","letters","lcs","payslips","holidays","rooms","heads","feeMaster","timetable","examtt","leaves","scholarships","increments","payM1","payM3","payM10","payM12","smsLog"];
 var S = {
   school:{name:"",udise:"",index:"",village:"",taluka:"",district:"",principal:"",
           medium:"ગુજરાતી",type:"માધ્યમિક",board:"ગુજરાત માધ્યમિક અને ઉચ્ચતર માધ્યમિક શિક્ષણ બોર્ડ, ગાંધીનગર",
@@ -324,7 +361,7 @@ var S = {
    OR set it once per browser via: localStorage.setItem("shala_gas_url","https://script.google.com/macros/s/XXXX/exec") */
 var GAS_URL = (function(){
   try{ var o = localStorage.getItem("shala_gas_url"); if (o) return o; }catch(e){}
-  return "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
+  return "https://script.google.com/macros/s/AKfycbws2wBprkVDHiPJFM7j7jztFi6ZtVaBI3-3bjb17-4M3ZfdlI8Q-1stOEpVcluLWX-brg/exec";
 })();
 var GAS_READY = /^https:\/\/script\.google(usercontent)?\.com\//.test(GAS_URL);
 var LS_KEY = "shala_v1";
@@ -5454,6 +5491,8 @@ async function resLookup(){
   showResults(res.results || []);
 }
 $("lg_reslink").onclick = openResGate;
+$("lg_install").onclick = pwaInstall;
+$("rs_install").onclick = pwaInstall;
 $("rs_close").onclick = closeResGate;
 $("rs_go").onclick = resLookup;
 $("rs_dob").onkeydown = $("rs_gr").onkeydown = function(e){ if (e.key === "Enter") resLookup(); };
