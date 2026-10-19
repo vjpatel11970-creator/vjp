@@ -240,7 +240,7 @@ td.num,th.num{font-family:"Inter",sans-serif}
       <p class="hint" id="lg_msg" style="margin-bottom:0">શરૂઆતનો એડમિન પાસવર્ડ: 1234 (સીસ્ટમ › સેટિંગમાંથી બદલી શકાશે). નવા યુઝર માટે સીસ્ટમ › યુઝર બનાવવા.</p>
       <p class="hint" style="margin-top:10px"><a href="javascript:void(0)" id="lg_paylink">ફી ઓનલાઇન ભરો (વાલી માટે) →</a></p>
       <p class="hint" style="margin-top:6px"><a href="javascript:void(0)" id="lg_reslink">પરિણામ જુઓ (વિદ્યાર્થી માટે) →</a></p>
-      <p class="hint" style="margin-top:6px;display:none" id="lg_install_wrap"><a href="javascript:void(0)" id="lg_install">📱 આ એપ ફોનમાં ઇન્સ્ટોલ કરો</a></p>
+      <p class="hint" style="margin-top:6px" id="lg_install_wrap"><a href="javascript:void(0)" id="lg_install">📱 આ એપ ફોનમાં ઇન્સ્ટોલ કરો</a></p>
     </div>
   </div>
 </div>
@@ -271,7 +271,7 @@ td.num,th.num{font-family:"Inter",sans-serif}
       </div>
       <div style="margin-top:12px"><button class="btn" id="rs_go">પરિણામ જુઓ</button></div>
       <p class="hint" id="rs_msg" style="margin-bottom:0"></p>
-      <p class="hint" style="margin:8px 0 0;display:none" id="rs_install_wrap"><a href="javascript:void(0)" id="rs_install">📱 પરિણામ એપ ફોનમાં ઇન્સ્ટોલ કરો</a></p>
+      <p class="hint" style="margin:8px 0 0" id="rs_install_wrap"><a href="javascript:void(0)" id="rs_install">📱 પરિણામ એપ ફોનમાં ઇન્સ્ટોલ કરો</a></p>
     </div>
     <div id="rs_out"></div>
   </div>
@@ -288,6 +288,7 @@ td.num,th.num{font-family:"Inter",sans-serif}
       <div class="sub" id="schoolSub">યુ-ડાયસ નંબર નોંધાયેલ નથી</div>
     </div>
     <div class="spacer"></div>
+    <span class="yearchip" id="syncChip" style="display:none"></span>
     <span class="yearchip" id="yearChip">શૈક્ષણિક વર્ષ —</span>
     <span class="yearchip" id="roleChip">—</span>
     <button class="iconbtn" id="paletteBtn" title="બીજી થીમ (રંગ બદલો)">🎨</button>
@@ -324,6 +325,13 @@ try{
   }
 }catch(e){}
 var PWA_PROMPT = null;
+try{
+  if ((window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone){
+    document.addEventListener("DOMContentLoaded", function(){
+      ["lg_install_wrap","rs_install_wrap"].forEach(function(id){ var w = document.getElementById(id); if (w) w.style.display = "none"; });
+    });
+  }
+}catch(e){}
 window.addEventListener("beforeinstallprompt", function(ev){
   ev.preventDefault(); PWA_PROMPT = ev;
   var w = document.getElementById("lg_install_wrap"); if (w) w.style.display = "";
@@ -334,7 +342,18 @@ window.addEventListener("appinstalled", function(){
   ["lg_install_wrap","rs_install_wrap"].forEach(function(id){ var w = document.getElementById(id); if (w) w.style.display = "none"; });
 });
 function pwaInstall(){
-  if (!PWA_PROMPT) return;
+  if (!PWA_PROMPT){
+    var ua = navigator.userAgent || "";
+    var msg;
+    if (/iPhone|iPad|iPod/i.test(ua)){
+      msg = "iPhone/iPad માં: Safari માં આ પેજ ખોલો → નીચે Share બટન (⬆) → 'Add to Home Screen'.";
+    } else if (/FBAN|FBAV|Instagram|WhatsApp|Line\//i.test(ua) || /; wv\)/.test(ua)){
+      msg = "આ પેજ WhatsApp/બીજી એપની અંદર ખુલ્યું છે. ઉપરના ⋮ મેનુમાંથી 'Open in Chrome' (Chrome માં ખોલો) પસંદ કરો, પછી ફરી આ બટન દબાવો.";
+    } else {
+      msg = "Android Chrome માં: ઉપર જમણે ⋮ મેનુ → 'Install app' અથવા 'Add to Home screen' દબાવો.\n\n(જો આ વિકલ્પ ન દેખાય તો પેજ એકવાર રિફ્રેશ કરો અને 1 મિનિટ પછી ફરી જુઓ. Google Sites ની અંદર નહીં, સીધી github.io લિંક ખોલવી.)";
+    }
+    alert(msg); return;
+  }
   PWA_PROMPT.prompt();
   PWA_PROMPT.userChoice.then(function(){ PWA_PROMPT = null; }, function(){});
 }
@@ -361,7 +380,7 @@ var S = {
    OR set it once per browser via: localStorage.setItem("shala_gas_url","https://script.google.com/macros/s/XXXX/exec") */
 var GAS_URL = (function(){
   try{ var o = localStorage.getItem("shala_gas_url"); if (o) return o; }catch(e){}
-  return "https://script.google.com/macros/s/AKfycbws2wBprkVDHiPJFM7j7jztFi6ZtVaBI3-3bjb17-4M3ZfdlI8Q-1stOEpVcluLWX-brg/exec";
+  return "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
 })();
 var GAS_READY = /^https:\/\/script\.google(usercontent)?\.com\//.test(GAS_URL);
 var LS_KEY = "shala_v1";
@@ -398,12 +417,15 @@ async function initStore(){
         COLLS.forEach(function(c){ S[c] = res.data[c] || []; });
         lsWrite(); /* keep an offline mirror */
         note("રેકોર્ડ Google Sheet પર સાચવાય છે — બીજા ઉપકરણ પરથી પણ જોઈ શકાશે.");
+        syncChip(true, "☁ Google Sheet જોડાયેલ", "ડેટા Google Sheet પર સચવાય છે — દરેક કોમ્પ્યુટર/ફોનમાં દેખાશે.");
         return;
       }
     }catch(e){ /* fall through to local copy below */ }
     note("Google Sheet સાથે જોડાણ ન થયું — હાલ પુરતો આ બ્રાઉઝરમાં સંગ્રહિત ડેટા વપરાશે.");
+    syncChip(false, "⚠ જોડાણ નથી", "Google Sheet સાથે જોડાણ ન થયું. હાલ દેખાતો ડેટા ફક્ત આ બ્રાઉઝરની જૂની નકલ છે. ઇન્ટરનેટ તપાસો / Apps Script ને 'Anyone' access સાથે Deploy કરો.");
   } else {
     note("Google Sheet સેટઅપ બાકી છે (GAS_URL) — હાલ આ બ્રાઉઝરમાં ડેટા સાચવાય છે.");
+    syncChip(false, "⚠ ફક્ત આ કોમ્પ્યુટરમાં", "Google Sheet જોડાયેલ નથી (index.html માં GAS_URL નથી મૂકી), તેથી આ કોમ્પ્યુટરમાં નાખેલી માહિતી બીજા કોમ્પ્યુટરમાં દેખાશે નહીં.");
   }
   var local = lsRead();
   if (local){
@@ -415,6 +437,15 @@ async function initStore(){
 }
 
 function note(t){ document.getElementById("storeNote").textContent = t; }
+/* header chip: green = data on Google Sheet (visible on every computer); red = only in this browser */
+function syncChip(ok, text, tip){
+  var c = document.getElementById("syncChip"); if (!c) return;
+  c.style.display = ""; c.textContent = text; c.title = tip || "";
+  c.style.background = ok ? "#d1f0e0" : "#fde2e2";
+  c.style.color = ok ? "#0b5a36" : "#9b1c1c";
+  c.style.fontWeight = "700"; c.style.cursor = ok ? "default" : "pointer";
+  c.onclick = ok ? null : function(){ alert(tip); };
+}
 
 async function saveMeta(){
   lsWrite();
