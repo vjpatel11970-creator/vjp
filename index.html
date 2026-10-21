@@ -15,7 +15,7 @@
 <script>
 /* વિદ્યાર્થીની લિંક (?result=1) પરથી ઇન્સ્ટોલ કરે તો એપ સીધી "પરિણામ" પાના પર ખૂલે,
    એડમિન/શિક્ષકની સામાન્ય લિંકથી ઇન્સ્ટોલ કરે તો લોગિન પાના પર — બંને અલગ એપ તરીકે. */
-try{ if (/[?&]result=1/.test(location.search)) document.getElementById("pwaManifest").href = "manifest-student.webmanifest"; }catch(e){}
+try{ if (/[?&](result|student)=1/.test(location.search)) document.getElementById("pwaManifest").href = "manifest-student.webmanifest"; }catch(e){}
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -239,7 +239,7 @@ td.num,th.num{font-family:"Inter",sans-serif}
       <button class="btn" id="lg_go" style="width:100%">પ્રવેશ કરો</button>
       <p class="hint" id="lg_msg" style="margin-bottom:0">શરૂઆતનો એડમિન પાસવર્ડ: 1234 (સીસ્ટમ › સેટિંગમાંથી બદલી શકાશે). નવા યુઝર માટે સીસ્ટમ › યુઝર બનાવવા.</p>
       <p class="hint" style="margin-top:10px"><a href="javascript:void(0)" id="lg_paylink">ફી ઓનલાઇન ભરો (વાલી માટે) →</a></p>
-      <p class="hint" style="margin-top:6px"><a href="javascript:void(0)" id="lg_reslink">પરિણામ જુઓ (વિદ્યાર્થી માટે) →</a></p>
+      <p class="hint" style="margin-top:6px"><a href="javascript:void(0)" id="lg_reslink">વિદ્યાર્થી પોર્ટલ / પરિણામ (વિદ્યાર્થી માટે) →</a></p>
       <p class="hint" style="margin-top:6px" id="lg_install_wrap"><a href="javascript:void(0)" id="lg_install">📱 આ એપ ફોનમાં ઇન્સ્ટોલ કરો</a></p>
     </div>
   </div>
@@ -257,21 +257,22 @@ td.num,th.num{font-family:"Inter",sans-serif}
     <div class="card" id="pg_result"></div>
   </div>
 </div>
-<div id="resGate" style="position:fixed;inset:0;background:var(--bg);z-index:220;display:none;place-items:start center;padding:16px;overflow:auto">
-  <div style="width:100%;max-width:720px;margin-top:12px">
+<div id="resGate" style="position:fixed;inset:0;background:var(--bg);z-index:220;display:none;place-items:start center;grid-template-columns:minmax(0,1fr);padding:16px;overflow:auto">
+  <div style="width:100%;max-width:720px;margin-top:12px;min-width:0">
     <div class="card noprint" id="rs_formcard">
       <div class="row" style="justify-content:space-between;align-items:center">
-        <h3 style="margin:0" id="rsTitle">પરિણામ જુઓ</h3>
+        <h3 style="margin:0" id="rsTitle">🎓 વિદ્યાર્થી પોર્ટલ</h3>
         <button class="iconbtn" id="rs_close" title="બંધ કરો">✕</button>
       </div>
-      <p class="hint" style="margin:6px 0 12px">તમારો જી.આર. નંબર અને જન્મ તારીખ દાખલ કરો.</p>
+      <p class="hint" style="margin:6px 0 12px">પરિણામ, હાજરી, સોંપણી, અભ્યાસ સામગ્રી, સૂચના અને રજાઓ જોવા તમારો જી.આર. નંબર અને જન્મ તારીખ દાખલ કરો.</p>
       <div class="grid">
         <div><label class="f" for="rs_gr">જી.આર. નંબર</label><input id="rs_gr" type="text" autocomplete="off" inputmode="numeric"></div>
         <div><label class="f" for="rs_dob">જન્મ તારીખ</label><input id="rs_dob" type="date"></div>
       </div>
-      <div style="margin-top:12px"><button class="btn" id="rs_go">પરિણામ જુઓ</button></div>
+      <label style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13.5px"><input type="checkbox" id="rs_remember" style="width:18px;height:18px"> આ ફોનમાં લોગિન યાદ રાખો (ફક્ત તમારા પોતાના ફોનમાં)</label>
+      <div style="margin-top:12px"><button class="btn" id="rs_go">પ્રવેશ કરો</button></div>
       <p class="hint" id="rs_msg" style="margin-bottom:0"></p>
-      <p class="hint" style="margin:8px 0 0" id="rs_install_wrap"><a href="javascript:void(0)" id="rs_install">📱 પરિણામ એપ ફોનમાં ઇન્સ્ટોલ કરો</a></p>
+      <p class="hint" style="margin:8px 0 0" id="rs_install_wrap"><a href="javascript:void(0)" id="rs_install">📱 વિદ્યાર્થી એપ ફોનમાં ઇન્સ્ટોલ કરો</a></p>
     </div>
     <div id="rs_out"></div>
   </div>
@@ -359,7 +360,7 @@ function pwaInstall(){
 }
 
 /* ---------- app data ---------- */
-var COLLS =["students","staff","books","issues","ledger","exams","attendance","letters","lcs","payslips","holidays","rooms","heads","feeMaster","timetable","examtt","leaves","scholarships","increments","payM1","payM3","payM10","payM12","smsLog"];
+var COLLS =["students","staff","books","issues","ledger","exams","attendance","letters","lcs","payslips","holidays","rooms","heads","feeMaster","timetable","examtt","leaves","scholarships","increments","payM1","payM3","payM10","payM12","smsLog","assignments","materials","notices"];
 var S = {
   school:{name:"",udise:"",index:"",village:"",taluka:"",district:"",principal:"",
           medium:"ગુજરાતી",type:"માધ્યમિક",board:"ગુજરાત માધ્યમિક અને ઉચ્ચતર માધ્યમિક શિક્ષણ બોર્ડ, ગાંધીનગર",
@@ -372,7 +373,8 @@ var S = {
     upiId:"",upiName:"",rzKeyId:"",rzKeySecret:""},
   students:[], staff:[], books:[], issues:[], ledger:[], exams:[], attendance:[], letters:[], lcs:[], payslips:[],
   holidays:[], rooms:[], heads:[], feeMaster:[], timetable:[], examtt:[], leaves:[], scholarships:[], increments:[],
-  payM1:[], payM3:[], payM10:[], payM12:[], smsLog:[]
+  payM1:[], payM3:[], payM10:[], payM12:[], smsLog:[],
+  assignments:[], materials:[], notices:[]
 };
 
 /* ---------- storage: Google Sheets backend (Apps Script), else localStorage ---------- */
@@ -518,6 +520,7 @@ var MENU = [
   {k:"staff", t:"કર્મચારી", tabs:[["list","કર્મચારીની વિગત"],["add","નવો કર્મચારી"],["leaveopen","ઉઘડતી રજાઓ"],["gpfopen","શરૂઆતના જી.પી.એફ."],["leaveupdate","વાર્ષિક રજાઓ સુધારવી"],["relieve","નોકરી છોડવાની વિગત"],["salary","પગાર માળખું"],["pay","પગાર ચુકવણી"],["gpf","જી.પી.એફ."],["slip","સ્લિપ યાદી"],["f16","ફોર્મ 16"],["f24","ફોર્મ 24"],["master","પે રોલ માસ્ટર ડેટા"],["sheet","સ્ટાફ માહિતી પત્રક"],["payreg","પે-રોલ રજીસ્ટર"],["increment","ઇજાફાની માહિતી"]]},
   {k:"student", t:"વિદ્યાર્થી", tabs:[["list","યાદી / શોધ"],["add","નવો પ્રવેશ"],["gr","જી.આર. એન્ટ્રી"],["autodiv","ઓટોમેટીક વર્ગ"],["autoroll","ઓટોમેટીક રોલ નંબર"],["promote","ઉપલા ધોરણમાં ચઢાવવા"],["count","સંખ્યા પત્રક"],["att","હાજરી"],["fee","વિદ્યાર્થીની ફી એન્ટ્રી"],["feeclass","ફી એન્ટ્રી (વર્ગ મુજબ)"],["lc","લીવીંગ સર્ટી ઇસ્યુ કરવું"],["lcvarg","વર્ગ મુજબ LC કાઢવા"],["lctrue","એલ.સી. ખરી ફોર્મ"],["sschsc","એસ.એસ.સી-એચ.એસ.સી રજીસ્ટર"],["prevyear","પાછળના વર્ષના વિદ્યાર્થી"]]},
   {k:"exam", t:"પરિક્ષા", tabs:[["list","પરીક્ષાઓ"],["structure","માળખું"],["marks","ગુણની એન્ટ્રી અને ગણતરી"],["result","પરિણામ"],["register","રજીસ્ટર"],["marksheet","માર્કશીટ"],["online","ઓનલાઇન પરિણામ"]]},
+  {k:"portal", t:"વિદ્યાર્થી પોર્ટલ", tabs:[["assign","સોંપણી / ગૃહકાર્ય"],["material","અભ્યાસ સામગ્રી"],["notice","સૂચના / કાર્યક્રમ"],["link","પોર્ટલ / એપ લિંક"]]},
   {k:"library", t:"પુસ્તકાલય", tabs:[["books","પુસ્તક યાદી"],["issue","ઇશ્યુ / પરત"]]},
   {k:"account", t:"એકાઉન્ટ", tabs:[["sum","સરવૈયું"],["entry","નવી નોંધ"],["fee","ફી ભરપાઈ"],["paygw","ઓનલાઇન પેમેન્ટ ગેટવે"]]},
   {k:"reports", t:"રીપોર્ટસ", tabs:[["idcard","આઈ કાર્ડ"],["parentletter","વાલી-પિતાને લેટર"],["grreg","જી.આર.રજીસ્ટર"],["genreg","જનરલ રજીસ્ટર"],["leavereg","લીવીંગ રજીસ્ટર"],["namekami","નામ કમી રજીસ્ટર"],["stdwise","વર્ગ પ્રમાણે માહિતી"],["truecopy","માહિતી ખરાઈ ફોર્મ"],["feereg","ફી રજીસ્ટર"],["character","કેરેક્ટર સર્ટી"],["bonafide","બોનાફાઈડ સર્ટી"],["caste","જ્ઞાતિ પ્રમાણપત્ર"],["utaro","વયપત્રકનો ઉતારો"],["transfer","બદલી પ્રમાણપત્ર"],["trialcert","ટ્રાયલ સર્ટી"],["birth","જન્મ પ્રમાણપત્ર"],["bday","જન્મ તારીખની શુભેચ્છા"],["avgatt","સરાસરી હાજરી પત્રક"],["attmatrix","માસવાર હાજરી પત્રક"],["sms","એસ.એમ.એસ"],["smsapi","API સેટિંગ (WhatsApp/SMS)"],["scholarship","શિષ્યવૃત્તિ"],["newadm","નવા દાખલ રીપોર્ટ"],["leftrpt","છોડી ગયેલ રીપોર્ટ"],["datewise","માહિતી (તારીખ વાઈઝ)"]]}
@@ -5460,9 +5463,103 @@ async function payViaRazorpay(){
   });
   rzp.open();
 }
+/* ---------- વિદ્યાર્થી પોર્ટલ: શિક્ષક/એડમિનની એન્ટ્રી (સોંપણી, અભ્યાસ સામગ્રી, સૂચના/કાર્યક્રમ) ---------- */
+function ptToday(){
+  var d = new Date();
+  return d.getFullYear() + "-" + ("0" + (d.getMonth()+1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2);
+}
+function ptD(s){
+  s = String(s || "");
+  return /^\d{4}-\d{2}-\d{2}/.test(s) ? s.slice(8,10) + "-" + s.slice(5,7) + "-" + s.slice(0,4) : s;
+}
+function ptSafeUrl(u){ u = String(u || "").trim(); return /^https?:\/\//i.test(u) ? u : ""; }
+function ptText(s){ return esc(s).replace(/\n/g, "<br>"); }
+
+var PORTAL_CFG = {
+  assign:{coll:"assignments", title:"સોંપણી / ગૃહકાર્ય", pre:"pa",
+    fields:[["std","ધોરણ","std"],["div","વર્ગ","div"],["subject","વિષય","subject"],["title","શીર્ષક *","text"],
+            ["due","છેલ્લી તારીખ","date"],["link","લિંક (વૈકલ્પિક, https://…)","url"],["text","વિગત / સૂચના","area"]],
+    cols:[["date","તારીખ"],["std","ધોરણ"],["div","વર્ગ"],["subject","વિષય"],["title","શીર્ષક"],["due","છેલ્લી તારીખ"]]},
+  material:{coll:"materials", title:"અભ્યાસ સામગ્રી (Study Guide)", pre:"pm",
+    fields:[["std","ધોરણ","std"],["subject","વિષય","subject"],["title","શીર્ષક *","text"],
+            ["link","લિંક (PDF / Drive / YouTube, https://…)","url"],["text","વિગત","area"]],
+    cols:[["date","તારીખ"],["std","ધોરણ"],["subject","વિષય"],["title","શીર્ષક"]]},
+  notice:{coll:"notices", title:"સૂચના / કાર્યક્રમ", pre:"pn",
+    fields:[["type","પ્રકાર","type",["સૂચના","કાર્યક્રમ","પરીક્ષા","રજા","અન્ય"]],["std","ધોરણ","std"],["date","તારીખ","date"],
+            ["title","શીર્ષક *","text"],["text","વિગત","area"]],
+    cols:[["date","તારીખ"],["type","પ્રકાર"],["std","ધોરણ"],["title","શીર્ષક"]]}
+};
+function portalField_(c, f){
+  var id = c.pre + "_" + f[0], t = f[2], h = '<div' + (t === "area" ? ' style="grid-column:1/-1"' : '') + '><label class="f" for="'+id+'">'+esc(f[1])+'</label>';
+  if (t === "std") h += '<select id="'+id+'"><option value="">બધા ધોરણ</option>' + stdList().map(function(x){return '<option>'+esc(x)+'</option>';}).join("") + '</select>';
+  else if (t === "div") h += '<select id="'+id+'"><option value="">બધા વર્ગ</option>' + divList().map(function(x){return '<option>'+esc(x)+'</option>';}).join("") + '</select>';
+  else if (t === "subject") h += '<select id="'+id+'"><option value="">—</option>' + subList().map(function(x){return '<option>'+esc(x)+'</option>';}).join("") + '</select>';
+  else if (t === "type") h += '<select id="'+id+'">' + f[3].map(function(x){return '<option>'+esc(x)+'</option>';}).join("") + '</select>';
+  else if (t === "area") h += '<textarea id="'+id+'" rows="3"></textarea>';
+  else if (t === "date") h += '<input id="'+id+'" type="date" value="'+(f[0] === "date" ? ptToday() : "")+'">';
+  else if (t === "url") h += '<input id="'+id+'" type="url" inputmode="url" placeholder="https://">';
+  else h += '<input id="'+id+'" type="text">';
+  return h + '</div>';
+}
+function portalView_(key){
+  var c = PORTAL_CFG[key];
+  var items = S[c.coll].slice().sort(function(a,b){ return String(b.date||"").localeCompare(String(a.date||"")); });
+  return '<div class="card"><h3>'+esc(c.title)+' ઉમેરો</h3>'
+    + '<p class="hint" style="margin:0 0 10px">ધોરણ/વર્ગ ખાલી ("બધા") રાખો તો બધા વિદ્યાર્થીઓને દેખાશે. વિદ્યાર્થી પોર્ટલમાં દેખાશે.</p>'
+    + '<div class="grid">' + c.fields.map(function(f){ return portalField_(c, f); }).join("") + '</div>'
+    + '<div style="margin-top:14px"><button class="btn" id="'+c.pre+'_add">ઉમેરો</button></div></div>'
+    + '<div class="card"><h3>યાદી</h3>'
+    + (items.length
+      ? '<div class="tw"><table><thead><tr>' + c.cols.map(function(x){ return '<th>'+esc(x[1])+'</th>'; }).join("") + '<th></th></tr></thead><tbody>'
+        + items.map(function(it){
+            return '<tr>' + c.cols.map(function(x){
+              var v = it[x[0]]; if (x[0] === "date" || x[0] === "due") v = ptD(v);
+              if (x[0] === "std" || x[0] === "div") v = v || "બધા";
+              return '<td>'+esc(v||"")+'</td>';
+            }).join("") + '<td><button class="btn sm sec" data-del="'+it.id+'">કાઢો</button></td></tr>';
+          }).join("") + '</tbody></table></div>'
+      : '<div class="empty">હજુ કોઈ નોંધ નથી.</div>') + '</div>';
+}
+function portalWire_(key){
+  var c = PORTAL_CFG[key];
+  $(c.pre + "_add").onclick = async function(){
+    var o = {};
+    c.fields.forEach(function(f){ o[f[0]] = val(c.pre + "_" + f[0]); });
+    if (!o.title) return toast("શીર્ષક જરૂરી છે");
+    if (o.link && !ptSafeUrl(o.link)) return toast("લિંક https:// અથવા http:// થી શરૂ થવી જોઈએ");
+    if (key !== "notice") o.date = ptToday();
+    await put(c.coll, o);
+    toast("ઉમેરાયું"); render();
+  };
+  Array.prototype.forEach.call(document.querySelectorAll("[data-del]"), function(b){
+    b.onclick = async function(){ await drop(c.coll, b.dataset.del); toast("કાઢી નાખ્યું"); render(); };
+  });
+}
+VIEWS["portal:assign"]   = function(){ return portalView_("assign"); };
+WIRE["portal:assign"]    = function(){ portalWire_("assign"); };
+VIEWS["portal:material"] = function(){ return portalView_("material"); };
+WIRE["portal:material"]  = function(){ portalWire_("material"); };
+VIEWS["portal:notice"]   = function(){ return portalView_("notice"); };
+WIRE["portal:notice"]    = function(){ portalWire_("notice"); };
+VIEWS["portal:link"] = function(){
+  var url = location.href.split("#")[0].split("?")[0] + "?student=1";
+  return '<div class="card"><h3>વિદ્યાર્થી પોર્ટલ / એપની લિંક</h3>'
+    + '<p style="font-weight:700;word-break:break-all;margin:0 0 8px" id="pl_url">'+esc(url)+'</p>'
+    + '<div class="row" style="gap:10px;flex-wrap:wrap"><button class="btn" id="pl_copy">લિંક કોપી કરો</button></div>'
+    + '<p class="hint">આ લિંક વિદ્યાર્થીઓ/વાલીઓને WhatsApp માં મોકલો. વિદ્યાર્થી પોતાનો જી.આર. નંબર અને જન્મ તારીખ નાખીને પ્રવેશ કરે છે અને ફક્ત પોતાની જ માહિતી જુએ છે: પરિણામ, હાજરી, સોંપણી, અભ્યાસ સામગ્રી, સૂચના/કાર્યક્રમ, પરીક્ષા સમય, રજાઓ.</p>'
+    + '<p class="hint">ફોનમાં એપ તરીકે ઇન્સ્ટોલ કરવા: Chrome માં લિંક ખોલી ⋮ → Install app. પરિણામ બતાવવા માટે પરિક્ષા › ઓનલાઇન પરિણામ માંથી પરિણામ "પ્રકાશિત" કરેલું હોવું જોઈએ. હાજરી વિદ્યાર્થી › હાજરી ની એન્ટ્રી માંથી, રજાઓ શાળા › વાર્ષિક રજાઓ માંથી અને પરીક્ષા સમય શાળા › પરિક્ષા સમય પત્રક માંથી આપોઆપ આવે છે.</p></div>';
+};
+WIRE["portal:link"] = function(){
+  $("pl_copy").onclick = function(){
+    var u = $("pl_url").textContent;
+    try{ navigator.clipboard.writeText(u).then(function(){ toast("લિંક કોપી થઈ"); }, function(){ toast(u); }); }
+    catch(e){ toast(u); }
+  };
+};
+
 /* ---------- જાહેર (લોગિન વગર) પરિણામ જોવાનું પાનું ---------- */
 var RES_MODE = false;
-try{ RES_MODE = /[?&]result=1/.test(location.search); }catch(e){}
+try{ RES_MODE = /[?&](result|student)=1/.test(location.search); }catch(e){}
 function openResGate(){
   $("gate").style.display = "none"; $("payGate").style.display = "none";
   $("resGate").style.display = "grid";
@@ -5508,18 +5605,217 @@ function showResults(list){
   }
   paint();
 }
-async function resLookup(){
+/* ---------- વિદ્યાર્થી પોર્ટલ (એપ): પ્રવેશ પછીની સ્ક્રીન ---------- */
+var PORTAL = null, PTAB = "home", PT_KEY = "shala_stu", PT_LAST = "shala_stu_data";
+function ptStat(label, value, sub, cls){
+  return '<div class="stat" style="'+(cls ? 'border-left-color:var(--'+cls+')' : '')+'"><div class="hint" style="margin:0">'+esc(label)+'</div>'
+    + '<div style="font-size:20px;font-weight:800;margin:2px 0">'+value+'</div>'
+    + (sub ? '<div class="hint" style="margin:0">'+sub+'</div>' : '') + '</div>';
+}
+function ptLink(u, label){
+  var s = ptSafeUrl(u);
+  return s ? '<a class="btn sm" href="'+esc(s)+'" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:6px;text-decoration:none">'+esc(label||"ખોલો ↗")+'</a>' : '';
+}
+function ptCard(inner){ return '<div class="card" style="margin-bottom:10px">'+inner+'</div>'; }
+function ptEmpty(t){ return '<div class="card"><div class="empty">'+esc(t)+'</div></div>'; }
+
+function ptUpcomingExams(d){
+  var t = ptToday();
+  return (d.exams || []).filter(function(x){ return x.date && x.date >= t; })
+    .sort(function(a,b){ return String(a.date).localeCompare(String(b.date)); });
+}
+function ptUpcomingHolidays(d){
+  var t = ptToday();
+  return (d.holidays || []).filter(function(h){ return (h.to || h.date) >= t; })
+    .sort(function(a,b){ return String(a.date).localeCompare(String(b.date)); });
+}
+function ptOpenAssignments(d){
+  var t = ptToday();
+  return (d.assignments || []).filter(function(a){ return !a.due || a.due >= t; })
+    .sort(function(a,b){ return String(a.due||"9999").localeCompare(String(b.due||"9999")); });
+}
+function ptPct(p, t){ return t ? Math.round(p / t * 1000) / 10 : 0; }
+
+function ptHome(d){
+  var at = d.attendance || {total:0, present:0, absent:0};
+  var ex = ptUpcomingExams(d)[0], ho = ptUpcomingHolidays(d)[0], rs = (d.results || [])[0];
+  var asg = ptOpenAssignments(d);
+  var pc = ptPct(at.present, at.total);
+  var h = '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:10px">'
+    + ptStat("હાજરી", at.total ? pc + "%" : "—", at.total ? ("હાજર "+at.present+" / "+at.total+" દિવસ") : "હજુ નોંધ નથી", at.total && pc < 75 ? "bad" : "good")
+    + ptStat("તાજેતરનું પરિણામ", rs ? (esc(rs.result) + " · " + esc(rs.grade)) : "—", rs ? esc(rs.examName)+" · "+rs.pct+"%" : "હજુ પ્રકાશિત નથી", rs && rs.result === "ઉત્તીર્ણ" ? "good" : "")
+    + ptStat("આગામી પરીક્ષા", ex ? esc(ex.subject) : "—", ex ? ptD(ex.date)+(ex.time?" · "+esc(ex.time):"") : "કોઈ નથી", "accent")
+    + ptStat("બાકી સોંપણી", String(asg.length), asg.length ? "સોંપણી ટેબ જુઓ" : "કોઈ બાકી નથી", asg.length ? "bad" : "good")
+    + ptStat("આગામી રજા", ho ? esc(ho.name) : "—", ho ? ptD(ho.date)+((ho.to && ho.to !== ho.date) ? " – "+ptD(ho.to) : "") : "કોઈ નથી", "")
+    + '</div>';
+  var nt = (d.notices || []).slice(0, 3);
+  h += ptCard('<h3 style="margin-top:0">🔔 તાજેતરની સૂચના</h3>' + (nt.length ? nt.map(function(n){
+    return '<div style="padding:6px 0;border-bottom:1px solid var(--line)"><span class="chip">'+esc(n.type||"સૂચના")+'</span> <b>'+esc(n.title)+'</b> <span class="hint">'+ptD(n.date)+'</span></div>';
+  }).join("") : '<div class="hint">કોઈ સૂચના નથી.</div>'));
+  return h;
+}
+function ptResults(d){
+  var list = d.results || [];
+  if (!list.length) return ptEmpty("હજુ તમારું પરિણામ પ્રકાશિત થયું નથી.");
+  var i = Math.min(Number(PORTAL.__rIdx || 0), list.length - 1);
+  var r = list[i];
+  return '<div class="card noprint"><div class="row" style="gap:10px;flex-wrap:wrap;align-items:end">'
+    + (list.length > 1 ? '<div class="grow"><label class="f">પરીક્ષા</label><select id="pt_rpick">'
+        + list.map(function(x,k){ return '<option value="'+k+'"'+(k===i?' selected':'')+'>'+esc(x.examName)+'</option>'; }).join("") + '</select></div>' : '')
+    + '<div><button class="btn" id="pt_pdf">📄 PDF ડાઉનલોડ / છાપો</button></div></div>'
+    + '<p class="hint" style="margin:8px 0 0">"PDF ડાઉનલોડ" પછી ખુલતી વિન્ડોમાં <b>Save as PDF</b> પસંદ કરો.</p></div>'
+    + resultSheetHTML(r);
+}
+function ptAttendance(d){
+  var at = d.attendance || {total:0};
+  if (!at.total) return ptEmpty("હજુ હાજરીની નોંધ થઈ નથી.");
+  var pc = ptPct(at.present, at.total);
+  var h = ptCard('<h3 style="margin-top:0">કુલ હાજરી</h3>'
+    + '<div style="font-size:30px;font-weight:800;color:var(--'+(pc < 75 ? 'bad' : 'good')+')">'+pc+'%</div>'
+    + '<div class="bar" style="margin:8px 0"><i style="width:'+Math.min(100,pc)+'%"></i></div>'
+    + '<div class="hint">કુલ '+at.total+' દિવસ · હાજર '+at.present+' · ગેરહાજર '+at.absent+(pc < 75 ? ' · ⚠ હાજરી 75% થી ઓછી છે' : '')+'</div>');
+  var ms = (at.months || []).slice().reverse();
+  h += ptCard('<h3 style="margin-top:0">મહિના પ્રમાણે</h3><div class="tw"><table style="min-width:0"><thead><tr><th style="text-align:left">મહિનો</th><th>હાજર</th><th>કુલ</th><th>ટકા</th></tr></thead><tbody>'
+    + ms.map(function(m){
+        var p = ptPct(m.present, m.total);
+        return '<tr><td style="text-align:left">'+esc(m.month.slice(5,7)+"/"+m.month.slice(0,4))+'</td><td>'+m.present+'</td><td>'+m.total+'</td><td>'+p+'%</td></tr>';
+      }).join("") + '</tbody></table></div>');
+  h += ptCard('<h3 style="margin-top:0">ગેરહાજર રહેલા દિવસો</h3>' + ((at.absentDates || []).length
+    ? '<div style="display:flex;flex-wrap:wrap;gap:6px">' + at.absentDates.map(function(x){ return '<span class="chip r">'+ptD(x)+'</span>'; }).join("") + '</div>'
+    : '<div class="hint">કોઈ ગેરહાજરી નથી 👏</div>'));
+  return h;
+}
+function ptAssignments(d){
+  var t = ptToday(), all = d.assignments || [];
+  if (!all.length) return ptEmpty("હજુ કોઈ સોંપણી નથી.");
+  function item(a){
+    var late = a.due && a.due < t;
+    return ptCard('<div><span class="chip">'+esc(a.subject||"સામાન્ય")+'</span> '
+      + (a.due ? '<span class="chip '+(late?'r':'g')+'">છેલ્લી તારીખ: '+ptD(a.due)+'</span>' : '') + '</div>'
+      + '<div style="font-weight:700;margin:6px 0 2px">'+esc(a.title)+'</div>'
+      + (a.text ? '<div style="font-size:14px">'+ptText(a.text)+'</div>' : '')
+      + ptLink(a.link, "લિંક ખોલો ↗")
+      + '<div class="hint" style="margin:6px 0 0">આપ્યાની તારીખ: '+ptD(a.date)+'</div>');
+  }
+  var open = ptOpenAssignments(d), done = all.filter(function(a){ return a.due && a.due < t; });
+  return '<h3 style="margin:4px 0 8px">બાકી / ચાલુ ('+open.length+')</h3>' + (open.length ? open.map(item).join("") : '<div class="hint">કોઈ બાકી નથી.</div>')
+    + (done.length ? '<h3 style="margin:14px 0 8px">મુદત પૂરી થયેલ ('+done.length+')</h3>' + done.map(item).join("") : '');
+}
+function ptMaterials(d){
+  var all = d.materials || [];
+  if (!all.length) return ptEmpty("હજુ કોઈ અભ્યાસ સામગ્રી મૂકાઈ નથી.");
+  var by = {};
+  all.forEach(function(m){ var k = m.subject || "સામાન્ય"; (by[k] = by[k] || []).push(m); });
+  return Object.keys(by).sort().map(function(k){
+    return '<h3 style="margin:10px 0 6px">'+esc(k)+'</h3>' + by[k].map(function(m){
+      return ptCard('<div style="font-weight:700">'+esc(m.title)+'</div>'
+        + (m.text ? '<div style="font-size:14px">'+ptText(m.text)+'</div>' : '')
+        + ptLink(m.link, "ખોલો / ડાઉનલોડ ↗") + '<div class="hint" style="margin:6px 0 0">'+ptD(m.date)+'</div>');
+    }).join("");
+  }).join("");
+}
+function ptNotices(d){
+  var ex = (d.exams || []).slice().sort(function(a,b){ return String(a.date).localeCompare(String(b.date)); });
+  var t = ptToday();
+  var h = ptCard('<h3 style="margin-top:0">📅 પરીક્ષા સમય પત્રક</h3>' + (ex.length
+    ? '<div class="tw"><table style="min-width:0"><thead><tr><th style="text-align:left">તારીખ</th><th style="text-align:left">વિષય</th><th style="text-align:left">પરીક્ષા</th><th>સમય</th></tr></thead><tbody>'
+      + ex.map(function(x){
+          var past = x.date && x.date < t;
+          return '<tr style="'+(past?'opacity:.55':'')+'"><td style="text-align:left">'+ptD(x.date)+'</td><td style="text-align:left">'+esc(x.subject)+'</td><td style="text-align:left">'+esc(x.exam)+'</td><td>'+esc(x.time||"")+'</td></tr>';
+        }).join("") + '</tbody></table></div>'
+    : '<div class="hint">હજુ પરીક્ષા સમય પત્રક મૂકાયું નથી.</div>'));
+  var nt = d.notices || [];
+  h += '<h3 style="margin:12px 0 6px">🔔 સૂચના / કાર્યક્રમ</h3>' + (nt.length ? nt.map(function(n){
+    return ptCard('<div><span class="chip">'+esc(n.type||"સૂચના")+'</span> <span class="hint">'+ptD(n.date)+'</span></div>'
+      + '<div style="font-weight:700;margin:4px 0 2px">'+esc(n.title)+'</div>'
+      + (n.text ? '<div style="font-size:14px">'+ptText(n.text)+'</div>' : ''));
+  }).join("") : '<div class="hint">કોઈ સૂચના નથી.</div>');
+  return h;
+}
+function ptHolidays(d){
+  var all = (d.holidays || []).slice().sort(function(a,b){ return String(a.date).localeCompare(String(b.date)); });
+  if (!all.length) return ptEmpty("હજુ રજાઓ નોંધાઈ નથી.");
+  var t = ptToday();
+  return ptCard('<h3 style="margin-top:0">🎉 વાર્ષિક રજાઓ</h3><div class="tw"><table style="min-width:0"><thead><tr><th style="text-align:left">તારીખ</th><th style="text-align:left">રજા</th></tr></thead><tbody>'
+    + all.map(function(h){
+        var past = (h.to || h.date) < t;
+        return '<tr style="'+(past?'opacity:.55':'')+'"><td style="text-align:left">'+ptD(h.date)+((h.to && h.to !== h.date) ? ' – '+ptD(h.to) : '')+'</td><td style="text-align:left">'+esc(h.name)+'</td></tr>';
+      }).join("") + '</tbody></table></div>');
+}
+
+function paintPortal(){
+  var d = PORTAL, s = d.student || {};
+  var tabs = [["home","🏠 હોમ"],["res","📊 પરિણામ"],["att","🗓 હાજરી"],["asg","📝 સોંપણી"],["mat","📚 અભ્યાસ"],["ntc","🔔 સૂચના"],["hol","🎉 રજાઓ"]];
+  var body = {home:ptHome, res:ptResults, att:ptAttendance, asg:ptAssignments, mat:ptMaterials, ntc:ptNotices, hol:ptHolidays}[PTAB](d);
+  $("rs_out").innerHTML =
+    '<div class="card noprint" style="margin-bottom:10px"><div class="row" style="justify-content:space-between;align-items:center;gap:10px">'
+    + '<div><div style="font-size:12.5px;color:var(--muted)">'+esc((d.school && d.school.name) || "")+'</div>'
+    + '<div style="font-size:18px;font-weight:800">'+esc(s.name)+'</div>'
+    + '<div class="hint" style="margin:0">ધોરણ '+esc(s.std)+(s.div ? ' / '+esc(s.div) : '')+(s.roll ? ' · રોલ '+esc(s.roll) : '')+' · જી.આર. '+esc(s.gr)+'</div></div>'
+    + '<button class="btn sm sec" id="pt_out">બહાર</button></div>'
+    + (d.__offline ? '<p class="hint" style="color:var(--bad);margin:8px 0 0">ઇન્ટરનેટ નથી — છેલ્લી વખતે જોયેલી માહિતી બતાવી છે.</p>' : '')
+    + '</div>'
+    + '<div class="noprint" style="display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:4px">'
+    + tabs.map(function(t){
+        return '<button class="btn sm '+(t[0] === PTAB ? '' : 'sec')+'" data-pt="'+t[0]+'" style="white-space:nowrap">'+t[1]+'</button>';
+      }).join("") + '</div>'
+    + '<div id="pt_body">' + body + '</div>';
+  Array.prototype.forEach.call($("rs_out").querySelectorAll("[data-pt]"), function(b){
+    b.onclick = function(){ PTAB = b.dataset.pt; paintPortal(); try{ $("resGate").scrollTop = 0; }catch(e){} };
+  });
+  $("pt_out").onclick = ptLogout;
+  if ($("pt_rpick")) $("pt_rpick").onchange = function(){ PORTAL.__rIdx = Number($("pt_rpick").value) || 0; paintPortal(); };
+  if ($("pt_pdf")){
+    var r = (d.results || [])[Math.min(Number(PORTAL.__rIdx || 0), (d.results || []).length - 1)];
+    $("pt_pdf").onclick = function(){ printResult("પરિણામ-"+r.gr+"-"+r.examName); };
+  }
+}
+function ptLogout(){
+  PORTAL = null; PTAB = "home";
+  try{ localStorage.removeItem(PT_KEY); localStorage.removeItem(PT_LAST); }catch(e){}
+  $("rs_out").innerHTML = ""; $("rs_formcard").style.display = "";
+  $("rs_gr").value = ""; $("rs_dob").value = ""; resMsg("");
+}
+function showPortal(d){
+  PORTAL = d; PTAB = "home";
+  $("rs_formcard").style.display = "none";
+  paintPortal();
+}
+async function resLookup(auto){
   var gr = val("rs_gr"), dob = val("rs_dob");
   if (!gr || !dob) return resMsg("જી.આર. નંબર અને જન્મ તારીખ બંને ભરો.");
-  if (!GAS_READY) return resMsg("ઓનલાઇન પરિણામ હજુ ચાલુ થયું નથી — શાળાનો સંપર્ક કરો.");
-  $("rs_go").disabled = true; resMsg("પરિણામ શોધી રહ્યા છીએ…");
+  if (!GAS_READY) return resMsg("પોર્ટલ હજુ ચાલુ થયું નથી — શાળાનો સંપર્ક કરો.");
+  $("rs_go").disabled = true; resMsg("માહિતી લાવી રહ્યા છીએ…");
   var res;
-  try{ res = await gasPost({action:"getResult", gr:gr, dob:dob}); }catch(e){ res = null; }
+  try{ res = await gasPost({action:"studentPortal", gr:gr, dob:dob}); }catch(e){ res = null; }
   $("rs_go").disabled = false;
-  if (!res) return resMsg("જોડાણમાં તકલીફ પડી. ઇન્ટરનેટ ચકાસી ફરી પ્રયત્ન કરો.");
-  if (!res.ok) return resMsg(res.error || "પરિણામ મળ્યું નથી.");
+  if (!res){
+    /* ઇન્ટરનેટ ન હોય તો: જો આ ફોનમાં "યાદ રાખો" કર્યું હોય તો છેલ્લી માહિતી બતાવો */
+    try{
+      var last = JSON.parse(localStorage.getItem(PT_LAST) || "null");
+      if (last && last.student && String(last.student.gr) === gr){ last.__offline = true; resMsg(""); return showPortal(last); }
+    }catch(e){}
+    return resMsg("જોડાણમાં તકલીફ પડી. ઇન્ટરનેટ ચકાસી ફરી પ્રયત્ન કરો.");
+  }
+  if (!res.ok && /unknown action/i.test(res.error || "")){
+    /* જૂની Code.gs (હજુ નવું વર્ઝન Deploy નથી થયું) — ફક્ત પરિણામ બતાવો */
+    var old;
+    try{ old = await gasPost({action:"getResult", gr:gr, dob:dob}); }catch(e){ old = null; }
+    if (old && old.ok){ resMsg(""); return showResults(old.results || []); }
+    return resMsg((old && old.error) || "પરિણામ મળ્યું નથી.");
+  }
+  if (!res.ok){
+    try{ localStorage.removeItem(PT_KEY); localStorage.removeItem(PT_LAST); }catch(e){}
+    return resMsg(res.error || "માહિતી મળી નથી.");
+  }
   resMsg("");
-  showResults(res.results || []);
+  try{
+    if ($("rs_remember") && $("rs_remember").checked){
+      localStorage.setItem(PT_KEY, JSON.stringify({gr:gr, dob:dob}));
+      localStorage.setItem(PT_LAST, JSON.stringify(res));
+    } else { localStorage.removeItem(PT_KEY); localStorage.removeItem(PT_LAST); }
+  }catch(e){}
+  showPortal(res);
 }
 $("lg_reslink").onclick = openResGate;
 $("lg_install").onclick = pwaInstall;
@@ -5533,6 +5829,12 @@ if (RES_MODE){
   /* વિદ્યાર્થી માટેની લિંક: આખો ડેટાબેઝ લોડ કરતા નથી (initStore કૉલ નહીં) — ફક્ત પરિણામ શોધ */
   $("rs_close").style.display = "none";
   openResGate();
+  try{
+    var standalone = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone;
+    if (standalone) $("rs_remember").checked = true;
+    var sv = JSON.parse(localStorage.getItem(PT_KEY) || "null");
+    if (sv && sv.gr && sv.dob){ $("rs_gr").value = sv.gr; $("rs_dob").value = sv.dob; $("rs_remember").checked = true; resLookup(); }
+  }catch(e){}
 } else {
   initStore().then(function(){
     $("gateTitle").textContent = S.school.name || "શાળા વ્યવસ્થાપન સિસ્ટમ";
