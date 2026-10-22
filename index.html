@@ -382,7 +382,7 @@ var S = {
    OR set it once per browser via: localStorage.setItem("shala_gas_url","https://script.google.com/macros/s/XXXX/exec") */
 var GAS_URL = (function(){
   try{ var o = localStorage.getItem("shala_gas_url"); if (o) return o; }catch(e){}
-  return "https://script.google.com/macros/s/AKfycbws2wBprkVDHiPJFM7j7jztFi6ZtVaBI3-3bjb17-4M3ZfdlI8Q-1stOEpVcluLWX-brg/exec";
+  return "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
 })();
 var GAS_READY = /^https:\/\/script\.google(usercontent)?\.com\//.test(GAS_URL);
 var LS_KEY = "shala_v1";
@@ -3645,43 +3645,81 @@ function structureView(kind, title){
     + '<div id="st_body" style="margin-top:12px"></div></div>';
 }
 function structureWire(){
+  var working = null, workingFor = "";
+  function curEx(){ return S.exams.find(function(e){ return e.id === val("st_exam"); }); }
+  function defaults(ex){
+    var tot = Number(ex.total) || 100;
+    return subList().map(function(n){ return {name:n, max:tot, pass:Math.ceil(tot*0.33)}; });
+  }
+  function load(ex){
+    var src = (ex.subjects && ex.subjects.length) ? ex.subjects : defaults(ex);
+    working = src.map(function(x){ return {name:x.name, max:Number(x.max)||0, pass:Number(x.pass)||0}; });
+    workingFor = ex.id;
+  }
+  function readInputs(){
+    Array.prototype.forEach.call(document.querySelectorAll("[data-smax]"), function(inp){
+      var i = Number(inp.dataset.smax);
+      if (working[i]){
+        working[i].max = Number(inp.value) || 0;
+        working[i].pass = Number(document.querySelector('[data-spass="'+i+'"]').value) || 0;
+      }
+    });
+  }
   function draw(){
-    var ex = S.exams.find(function(e){ return e.id === val("st_exam"); });
+    var ex = curEx();
     if (!ex) return;
-    var subs = subList();
-    $("st_body").innerHTML = '<div class="tw"><table><thead><tr><th>વિષય</th><th class="num">પૂર્ણ ગુણ</th><th class="num">પાસ ગુણ</th></tr></thead><tbody>'
-      + subs.map(function(subName,i){
-          var cfg = (ex.subjects||[]).find(function(x){return x.name===subName;})
-            || {max:ex.total||100, pass:Math.ceil((ex.total||100)*0.33)};
-          return '<tr><td>'+esc(subName)+'</td>'
-            + '<td><input type="number" min="0" data-smax="'+i+'" data-sname="'+esc(subName)+'" value="'+cfg.max+'" style="width:90px"></td>'
-            + '<td><input type="number" min="0" data-spass="'+i+'" value="'+cfg.pass+'" style="width:90px"></td></tr>';
-        }).join("") + '</tbody></table></div>'
+    if (workingFor !== ex.id || !working) load(ex);
+    var have = working.map(function(w){ return w.name; });
+    var spare = subList().filter(function(n){ return have.indexOf(n) < 0; });
+    var tot = Number(ex.total) || 100;
+    $("st_body").innerHTML = '<div class="tw"><table><thead><tr><th>વિષય</th><th class="num">પૂર્ણ ગુણ</th><th class="num">પાસ ગુણ</th><th></th></tr></thead><tbody>'
+      + (working.length ? working.map(function(w,i){
+          return '<tr><td>'+esc(w.name)+'</td>'
+            + '<td><input type="number" min="0" data-smax="'+i+'" value="'+w.max+'" style="width:90px"></td>'
+            + '<td><input type="number" min="0" data-spass="'+i+'" value="'+w.pass+'" style="width:90px"></td>'
+            + '<td><button class="btn sm sec" data-rmsub="'+i+'">✕ વિષય કાઢો</button></td></tr>';
+        }).join("") : '<tr><td colspan="4" class="empty">કોઈ વિષય નથી — નીચેથી વિષય ઉમેરો.</td></tr>')
+      + '</tbody></table></div>'
+      + '<div class="row" style="margin-top:12px;gap:10px;flex-wrap:wrap;align-items:end">'
+      + (spare.length
+          ? '<div><label class="f">વિષય ઉમેરો</label><select id="st_newsub">'+spare.map(function(n){ return '<option>'+esc(n)+'</option>'; }).join("")+'</select></div>'
+            + '<div><button class="btn sec" id="st_addsub">＋ વિષય ઉમેરો</button></div>'
+          : '<span class="hint" style="margin:0">બધા વિષયો ઉમેરાઈ ગયા છે (નવો વિષય શાળા › વિષયની એન્ટ્રી માં ઉમેરો).</span>')
+      + '</div>'
+      + '<p class="hint">વિષય ઉમેર્યા/કાઢ્યા પછી <b>"માળખું સાચવો"</b> દબાવવું જરૂરી છે. કાઢેલા વિષયના ભરેલા ગુણ સાચવતી વખતે ભૂંસાશે (પહેલા પુષ્ટિ પૂછાશે). નવો ઉમેરેલો વિષય ગુણની એન્ટ્રીમાં દેખાશે.</p>'
       + '<div class="row" style="margin-top:12px;gap:10px;flex-wrap:wrap"><button class="btn" id="st_save">માળખું સાચવો</button>'
       + '<button class="btn warn" id="st_del">🗑 માળખું કાઢો</button>'
       + '<button class="btn warn" id="st_delexam">🗑 આખી પરીક્ષા કાઢો (ગુણ સાથે)</button></div>'
-      + '<p class="hint" style="margin-bottom:0">"માળખું કાઢો" ફક્ત વિષય-વાર પૂર્ણ/પાસ ગુણનું માળખું કાઢે છે (ફરી ડિફોલ્ટ થશે), ભરેલા ગુણ સલામત રહે છે. "આખી પરીક્ષા કાઢો" પરીક્ષા અને તેના બધા ગુણ કાયમ માટે ભૂંસે છે.</p>';
+      + '<p class="hint" style="margin-bottom:0">"માળખું કાઢો" ફક્ત વિષય-વાર પૂર્ણ/પાસ ગુણનું માળખું કાઢે છે (ફરી બધા વિષયો ડિફોલ્ટ થશે), ભરેલા ગુણ સલામત રહે છે. "આખી પરીક્ષા કાઢો" પરીક્ષા અને તેના બધા ગુણ કાયમ માટે ભૂંસે છે.</p>';
+    Array.prototype.forEach.call(document.querySelectorAll("[data-rmsub]"), function(b){
+      b.onclick = function(){ readInputs(); working.splice(Number(b.dataset.rmsub), 1); draw(); };
+    });
+    if ($("st_addsub")) $("st_addsub").onclick = function(){
+      readInputs(); working.push({name:val("st_newsub"), max:tot, pass:Math.ceil(tot*0.33)}); draw();
+    };
     $("st_delexam").onclick = async function(){ if (await deleteExamFull_(ex)) render(); };
     $("st_del").onclick = async function(){
       if (!(ex.subjects && ex.subjects.length)) return toast("આ પરીક્ષાનું માળખું હજુ સાચવ્યું નથી");
       if (!confirm('"'+ex.name+'" (ધોરણ '+ex.std+') નું માળખું કાઢી નાખવું? પરીક્ષા અને ગુણ સલામત રહેશે.')) return;
       var copy = Object.assign({}, ex); delete copy.subjects;
       await put("exams", copy);
-      toast("માળખું કાઢી નાખ્યું"); render();
+      toast("માળખું કાઢી નાખ્યું"); working = null; render();
     };
     $("st_save").onclick = async function(){
-      var arr = [];
-      Array.prototype.forEach.call(document.querySelectorAll("[data-smax]"), function(inp,i){
-        arr.push({name:inp.dataset.sname,
-          max:Number(inp.value)||0,
-          pass:Number(document.querySelector('[data-spass="'+i+'"]').value)||0});
-      });
-      var copy = Object.assign({}, ex, {subjects:arr});
-      await put("exams", copy);
-      toast("માળખું સચવાયું"); render();
+      readInputs();
+      if (!working.length) return toast("ઓછામાં ઓછો એક વિષય રાખો");
+      var keep = working.map(function(w){ return w.name; });
+      var marks = Object.assign({}, ex.marks || {});
+      var drop_ = Object.keys(marks).filter(function(k){ return keep.indexOf(k) < 0; });
+      var filled = drop_.filter(function(k){ return Object.keys(marks[k] || {}).length; });
+      if (filled.length && !confirm("આ વિષયોના ભરેલા ગુણ ભૂંસાઈ જશે: " + filled.join(", ") + "\n\nચાલુ રાખવું?")) return;
+      drop_.forEach(function(k){ delete marks[k]; });
+      await put("exams", Object.assign({}, ex, {subjects: working.map(function(w){ return {name:w.name, max:w.max, pass:w.pass}; }), marks: marks}));
+      toast("માળખું સચવાયું"); working = null; render();
     };
   }
-  $("st_exam").onchange = draw; draw();
+  $("st_exam").onchange = function(){ working = null; draw(); };
+  draw();
 }
 function mainStructByStdView(){
   var exams = examsOfKind("મુખ્ય પરીક્ષા");
@@ -3737,6 +3775,9 @@ function marksKindWire(){
     if (!ex) return;
     var kids = S.students.filter(function(s){ return String(s.std) === String(ex.std); });
     if (!kids.length){ $("mk_body").innerHTML = '<div class="empty">ધોરણ '+esc(ex.std)+' માં કોઈ વિદ્યાર્થી નથી.</div>'; return; }
+    var exSubs = (ex.subjects && ex.subjects.length) ? ex.subjects.map(function(x){ return x.name; }) : subList();
+    var prevSub = val("mk_sub");
+    $("mk_sub").innerHTML = opts(exSubs, exSubs.indexOf(prevSub) > -1 ? prevSub : "");
     var sub = val("mk_sub");
     var subCfg = (ex.subjects||[]).find(function(x){return x.name===sub;});
     var maxM = subCfg ? subCfg.max : (ex.total||100);
