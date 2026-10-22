@@ -3542,7 +3542,12 @@ WIRE["exam:list"] = function(){
       total:Number(val("ex_total"))||100, marks:{}, subjects:[]});
     toast("પરીક્ષા ઉમેરાઈ"); render();
   };
-  delWire("exams");
+  Array.prototype.forEach.call(document.querySelectorAll("[data-del]"), function(b){
+    b.onclick = async function(){
+      var ex = S.exams.find(function(x){ return x.id === b.dataset.del; });
+      if (ex && await deleteExamFull_(ex)) render();
+    };
+  });
 };
 
 VIEWS["exam:result"] = function(){
@@ -3614,6 +3619,22 @@ function gradeMasterWire(){
     await saveMeta(); toast("ગ્રેડેશન માસ્ટર સચવાયું");
   };
 }
+/* આખી પરીક્ષા ગુણ સાથે કાઢવી (ઓનલાઇન પ્રકાશિત હોય તો પહેલા તે હટાવે) */
+async function deleteExamFull_(ex){
+  var n = 0; try{ Object.keys(ex.marks || {}).forEach(function(k){ n += Object.keys(ex.marks[k] || {}).length; }); }catch(e){}
+  var msg = '"'+ex.name+'" (ધોરણ '+ex.std+') આખી પરીક્ષા કાઢી નાખવી?\n\n⚠ આ પરીક્ષાના ભરેલા બધા ગુણ ('+n+' નોંધ) અને માળખું કાયમ માટે ભૂંસાઈ જશે. પાછું લાવી શકાશે નહીં.'
+    + (ex.published ? '\nઆ પરીક્ષાનું ઓનલાઇન પરિણામ પણ વિદ્યાર્થીઓ માટે હટાવી દેવાશે.' : '')
+    + '\n\nબેકઅપ લીધું ન હોય તો પહેલા સીસ્ટમ › બેકઅપ માંથી Excel સાચવો.';
+  if (!confirm(msg)) return false;
+  if (ex.published && GAS_READY){
+    var res;
+    try{ res = await gasPost({action:"unpublishResults", examId:ex.id}); }catch(e){ res = null; }
+    if (!(res && res.ok)){ toast("ઓનલાઇન પરિણામ હટાવી શકાયું નહીં, તેથી પરીક્ષા કાઢી નથી. ઇન્ટરનેટ ચકાસી ફરી પ્રયત્ન કરો."); return false; }
+  }
+  await drop("exams", ex.id);
+  toast("પરીક્ષા કાઢી નાખી");
+  return true;
+}
 function structureView(kind, title){
   var exams = examsOfKind(kind);
   if (!exams.length) return emptyCard('"'+kind+'" પ્રકારની કોઈ પરીક્ષા નથી.',"પરિક્ષા › પરીક્ષાઓ (પ્રકાર પસંદ કરો: "+kind+")");
@@ -3636,7 +3657,18 @@ function structureWire(){
             + '<td><input type="number" min="0" data-smax="'+i+'" data-sname="'+esc(subName)+'" value="'+cfg.max+'" style="width:90px"></td>'
             + '<td><input type="number" min="0" data-spass="'+i+'" value="'+cfg.pass+'" style="width:90px"></td></tr>';
         }).join("") + '</tbody></table></div>'
-      + '<div style="margin-top:12px"><button class="btn" id="st_save">માળખું સાચવો</button></div>';
+      + '<div class="row" style="margin-top:12px;gap:10px;flex-wrap:wrap"><button class="btn" id="st_save">માળખું સાચવો</button>'
+      + '<button class="btn warn" id="st_del">🗑 માળખું કાઢો</button>'
+      + '<button class="btn warn" id="st_delexam">🗑 આખી પરીક્ષા કાઢો (ગુણ સાથે)</button></div>'
+      + '<p class="hint" style="margin-bottom:0">"માળખું કાઢો" ફક્ત વિષય-વાર પૂર્ણ/પાસ ગુણનું માળખું કાઢે છે (ફરી ડિફોલ્ટ થશે), ભરેલા ગુણ સલામત રહે છે. "આખી પરીક્ષા કાઢો" પરીક્ષા અને તેના બધા ગુણ કાયમ માટે ભૂંસે છે.</p>';
+    $("st_delexam").onclick = async function(){ if (await deleteExamFull_(ex)) render(); };
+    $("st_del").onclick = async function(){
+      if (!(ex.subjects && ex.subjects.length)) return toast("આ પરીક્ષાનું માળખું હજુ સાચવ્યું નથી");
+      if (!confirm('"'+ex.name+'" (ધોરણ '+ex.std+') નું માળખું કાઢી નાખવું? પરીક્ષા અને ગુણ સલામત રહેશે.')) return;
+      var copy = Object.assign({}, ex); delete copy.subjects;
+      await put("exams", copy);
+      toast("માળખું કાઢી નાખ્યું"); render();
+    };
     $("st_save").onclick = async function(){
       var arr = [];
       Array.prototype.forEach.call(document.querySelectorAll("[data-smax]"), function(inp,i){
