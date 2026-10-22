@@ -377,12 +377,27 @@ var S = {
   assignments:[], materials:[], notices:[]
 };
 
+var DEFAULT_SUBJECTS_STR = S.settings.subjects;
+/* જૂના ડેટા માટે: વિષયની યાદી ખાલી હોય પણ ગુણ ભરાયેલા હોય તો તે વિષયો યાદીમાં મૂકો, જેથી જૂના ગુણ ગાયબ ન થાય */
+function migrateSubjects_(){
+  var st = S.settings;
+  if (st.subjectsList && st.subjectsList.length) return;
+  var names = [];
+  function add(n){ if (n && names.indexOf(n) < 0) names.push(n); }
+  S.exams.forEach(function(e){ Object.keys(e.marks || {}).forEach(add); });
+  if (!names.length && st.subjects && st.subjects !== DEFAULT_SUBJECTS_STR) String(st.subjects).split(",").forEach(function(x){ add(x.trim()); });
+  if (!names.length) return;
+  st.subjectsList = names.map(function(n){ return {gu:n, en:"", practical:false}; });
+  st.subjects = names.join(",");
+  try{ saveMeta(); }catch(e){}
+}
+
 /* ---------- storage: Google Sheets backend (Apps Script), else localStorage ---------- */
 /* Deploy the companion Apps Script as a Web App and paste its /exec URL below,
    OR set it once per browser via: localStorage.setItem("shala_gas_url","https://script.google.com/macros/s/XXXX/exec") */
 var GAS_URL = (function(){
   try{ var o = localStorage.getItem("shala_gas_url"); if (o) return o; }catch(e){}
-  return "https://script.google.com/macros/s/AKfycbws2wBprkVDHiPJFM7j7jztFi6ZtVaBI3-3bjb17-4M3ZfdlI8Q-1stOEpVcluLWX-brg/exec";
+  return "PASTE_YOUR_APPS_SCRIPT_WEB_APP_URL_HERE";
 })();
 var GAS_READY = /^https:\/\/script\.google(usercontent)?\.com\//.test(GAS_URL);
 var LS_KEY = "shala_v1";
@@ -510,7 +525,30 @@ function opts(arr, sel){
 }
 function stdList(){ return list(S.settings.stds); }
 function divList(){ return list(S.settings.divs); }
-function subList(){ return list(S.settings.subjects); }
+/* વિષયો: ફક્ત શાળા › વિષયની એન્ટ્રી માં ઉમેરેલા વિષયો જ વપરાય છે */
+var CORE_NAMES = ["ગુજરાતી","અંગ્રેજી","ગણિત","વિજ્ઞાન","વિજ્ઞાન અને ટેકનોલોજી","સામાજિક વિજ્ઞાન"];
+var DEFAULT_LIMITS = {"9":10,"10":7};
+function subjectItems(){ return S.settings.subjectsList || []; }
+function subList(){ return subjectItems().map(function(x){ return x.gu; }); }
+function isCompulsory(name){
+  var it = subjectItems().find(function(x){ return x.gu === name; });
+  if (it && it.kind) return it.kind === "core";
+  return CORE_NAMES.indexOf(name) > -1;
+}
+function electiveList(){ return subList().filter(function(n){ return !isCompulsory(n); }); }
+function coreList(){ return subList().filter(isCompulsory); }
+/* વિદ્યાર્થી આ વિષય લે છે? ફરજિયાત વિષય બધા લે; વૈકલ્પિક ફક્ત પસંદ કરેલા (પસંદગી કરી ન હોય તો બધા ગણાય) */
+function takesSubject(stu, name){
+  if (isCompulsory(name)) return true;
+  if (!stu || !Array.isArray(stu.electives)) return true;
+  return stu.electives.indexOf(name) > -1;
+}
+function stdSubjectLimit(std){
+  var l = S.settings.subjectLimits || {};
+  var v = l[String(std)];
+  if (v == null || v === "") v = DEFAULT_LIMITS[String(std)];
+  return Number(v) || 0; /* 0 = મર્યાદા નહીં */
+}
 function studentName(id){ var s=S.students.find(function(x){return x.id===id;}); return s?s.name:"—"; }
 
 /* ---------- menu ---------- */
@@ -518,7 +556,7 @@ var MENU = [
   {k:"shala", t:"શાળા", tabs:[["dash","ડેશબોર્ડ"],["profile","શાળાની વિગત"],["days","કામકાજના દિવસો"],["subjects","વિષયની એન્ટ્રી"],["stds","ધોરણની એન્ટ્રી"],["fee","ફી એન્ટ્રી"],["holidays","વાર્ષિક રજાઓ"],["timetable","ટાઈમ ટેબલ"],["rooms","વર્ગ વ્યવસ્થા"],["posts","હોદ્દાની માહિતી"],["heads","હેડ કોડ"],["examtt","પરિક્ષા સમય પત્રક"],["letter","લેટરપેડ"]]},
   {k:"system", t:"સીસ્ટમ", tabs:[["set","સેટિંગ"],["years","વર્ષની પસંદગી"],["users","યુઝર બનાવવા"],["report","ડેટાબેઝ અહેવાલ"],["backup","બેકઅપ"]]},
   {k:"staff", t:"કર્મચારી", tabs:[["list","કર્મચારીની વિગત"],["add","નવો કર્મચારી"],["leaveopen","ઉઘડતી રજાઓ"],["gpfopen","શરૂઆતના જી.પી.એફ."],["leaveupdate","વાર્ષિક રજાઓ સુધારવી"],["relieve","નોકરી છોડવાની વિગત"],["salary","પગાર માળખું"],["pay","પગાર ચુકવણી"],["gpf","જી.પી.એફ."],["slip","સ્લિપ યાદી"],["f16","ફોર્મ 16"],["f24","ફોર્મ 24"],["master","પે રોલ માસ્ટર ડેટા"],["sheet","સ્ટાફ માહિતી પત્રક"],["payreg","પે-રોલ રજીસ્ટર"],["increment","ઇજાફાની માહિતી"]]},
-  {k:"student", t:"વિદ્યાર્થી", tabs:[["list","યાદી / શોધ"],["add","નવો પ્રવેશ"],["gr","જી.આર. એન્ટ્રી"],["autodiv","ઓટોમેટીક વર્ગ"],["autoroll","ઓટોમેટીક રોલ નંબર"],["promote","ઉપલા ધોરણમાં ચઢાવવા"],["count","સંખ્યા પત્રક"],["att","હાજરી"],["fee","વિદ્યાર્થીની ફી એન્ટ્રી"],["feeclass","ફી એન્ટ્રી (વર્ગ મુજબ)"],["lc","લીવીંગ સર્ટી ઇસ્યુ કરવું"],["lcvarg","વર્ગ મુજબ LC કાઢવા"],["lctrue","એલ.સી. ખરી ફોર્મ"],["sschsc","એસ.એસ.સી-એચ.એસ.સી રજીસ્ટર"],["prevyear","પાછળના વર્ષના વિદ્યાર્થી"]]},
+  {k:"student", t:"વિદ્યાર્થી", tabs:[["list","યાદી / શોધ"],["add","નવો પ્રવેશ"],["subsel","વૈકલ્પિક વિષયની પસંદગી"],["gr","જી.આર. એન્ટ્રી"],["autodiv","ઓટોમેટીક વર્ગ"],["autoroll","ઓટોમેટીક રોલ નંબર"],["promote","ઉપલા ધોરણમાં ચઢાવવા"],["count","સંખ્યા પત્રક"],["att","હાજરી"],["fee","વિદ્યાર્થીની ફી એન્ટ્રી"],["feeclass","ફી એન્ટ્રી (વર્ગ મુજબ)"],["lc","લીવીંગ સર્ટી ઇસ્યુ કરવું"],["lcvarg","વર્ગ મુજબ LC કાઢવા"],["lctrue","એલ.સી. ખરી ફોર્મ"],["sschsc","એસ.એસ.સી-એચ.એસ.સી રજીસ્ટર"],["prevyear","પાછળના વર્ષના વિદ્યાર્થી"]]},
   {k:"exam", t:"પરિક્ષા", tabs:[["list","પરીક્ષાઓ"],["structure","માળખું"],["marks","ગુણની એન્ટ્રી અને ગણતરી"],["result","પરિણામ"],["register","રજીસ્ટર"],["marksheet","માર્કશીટ"],["online","ઓનલાઇન પરિણામ"]]},
   {k:"portal", t:"વિદ્યાર્થી પોર્ટલ", tabs:[["assign","સોંપણી / ગૃહકાર્ય"],["material","અભ્યાસ સામગ્રી"],["notice","સૂચના / કાર્યક્રમ"],["link","પોર્ટલ / એપ લિંક"]]},
   {k:"library", t:"પુસ્તકાલય", tabs:[["books","પુસ્તક યાદી"],["issue","ઇશ્યુ / પરત"]]},
@@ -776,19 +814,31 @@ function listEditorWire(settingsKey, idPrefix){
 }
 VIEWS["shala:subjects"] = function(){
   var items = S.settings.subjectsList || [];
+  var stds = stdList();
   return '<div class="card"><h3>વિષયની માહિતી</h3><div class="grid">'
     + fld("sj_gu","વિષય નામ (ગુજરાતી)","")
     + fld("sj_en","વિષય નામ (અંગ્રેજી)","")
+    + '<div><label class="f" for="sj_kind">પ્રકાર</label><select id="sj_kind"><option value="core">ફરજિયાત (બધા વિદ્યાર્થી માટે)</option><option value="elective">વૈકલ્પિક (વિદ્યાર્થી પસંદ કરે)</option></select></div>'
     + '</div><div style="margin-top:8px">'+chk("sj_prac","Show Marks (11 Sci. Practical Only)",false)+'</div>'
-    + '<div style="margin-top:14px"><button class="btn" id="sj_add">સેવ</button></div></div>'
+    + '<div class="row" style="margin-top:14px;gap:10px;flex-wrap:wrap"><button class="btn" id="sj_add">સેવ</button>'
+    + '<button class="btn sec" id="sj_quick">＋ સામાન્ય વિષયો ઉમેરો (ધો. 9-10)</button></div>'
+    + '<p class="hint" style="margin-bottom:0">"સામાન્ય વિષયો" = ફરજિયાત: ગુજરાતી, અંગ્રેજી, ગણિત, વિજ્ઞાન અને ટેકનોલોજી, સામાજિક વિજ્ઞાન; વૈકલ્પિક: સંસ્કૃત, હિન્દી, કમ્પ્યુટર, શારીરિક શિક્ષણ, ચિત્ર. જે પહેલેથી હોય તે ફરી ઉમેરાતા નથી, પછી જરૂર મુજબ કાઢી શકાય.</p></div>'
     + '<div class="card"><h3>વિષયોની યાદી</h3>'
     + (items.length
-      ? '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th>વિષયનું નામ</th><th>વિષયનું નામ (English)</th><th></th></tr></thead><tbody>'
+      ? '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th>વિષયનું નામ</th><th>વિષયનું નામ (English)</th><th>પ્રકાર</th><th></th></tr></thead><tbody>'
         + items.map(function(x,i){
+            var core = isCompulsory(x.gu);
             return '<tr><td class="num">'+(i+1)+'</td><td>'+esc(x.gu)+(x.practical?' <span class="chip">Practical</span>':'')+'</td><td>'+esc(x.en||"—")+'</td>'
+              + '<td><button class="btn sm sec" data-kind="'+i+'" title="પ્રકાર બદલવા દબાવો">'+(core?"ફરજિયાત":"વૈકલ્પિક")+' ⇄</button></td>'
               + '<td><button class="btn sm sec" data-idx="'+i+'">કાઢો</button></td></tr>';
           }).join("") + '</tbody></table></div>'
-      : '<div class="empty">હજુ કોઈ વિષય નથી.</div>') + '</div>';
+      : '<div class="empty">હજુ કોઈ વિષય નથી. ઉપરથી ઉમેરો — માળખા અને ગુણની એન્ટ્રીમાં ફક્ત અહીં ઉમેરેલા વિષયો જ દેખાશે.</div>') + '</div>'
+    + '<div class="card"><h3>ધોરણ મુજબ મુખ્ય પરીક્ષાના મહત્તમ વિષયો</h3>'
+    + '<p class="hint" style="margin:0 0 10px">મુખ્ય પરીક્ષા (વાર્ષિક) માળખામાં આનાથી વધુ વિષયો ઉમેરી શકાશે નહીં. ખાલી/0 = મર્યાદા નહીં. ધો. 9 માટે 10 અને ધો. 10 માટે 7 પહેલેથી ગોઠવેલ છે.</p>'
+    + '<div class="grid">' + stds.map(function(g){
+        return fld("sj_lim_"+g, "ધોરણ "+g+" — મહત્તમ વિષયો", stdSubjectLimit(g) || "", "number");
+      }).join("") + '</div>'
+    + '<div style="margin-top:14px"><button class="btn" id="sj_limsave">મર્યાદા સાચવો</button></div></div>';
 };
 WIRE["shala:subjects"] = function(){
   function syncPlain(items){ S.settings.subjects = items.map(function(x){return x.gu;}).join(","); }
@@ -796,10 +846,34 @@ WIRE["shala:subjects"] = function(){
     var gu = val("sj_gu").trim(); if (!gu) return toast("વિષય નામ ભરો");
     var items = (S.settings.subjectsList || []).slice();
     if (items.some(function(x){return x.gu===gu;})) return toast("આ વિષય પહેલેથી યાદીમાં છે");
-    items.push({gu:gu, en:val("sj_en"), practical:$("sj_prac").checked});
+    items.push({gu:gu, en:val("sj_en"), practical:$("sj_prac").checked, kind:val("sj_kind")});
     S.settings.subjectsList = items; syncPlain(items);
     await saveMeta(); toast("વિષય ઉમેરાયો"); render();
   };
+  $("sj_quick").onclick = async function(){
+    var items = (S.settings.subjectsList || []).slice();
+    var base = [["ગુજરાતી","Gujarati","core"],["અંગ્રેજી","English","core"],["ગણિત","Mathematics","core"],
+      ["વિજ્ઞાન અને ટેકનોલોજી","Science & Technology","core"],["સામાજિક વિજ્ઞાન","Social Science","core"],
+      ["સંસ્કૃત","Sanskrit","elective"],["હિન્દી","Hindi","elective"],["કમ્પ્યુટર","Computer","elective"],
+      ["શારીરિક શિક્ષણ","Physical Education","elective"],["ચિત્ર","Drawing","elective"]];
+    var n = 0;
+    base.forEach(function(b){
+      if (!items.some(function(x){ return x.gu === b[0]; })){ items.push({gu:b[0], en:b[1], practical:false, kind:b[2]}); n++; }
+    });
+    if (!n) return toast("આ બધા વિષયો પહેલેથી યાદીમાં છે");
+    S.settings.subjectsList = items; syncPlain(items);
+    await saveMeta(); toast(n + " વિષય ઉમેરાયા"); render();
+  };
+  Array.prototype.forEach.call(document.querySelectorAll("[data-kind]"), function(b){
+    b.onclick = async function(){
+      var items = (S.settings.subjectsList || []).slice();
+      var it = Object.assign({}, items[Number(b.dataset.kind)]);
+      it.kind = isCompulsory(it.gu) ? "elective" : "core";
+      items[Number(b.dataset.kind)] = it;
+      S.settings.subjectsList = items;
+      await saveMeta(); render();
+    };
+  });
   Array.prototype.forEach.call(document.querySelectorAll("[data-idx]"), function(b){
     b.onclick = async function(){
       var items = (S.settings.subjectsList || []).slice();
@@ -808,6 +882,12 @@ WIRE["shala:subjects"] = function(){
       await saveMeta(); toast("કાઢી નાખ્યું"); render();
     };
   });
+  $("sj_limsave").onclick = async function(){
+    var lim = {};
+    stdList().forEach(function(g){ var v = Number(val("sj_lim_"+g)); lim[String(g)] = v > 0 ? v : 0; });
+    S.settings.subjectLimits = lim;
+    await saveMeta(); toast("મર્યાદા સચવાઈ");
+  };
 };
 VIEWS["shala:stds"] = function(){ return listEditorView("stds","ધોરણ","sd"); };
 WIRE["shala:stds"] = function(){ listEditorWire("stds","sd"); };
@@ -3377,7 +3457,7 @@ WIRE["student:promote"] = function(){
       if (!checked.length) return toast("ઓછામાં ઓછો એક વિદ્યાર્થી પસંદ કરો");
       for (var i=0;i<checked.length;i++){
         var s = S.students.find(function(x){return x.id===checked[i].dataset.k;});
-        await put("students", Object.assign({}, s, {std:newstd, div:val("pr_newdiv")||s.div, roll:""}));
+        await put("students", Object.assign({}, s, {std:newstd, div:val("pr_newdiv")||s.div, roll:"", electives:undefined}));
       }
       toast(checked.length+" વિદ્યાર્થી ચઢાવાયા"); render();
     };
@@ -3636,6 +3716,7 @@ async function deleteExamFull_(ex){
   return true;
 }
 function structureView(kind, title){
+  if (!subList().length) return emptyCard("પહેલા વિષયો ઉમેરો — માળખામાં ફક્ત 'વિષયની એન્ટ્રી' માં ઉમેરેલા વિષયો જ દેખાય છે.","શાળા › વિષયની એન્ટ્રી");
   var exams = examsOfKind(kind);
   if (!exams.length) return emptyCard('"'+kind+'" પ્રકારની કોઈ પરીક્ષા નથી.',"પરિક્ષા › પરીક્ષાઓ (પ્રકાર પસંદ કરો: "+kind+")");
   return '<div class="card"><h3>'+esc(title)+'</h3>'
@@ -3647,9 +3728,12 @@ function structureView(kind, title){
 function structureWire(){
   var working = null, workingFor = "";
   function curEx(){ return S.exams.find(function(e){ return e.id === val("st_exam"); }); }
+  function limitFor(ex){ return ((ex.kind || "મુખ્ય પરીક્ષા") === "મુખ્ય પરીક્ષા") ? stdSubjectLimit(ex.std) : 0; }
   function defaults(ex){
-    var tot = Number(ex.total) || 100;
-    return subList().map(function(n){ return {name:n, max:tot, pass:Math.ceil(tot*0.33)}; });
+    var tot = Number(ex.total) || 100, lim = limitFor(ex);
+    var names = coreList().concat(electiveList());      /* ફરજિયાત પહેલા, પછી વૈકલ્પિક */
+    if (lim) names = names.slice(0, lim);
+    return names.map(function(n){ return {name:n, max:tot, pass:Math.ceil(tot*0.33)}; });
   }
   function load(ex){
     var src = (ex.subjects && ex.subjects.length) ? ex.subjects : defaults(ex);
@@ -3670,11 +3754,13 @@ function structureWire(){
     if (!ex) return;
     if (workingFor !== ex.id || !working) load(ex);
     var have = working.map(function(w){ return w.name; });
-    var spare = subList().filter(function(n){ return have.indexOf(n) < 0; });
+    var lim = limitFor(ex);
+    var full = lim && working.length >= lim;
+    var spare = full ? [] : subList().filter(function(n){ return have.indexOf(n) < 0; });
     var tot = Number(ex.total) || 100;
     $("st_body").innerHTML = '<div class="tw"><table><thead><tr><th>વિષય</th><th class="num">પૂર્ણ ગુણ</th><th class="num">પાસ ગુણ</th><th></th></tr></thead><tbody>'
       + (working.length ? working.map(function(w,i){
-          return '<tr><td>'+esc(w.name)+'</td>'
+          return '<tr><td>'+esc(w.name)+' <span class="chip">'+(isCompulsory(w.name)?"ફરજિયાત":"વૈકલ્પિક")+'</span></td>'
             + '<td><input type="number" min="0" data-smax="'+i+'" value="'+w.max+'" style="width:90px"></td>'
             + '<td><input type="number" min="0" data-spass="'+i+'" value="'+w.pass+'" style="width:90px"></td>'
             + '<td><button class="btn sm sec" data-rmsub="'+i+'">✕ વિષય કાઢો</button></td></tr>';
@@ -3684,7 +3770,8 @@ function structureWire(){
       + (spare.length
           ? '<div><label class="f">વિષય ઉમેરો</label><select id="st_newsub">'+spare.map(function(n){ return '<option>'+esc(n)+'</option>'; }).join("")+'</select></div>'
             + '<div><button class="btn sec" id="st_addsub">＋ વિષય ઉમેરો</button></div>'
-          : '<span class="hint" style="margin:0">બધા વિષયો ઉમેરાઈ ગયા છે (નવો વિષય શાળા › વિષયની એન્ટ્રી માં ઉમેરો).</span>')
+          : '<span class="hint" style="margin:0">'+(full ? 'ધોરણ '+esc(ex.std)+' ની મર્યાદા '+lim+' વિષયો પૂરી થઈ — વધુ ઉમેરવા પહેલા કોઈ વિષય કાઢો.' : 'બધા વિષયો ઉમેરાઈ ગયા છે (નવો વિષય શાળા › વિષયની એન્ટ્રી માં ઉમેરો).')+'</span>')
+      + '<span class="chip '+((lim && working.length > lim) ? 'r' : 'g')+'" style="margin-left:auto">વિષયો: '+working.length+(lim ? ' / '+lim : '')+'</span>'
       + '</div>'
       + '<p class="hint">વિષય ઉમેર્યા/કાઢ્યા પછી <b>"માળખું સાચવો"</b> દબાવવું જરૂરી છે. કાઢેલા વિષયના ભરેલા ગુણ સાચવતી વખતે ભૂંસાશે (પહેલા પુષ્ટિ પૂછાશે). નવો ઉમેરેલો વિષય ગુણની એન્ટ્રીમાં દેખાશે.</p>'
       + '<div class="row" style="margin-top:12px;gap:10px;flex-wrap:wrap"><button class="btn" id="st_save">માળખું સાચવો</button>'
@@ -3695,7 +3782,9 @@ function structureWire(){
       b.onclick = function(){ readInputs(); working.splice(Number(b.dataset.rmsub), 1); draw(); };
     });
     if ($("st_addsub")) $("st_addsub").onclick = function(){
-      readInputs(); working.push({name:val("st_newsub"), max:tot, pass:Math.ceil(tot*0.33)}); draw();
+      readInputs();
+      if (lim && working.length >= lim) return toast("ધોરણ "+ex.std+" માટે વધુમાં વધુ "+lim+" વિષયો");
+      working.push({name:val("st_newsub"), max:tot, pass:Math.ceil(tot*0.33)}); draw();
     };
     $("st_delexam").onclick = async function(){ if (await deleteExamFull_(ex)) render(); };
     $("st_del").onclick = async function(){
@@ -3708,6 +3797,7 @@ function structureWire(){
     $("st_save").onclick = async function(){
       readInputs();
       if (!working.length) return toast("ઓછામાં ઓછો એક વિષય રાખો");
+      if (lim && working.length > lim) return toast("ધોરણ "+ex.std+" માટે વધુમાં વધુ "+lim+" વિષયો છે — "+(working.length-lim)+" વિષય કાઢો");
       var keep = working.map(function(w){ return w.name; });
       var marks = Object.assign({}, ex.marks || {});
       var drop_ = Object.keys(marks).filter(function(k){ return keep.indexOf(k) < 0; });
@@ -3751,6 +3841,7 @@ WIRE["exam:structure"] = function(){
 
 /* ========== ગુણની એન્ટ્રી અને ગણતરી (sub-tabs) ========== */
 function marksKindView(kind, title){
+  if (!subList().length) return emptyCard("પહેલા વિષયો ઉમેરો.","શાળા › વિષયની એન્ટ્રી");
   var exams = examsOfKind(kind);
   if (!exams.length) return emptyCard('"'+kind+'" પ્રકારની કોઈ પરીક્ષા નથી.',"પરિક્ષા › પરીક્ષાઓ");
   return '<div class="card"><h3>'+esc(title)+'</h3><div class="row">'
@@ -3762,8 +3853,10 @@ function marksKindView(kind, title){
 }
 function examCalc(ex, studentId){
   var cfg = ex.subjects && ex.subjects.length ? ex.subjects : subList().map(function(s){return {name:s,max:ex.total||100};});
+  var stu = S.students.find(function(x){ return x.id === studentId; });
   var got=0,max=0;
   cfg.forEach(function(c){
+    if (!takesSubject(stu, c.name)) return;
     var v = ex.marks && ex.marks[c.name] && ex.marks[c.name][studentId];
     if (v!=null){ got+=Number(v); max+=Number(c.max)||0; }
   });
@@ -3773,16 +3866,20 @@ function marksKindWire(){
   function draw(){
     var ex = S.exams.find(function(e){ return e.id === val("mk_exam"); });
     if (!ex) return;
-    var kids = S.students.filter(function(s){ return String(s.std) === String(ex.std); });
-    if (!kids.length){ $("mk_body").innerHTML = '<div class="empty">ધોરણ '+esc(ex.std)+' માં કોઈ વિદ્યાર્થી નથી.</div>'; return; }
+    var allKids = S.students.filter(function(s){ return String(s.std) === String(ex.std); });
+    if (!allKids.length){ $("mk_body").innerHTML = '<div class="empty">ધોરણ '+esc(ex.std)+' માં કોઈ વિદ્યાર્થી નથી.</div>'; return; }
     var exSubs = (ex.subjects && ex.subjects.length) ? ex.subjects.map(function(x){ return x.name; }) : subList();
     var prevSub = val("mk_sub");
     $("mk_sub").innerHTML = opts(exSubs, exSubs.indexOf(prevSub) > -1 ? prevSub : "");
     var sub = val("mk_sub");
+    var kids = allKids.filter(function(s){ return takesSubject(s, sub); });
+    var notSet = isCompulsory(sub) ? 0 : kids.filter(function(s){ return !Array.isArray(s.electives); }).length;
     var subCfg = (ex.subjects||[]).find(function(x){return x.name===sub;});
     var maxM = subCfg ? subCfg.max : (ex.total||100);
     var m = (ex.marks && ex.marks[sub]) || {};
-    $("mk_body").innerHTML = '<div class="tw"><table><thead><tr><th class="num">જી.આર.</th><th>નામ</th>'
+    $("mk_body").innerHTML = (isCompulsory(sub) ? '' : '<p class="hint" style="margin:6px 0">વૈકલ્પિક વિષય — ફક્ત આ વિષય પસંદ કરનાર '+kids.length+' વિદ્યાર્થી (કુલ '+allKids.length+' માંથી).'
+        + (notSet ? ' <b>'+notSet+' વિદ્યાર્થીની પસંદગી હજુ નોંધાઈ નથી</b> (વિદ્યાર્થી › વૈકલ્પિક વિષયની પસંદગી).' : '') + '</p>')
+      + '<div class="tw"><table><thead><tr><th class="num">જી.આર.</th><th>નામ</th>'
       + '<th class="num">ગુણ (કુલ '+maxM+')</th><th class="num">કુલ (અત્યાર સુધી)</th><th class="num">ટકા</th></tr></thead><tbody>'
       + kids.map(function(s){
           var c = examCalc(ex, s.id);
@@ -3858,6 +3955,7 @@ function regMainHTML(ex){
   var rows = kids.map(function(s){
     var got=0, max=0, allPass=true;
     subs.forEach(function(sub){
+      if (!takesSubject(s, sub)) return;
       var v = ex.marks[sub][s.id];
       if (v!=null){ got+=Number(v); max+=subjectMax(ex,sub); if (Number(v) < subjectPass(ex,sub)) allPass=false; }
       else allPass=false;
@@ -3870,7 +3968,7 @@ function regMainHTML(ex){
     + '<th class="num">કુલ</th><th class="num">ટકા</th><th>ગ્રેડ</th><th>પરિણામ</th></tr></thead><tbody>'
     + rows.map(function(r,i){
         return '<tr><td class="num">'+(i+1)+'</td><td class="num">'+esc(r.s.gr)+'</td><td>'+esc(r.s.name)+'</td>'
-          + subs.map(function(sub){ var v = ex.marks[sub][r.s.id]; return '<td class="num">'+(v!=null?v:"—")+'</td>'; }).join("")
+          + subs.map(function(sub){ var v = ex.marks[sub][r.s.id]; return '<td class="num">'+(!takesSubject(r.s, sub) ? "·" : (v!=null?v:"—"))+'</td>'; }).join("")
           + '<td class="num">'+r.got+' / '+r.max+'</td><td class="num">'+r.pct.toFixed(1)+'%</td>'
           + '<td><span class="chip '+(r.pct>=33?"g":"r")+'">'+grade(r.pct)+'</span></td>'
           + '<td><span class="chip '+(r.result==="પાસ"?"g":"r")+'">'+r.result+'</span></td></tr>';
@@ -3954,6 +4052,7 @@ WIRE["exam:register"] = function(){
           + subs.map(function(sub){
               var p=0,f=0,a=0;
               kids.forEach(function(s){
+                if (!takesSubject(s, sub)) return;
                 var v = ex.marks[sub][s.id];
                 if (v==null) a++; else if (Number(v) >= subjectPass(ex,sub)) p++; else f++;
               });
@@ -4036,7 +4135,7 @@ VIEWS["exam:marksheet"] = function(){
 };
 function marksheetHTML(ex, s){
   var k = S.school;
-  var subs = subList().filter(function(sub){ return ex.marks && ex.marks[sub]; });
+  var subs = subList().filter(function(sub){ return ex.marks && ex.marks[sub] && takesSubject(s, sub); });
   var got = 0, max = 0;
   var rows = subs.map(function(sub){
     var v = ex.marks[sub][s.id];
@@ -4124,12 +4223,13 @@ function buildResultSnapshots_(ex, withRank){
   var recs = [], noMarks = [], noDob = [];
   var stamp = new Date().toISOString();
   kids.forEach(function(s){
-    var any = subs.some(function(sub){ return ex.marks[sub][s.id] != null; });
+    var mySubs = subs.filter(function(sub){ return takesSubject(s, sub); });
+    var any = mySubs.some(function(sub){ return ex.marks[sub][s.id] != null; });
     if (!any){ noMarks.push(s); return; }
     var dob = normDobClient_(s.dob);
     if (!dob){ noDob.push(s); return; }
     var got = 0, max = 0, allPass = true;
-    var rows = subs.map(function(sub){
+    var rows = mySubs.map(function(sub){
       var v = ex.marks[sub][s.id], smax = subjectMax(ex, sub), spass = subjectPass(ex, sub);
       if (v == null){ allPass = false; return {name:sub, max:smax, pass:spass, got:null, grade:"—"}; }
       got += Number(v); max += smax;
@@ -5536,6 +5636,83 @@ async function payViaRazorpay(){
   });
   rzp.open();
 }
+/* ---------- વિદ્યાર્થી › વૈકલ્પિક વિષયની પસંદગી ---------- */
+var SUBSEL = {std:"", div:""};
+VIEWS["student:subsel"] = function(){
+  var electives = electiveList();
+  if (!subList().length) return emptyCard("પહેલા વિષયો ઉમેરો.","શાળા › વિષયની એન્ટ્રી");
+  if (!electives.length) return emptyCard("કોઈ વૈકલ્પિક વિષય નથી — બધા વિષયો ફરજિયાત છે.","શાળા › વિષયની એન્ટ્રી (વિષયનો પ્રકાર 'વૈકલ્પિક' કરો)");
+  var std = SUBSEL.std || stdList()[0] || "";
+  return '<div class="card"><h3>વૈકલ્પિક વિષયની પસંદગી</h3>'
+    + '<p class="hint" style="margin:0 0 10px">ફરજિયાત વિષયો (' + esc(coreList().join(", ") || "—") + ') બધા વિદ્યાર્થી માટે આપોઆપ છે. અહીં દરેક વિદ્યાર્થી પોતાના વૈકલ્પિક વિષયો પસંદ કરે તે ટિક કરો.</p>'
+    + '<div class="row" style="gap:10px;flex-wrap:wrap;align-items:end">'
+    + '<div><label class="f">ધોરણ</label><select id="ss_std">'+opts(stdList(), std)+'</select></div>'
+    + '<div><label class="f">વર્ગ</label><select id="ss_div"><option value="">બધા</option>'+opts(divList(), SUBSEL.div)+'</select></div></div>'
+    + '<div id="ss_info" class="hint"></div><div id="ss_body" style="margin-top:12px"></div></div>';
+};
+WIRE["student:subsel"] = function(){
+  if (!$("ss_std")) return;
+  var electives = electiveList();
+  function maxElect(std){
+    var lim = stdSubjectLimit(std);
+    return lim ? Math.max(0, lim - coreList().length) : 0; /* 0 = મર્યાદા નહીં */
+  }
+  function draw(){
+    SUBSEL.std = val("ss_std"); SUBSEL.div = val("ss_div");
+    var kids = S.students.filter(function(s){
+      return String(s.std) === SUBSEL.std && (!SUBSEL.div || String(s.div) === SUBSEL.div);
+    }).sort(function(a,b){ return (Number(a.roll)||9999) - (Number(b.roll)||9999) || String(a.gr).localeCompare(String(b.gr), undefined, {numeric:true}); });
+    var mx = maxElect(SUBSEL.std), lim = stdSubjectLimit(SUBSEL.std);
+    /* આ ધોરણની મુખ્ય પરીક્ષાના સાચવેલા માળખામાં કયા વૈકલ્પિક વિષયો છે (તે સિવાયના વિષયના ગુણ આ પરીક્ષામાં નહીં આવે) */
+    var mainEx = S.exams.find(function(e){ return String(e.std) === SUBSEL.std && (e.kind || "મુખ્ય પરીક્ષા") === "મુખ્ય પરીક્ષા" && e.subjects && e.subjects.length; });
+    var inStruct = mainEx ? mainEx.subjects.map(function(x){ return x.name; }) : null;
+    $("ss_info").textContent = lim
+      ? ("ધોરણ "+SUBSEL.std+": કુલ "+lim+" વિષયો = "+coreList().length+" ફરજિયાત + વધુમાં વધુ "+mx+" વૈકલ્પિક.")
+      : ("ધોરણ "+SUBSEL.std+": વિષયોની મર્યાદા નથી.");
+    if (!kids.length){ $("ss_body").innerHTML = '<div class="empty">આ ધોરણ/વર્ગમાં કોઈ વિદ્યાર્થી નથી.</div>'; return; }
+    $("ss_body").innerHTML = '<div class="tw"><table><thead><tr><th class="num">રોલ</th><th class="num">જી.આર.</th><th>નામ</th>'
+      + electives.map(function(e){
+          var miss = inStruct && inStruct.indexOf(e) < 0;
+          return '<th class="num"'+(miss?' title="આ વિષય મુખ્ય પરીક્ષાના માળખામાં નથી" style="opacity:.6"':'')+'>'+esc(e)+(miss?' ⚠':'')+'</th>';
+        }).join("") + '<th class="num">પસંદ</th></tr></thead><tbody>'
+      + kids.map(function(s){
+          var has = Array.isArray(s.electives);
+          return '<tr data-stu="'+s.id+'"><td class="num">'+esc(s.roll||"")+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+(has?'':' <span class="chip">બાકી</span>')+'</td>'
+            + electives.map(function(e,i){
+                return '<td class="num"><input type="checkbox" data-el="'+i+'" style="width:20px;height:20px"'+((has && s.electives.indexOf(e)>-1)?" checked":"")+'></td>';
+              }).join("") + '<td class="num" data-cnt></td></tr>';
+        }).join("") + '</tbody></table></div>'
+      + '<div class="row" style="margin-top:12px;gap:10px;flex-wrap:wrap"><button class="btn" id="ss_save">પસંદગી સાચવો</button>'
+      + '<button class="btn sec" id="ss_all">બધા વિષય ટિક કરો</button><button class="btn sec" id="ss_none">બધા ટિક કાઢો</button></div>'
+      + '<p class="hint">"બાકી" = હજુ પસંદગી નોંધાઈ નથી; ત્યાં સુધી તે વિદ્યાર્થી બધા વૈકલ્પિક વિષયોમાં ગણાય છે. ⚠ વાળો વિષય આ ધોરણની મુખ્ય પરીક્ષાના માળખામાં નથી, એટલે તેના ગુણ તે પરીક્ષામાં આવશે નહીં.</p>';
+    function recount(){
+      Array.prototype.forEach.call($("ss_body").querySelectorAll("tr[data-stu]"), function(tr){
+        var n = tr.querySelectorAll("input:checked").length, c = tr.querySelector("[data-cnt]");
+        c.textContent = n + (mx ? " / "+mx : ""); c.style.color = (mx && n > mx) ? "var(--bad)" : "";
+      });
+    }
+    Array.prototype.forEach.call($("ss_body").querySelectorAll("input[type=checkbox]"), function(c){ c.onchange = recount; });
+    recount();
+    $("ss_all").onclick = function(){ Array.prototype.forEach.call($("ss_body").querySelectorAll("input[type=checkbox]"), function(c){ c.checked = true; }); recount(); };
+    $("ss_none").onclick = function(){ Array.prototype.forEach.call($("ss_body").querySelectorAll("input[type=checkbox]"), function(c){ c.checked = false; }); recount(); };
+    $("ss_save").onclick = async function(){
+      var bad = [];
+      var upd = [];
+      Array.prototype.forEach.call($("ss_body").querySelectorAll("tr[data-stu]"), function(tr){
+        var s = S.students.find(function(x){ return x.id === tr.dataset.stu; });
+        var chosen = [];
+        Array.prototype.forEach.call(tr.querySelectorAll("input[data-el]"), function(c){ if (c.checked) chosen.push(electives[Number(c.dataset.el)]); });
+        if (mx && chosen.length > mx) bad.push(s.name);
+        upd.push({s:s, chosen:chosen});
+      });
+      if (bad.length) return toast("વધુ વિષય પસંદ થયા (મહત્તમ "+mx+"): " + bad.slice(0,3).join(", ") + (bad.length>3?" …":""));
+      for (var i=0;i<upd.length;i++) await put("students", Object.assign({}, upd[i].s, {electives: upd[i].chosen}));
+      toast(upd.length + " વિદ્યાર્થીની પસંદગી સચવાઈ"); draw();
+    };
+  }
+  $("ss_std").onchange = draw; $("ss_div").onchange = draw; draw();
+};
+
 /* ---------- વિદ્યાર્થી પોર્ટલ: શિક્ષક/એડમિનની એન્ટ્રી (સોંપણી, અભ્યાસ સામગ્રી, સૂચના/કાર્યક્રમ) ---------- */
 function ptToday(){
   var d = new Date();
@@ -5911,6 +6088,7 @@ if (RES_MODE){
 } else {
   initStore().then(function(){
     $("gateTitle").textContent = S.school.name || "શાળા વ્યવસ્થાપન સિસ્ટમ";
+    migrateSubjects_();
     fillLoginUsers();
     var saved = null;
     try{ saved = sessionStorage.getItem("shala_login"); }catch(e){}
