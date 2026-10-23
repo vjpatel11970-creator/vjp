@@ -584,6 +584,14 @@ function drawMenu(){
       /* જૂથનું નામ (દા.ત. "શાળા") ફરી ક્લિક કરવું એટલે તે જૂથના પહેલા/મુખ્ય ટેબ (દા.ત.
          ડેશબોર્ડ) પર પાછા જવું — ભલે આપણે તે જ જૂથના બીજા કોઈ ટેબ પર કેમ ન હોઈએ.
          ફક્ત જ્યારે પહેલેથી જ એ મુખ્ય ટેબ પર હોઈએ ત્યારે જ સબ-મેનુ ખોલ/બંધ થાય. */
+      /* ફોન/સાંકડી સ્ક્રીન (મેનુ ડ્રોઅર): જૂથનું નામ ફક્ત તેના ટેબ ખોલે/બંધ કરે છે; પછી ટેબ
+         (દા.ત. ડેશબોર્ડ) દબાવતાં ડ્રોઅર બંધ થઈ પેજ દેખાય છે. નહિતર ડ્રોઅર પેજને ઢાંકી રાખતું
+         અને "ડેશબોર્ડ ખુલતું નથી" એવું લાગતું. */
+      if (window.matchMedia && matchMedia("(max-width:860px)").matches){
+        var sub0 = $("sidebar").querySelector('.navsub[data-grp="'+mkey+'"]');
+        if (sub0) sub0.classList.toggle("open");
+        return;
+      }
       if (cur.m !== mkey || cur.t !== homeTab){
         cur.m = mkey;
         cur.t = homeTab;
@@ -598,6 +606,7 @@ function drawMenu(){
     b.onclick = function(){
       cur.m = b.dataset.m; cur.t = b.dataset.t;
       drawMenu(); render();
+      if (window.matchMedia && matchMedia("(max-width:860px)").matches) closeSidebarMobile();
     };
   });
 }
