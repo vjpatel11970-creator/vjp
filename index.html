@@ -283,6 +283,7 @@ td.num,th.num{font-family:"Inter",sans-serif}
 <div class="app">
   <header class="top">
     <button class="iconbtn menuBtn" id="menuBtn" title="મેનુ">☰</button>
+    <button class="iconbtn" id="homeBtn" title="ડેશબોર્ડ (હોમ)">🏠</button>
     <div class="crest">શા</div>
     <div>
       <h1 id="schoolName">શાળા વ્યવસ્થાપન સિસ્ટમ</h1>
@@ -488,6 +489,81 @@ function sendSmsApi(to, text){
 }
 function uid(){ return "r" + Date.now().toString(36) + Math.random().toString(36).slice(2,6); }
 
+/* ---------- તારીખ: અંદર YYYY-MM-DD, બતાવવામાં dd/mm/yyyy ---------- */
+function dmy(v){
+  if (v == null || v === "") return "";
+  var t = String(v).trim(), m = t.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/);
+  return m ? ("0"+m[3]).slice(-2) + "/" + ("0"+m[2]).slice(-2) + "/" + m[1] : t;
+}
+function isoOf_(y, m, d){
+  y = Number(y); m = Number(m); d = Number(d);
+  if (!(y >= 1900 && y <= 2100 && m >= 1 && m <= 12 && d >= 1 && d <= 31)) return null;
+  return y + "-" + ("0"+m).slice(-2) + "-" + ("0"+d).slice(-2);
+}
+/* Excel ની કોઈ પણ તારીખ (Date / serial આંકડો / "14/05/2010" લખાણ / 2010-05-14) → "YYYY-MM-DD".
+   ન ઓળખાય તો મૂળ કિંમત પાછી આપે. લખાણમાં dd/mm/yyyy જ ગણાય. */
+function toIsoDate_(v){
+  if (v == null || v === "") return "";
+  var m;
+  if (v instanceof Date){ return isNaN(v) ? "" : isoOf_(v.getFullYear(), v.getMonth()+1, v.getDate()) || ""; }
+  if (typeof v === "number" && isFinite(v)){
+    if (v > 59 && v < 80000 && typeof XLSX !== "undefined" && XLSX.SSF){
+      var o = XLSX.SSF.parse_date_code(v);
+      if (o){ var r = isoOf_(o.y, o.m, o.d); if (r) return r; }
+    }
+    v = String(v);
+  }
+  var t = String(v).trim();
+  if ((m = t.match(/^(\d{4})[\/\-.](\d{1,2})[\/\-.](\d{1,2})(?:[T\s].*)?$/))) return isoOf_(m[1], m[2], m[3]) || t;
+  if ((m = t.match(/^(\d{1,2})[\/\-. ](\d{1,2})[\/\-. ](\d{2,4})$/))){
+    var y = m[3]; if (y.length === 2) y = (Number(y) <= 30 ? "20" : "19") + y;
+    return isoOf_(y, m[2], m[1]) || t;
+  }
+  if (/^\d{8}$/.test(t)) return isoOf_(t.slice(4), t.slice(2,4), t.slice(0,2)) || t;
+  return t;
+}
+function ensureXLSX_(){
+  return new Promise(function(res){
+    if (typeof XLSX !== "undefined") return res(true);
+    var urls = ["https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js", "https://unpkg.com/xlsx@0.18.5/dist/xlsx.full.min.js"];
+    (function next(i){
+      if (i >= urls.length) return res(false);
+      var sc = document.createElement("script"); sc.src = urls[i];
+      sc.onload = function(){ res(typeof XLSX !== "undefined"); };
+      sc.onerror = function(){ next(i+1); };
+      document.head.appendChild(sc);
+    })(0);
+  });
+}
+/* ઘણા રેકોર્ડ એકસાથે સેવ (ઝડપી). નવી Code.gs માં "putMany" હોય તો 100-100 ના ગુચ્છમાં, નહિતર એક-એક કરીને */
+async function putMany(coll, objs, onProgress){
+  objs.forEach(function(obj){
+    if (!obj.id) obj.id = uid();
+    var arr = S[coll], found = false;
+    for (var i=0;i<arr.length;i++){ if (arr[i].id === obj.id){ arr[i] = obj; found = true; break; } }
+    if (!found) arr.push(obj);
+  });
+  lsWrite();
+  if (!GAS_READY) return {ok:true, remote:false};
+  var useBatch = true, failed = 0;
+  for (var i=0;i<objs.length;i+=100){
+    var chunk = objs.slice(i, i+100), done = false;
+    if (useBatch){
+      try{
+        var r = await gasPost({action:"putMany", coll:coll, objs:chunk});
+        if (r && r.ok) done = true; else useBatch = false; /* જૂની Code.gs: unknown action */
+      }catch(e){ useBatch = false; }
+    }
+    if (!done){
+      for (var j=0;j<chunk.length;j++){
+        try{ await gasPost({action:"put", coll:coll, obj:chunk[j]}); }catch(e){ failed++; }
+        if (onProgress) onProgress(i+j+1, objs.length);
+      }
+    } else if (onProgress) onProgress(Math.min(i+100, objs.length), objs.length);
+  }
+  return {ok: failed === 0, remote:true, failed:failed};
+}
+
 async function put(coll, obj){
   if (!obj.id) obj.id = uid();
   var arr = S[coll], found = false;
@@ -567,7 +643,7 @@ var cur = {m:"shala", t:"dash"};
 
 function drawMenu(){
   var groups = MENU.filter(function(m){ return !LOGGED_IN || allowed(m.k); });
-  $("sidebar").innerHTML = groups.map(function(m){
+  $("sidebar").innerHTML = '<button class="navhead" id="navHome" style="margin-bottom:6px"><span>🏠 ડેશબોર્ડ (હોમ)</span></button>' + groups.map(function(m){
     var isCur = cur.m === m.k;
     return '<div class="navgroup">'
       + '<button class="navhead'+(isCur?" on":"")+'" data-m="'+m.k+'"><span>'+esc(m.t)+'</span><span class="car">'+(isCur?"▾":"▸")+'</span></button>'
@@ -577,7 +653,8 @@ function drawMenu(){
         }).join("")
       + '</div></div>';
   }).join("");
-  Array.prototype.forEach.call($("sidebar").querySelectorAll(".navhead"), function(b){
+  $("navHome").onclick = function(){ goHome_(); };
+  Array.prototype.forEach.call($("sidebar").querySelectorAll(".navhead[data-m]"), function(b){
     b.onclick = function(){
       var mkey = b.dataset.m;
       var homeTab = MENU.find(function(x){return x.k===mkey;}).tabs[0][0];
@@ -609,6 +686,13 @@ function drawMenu(){
       if (window.matchMedia && matchMedia("(max-width:860px)").matches) closeSidebarMobile();
     };
   });
+}
+function goHome_(){
+  var g = MENU.find(function(m){ return m.k === "shala" && (!LOGGED_IN || allowed(m.k)); }) || MENU.find(function(m){ return !LOGGED_IN || allowed(m.k); });
+  if (!g) return;
+  cur.m = g.k; cur.t = g.tabs[0][0];
+  drawMenu(); render(); closeSidebarMobile();
+  try{ window.scrollTo(0, 0); }catch(e){}
 }
 function closeSidebarMobile(){
   $("sidebar").classList.remove("open");
@@ -700,7 +784,7 @@ VIEWS["shala:dash"] = function(){
     + '<div class="card"><h3>🆕 તાજેતરના પ્રવેશ</h3>'
     + (recentAdmits.length ? '<div class="tw"><table><thead><tr><th class="num">જી.આર.</th><th>નામ</th><th>ધોરણ/વર્ગ</th><th class="num">પ્રવેશ તારીખ</th></tr></thead><tbody>'
       + recentAdmits.map(function(s){
-          return '<tr><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.std)+'/'+esc(s.div)+'</td><td class="num">'+esc(s.admit)+'</td></tr>';
+          return '<tr><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.std)+'/'+esc(s.div)+'</td><td class="num">'+esc(dmy(s.admit))+'</td></tr>';
         }).join("") + '</tbody></table></div>'
       : '<div class="empty">હજુ કોઈ પ્રવેશ નોંધાયો નથી.</div>') + '</div>';
 };
@@ -1206,7 +1290,7 @@ WIRE["shala:letter"] = function(){
     var s = S.students.find(function(x){ return x.id === val("lt_stu"); });
     var map = {
       NAME: s?s.name:"____________", GR: s?s.gr:"____", STD: s?s.std:"____",
-      DIV: s?s.div:"__", DOB: s?(s.dob||"__________"):"__________",
+      DIV: s?s.div:"__", DOB: s?(dmy(s.dob)||"__________"):"__________",
       FATHER: s?(s.father||"____________"):"____________", YEAR: S.settings.year
     };
     text = text.replace(/\{(\w+)\}/g, function(_,k){ return map[k] != null ? map[k] : "____"; });
@@ -1253,7 +1337,7 @@ var REPORTS = {
   "વિદ્યાર્થી — સંપૂર્ણ યાદી": function(){
     return {
       cols:["જી.આર.","નામ","પિતાનું નામ","ધોરણ","વર્ગ","પ્રવાહ","જાતિ","જ્ઞાતિ","જન્મ તારીખ","બેઠક નં.","મોબાઇલ"],
-      rows:S.students.map(function(s){ return [s.gr,s.name,s.father,s.std,s.div,s.stream||"—",s.gender,s.cat,s.dob,s.seat||"—",s.mobile]; })
+      rows:S.students.map(function(s){ return [s.gr,s.name,s.father,s.std,s.div,s.stream||"—",s.gender,s.cat,dmy(s.dob),s.seat||"—",s.mobile]; })
     };
   },
   "વિદ્યાર્થી — ધોરણવાર સંખ્યા": function(){
@@ -2663,7 +2747,7 @@ function payApp3Wire(){
             return '<tr><td style="border:1px solid #999;padding:3px;text-align:center">'+(i+1)+'</td>'
               + '<td style="border:1px solid #999;padding:3px;text-align:center">'+esc(t.computerNo||t.empNo||"—")+'</td>'
               + '<td style="border:1px solid #999;padding:3px">'+esc(t.name)+'</td>'
-              + '<td style="border:1px solid #999;padding:3px;text-align:center">'+esc(t.dob||"—")+'</td>'
+              + '<td style="border:1px solid #999;padding:3px;text-align:center">'+esc(dmy(t.dob)||"—")+'</td>'
               + '<td style="border:1px solid #999;padding:3px;text-align:center">'+esc(t.joined||"—")+'</td>'
               + '<td style="border:1px solid #999;padding:3px">'+esc(t.post||"—")+'</td>'
               + '<td style="border:1px solid #999;padding:3px;text-align:right">'+money(t.basic)+'</td></tr>';
@@ -2852,7 +2936,7 @@ WIRE["student:list"] = function(){
         + rows.map(function(s){
             return '<tr><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td>'
               + '<td>'+esc(s.std)+' / '+esc(s.div)+'</td><td>'+esc(s.gender)+'</td>'
-              + '<td><span class="chip">'+esc(s.cat||"—")+'</span></td><td class="num">'+esc(s.dob||"—")+'</td>'
+              + '<td><span class="chip">'+esc(s.cat||"—")+'</span></td><td class="num">'+esc(dmy(s.dob)||"—")+'</td>'
               + '<td class="num">'+esc(s.mobile||"—")+'</td>'
               + '<td><button class="btn sm warn" data-del="'+s.id+'">દૂર</button></td></tr>';
           }).join("") + '</tbody></table></div>'
@@ -2927,6 +3011,7 @@ function grInfoView(){
     + '<button class="btn sec" id="sd_print">છાપવું</button>'
     + '<button class="btn sec" id="sd_xlexp">Excel Export</button>'
     + '<button class="btn sec" id="sd_xlimpbtn">Excel Import</button>'
+    + '<button class="btn sec" id="sd_xlsample">📄 નમૂના Excel</button>'
     + '<input type="file" id="sd_xlimp" accept=".xlsx,.xls" style="display:none">'
     + '</div></div>';
 }
@@ -2961,6 +3046,7 @@ var STU_ALIASES = {
   "blood":"blood","bloodgroup":"blood","બ્લડગ્રુપ":"blood",
   "stream":"stream","પ્રવાહ":"stream",
   "seat":"seat","seatno":"seat","બોર્ડબેઠકનંબર":"seat",
+  "roll":"roll","rollno":"roll","rollnumber":"roll","રોલનંબર":"roll","રોલનં":"roll","રોલ":"roll",
   "mobile":"mobile","mobileno":"mobile","phone":"mobile","contact":"mobile",
   "વાલીનોમોબાઇલ":"mobile","મોબાઇલ":"mobile","મોબાઇલનંબર":"mobile"
 };
@@ -2974,6 +3060,96 @@ function normalizeStuRow_(r){
   return out;
 }
 
+/* ગુજરાતી જોડણી-ભેદ (ઈ/ઇ, ી/િ, ૂ/ુ) દૂર કરીને હેડર સરખાવવા */
+function normG_(h){
+  return String(h==null?"":h).toLowerCase().replace(/[​-‍﻿]/g,"").replace(/[\s.\-_()\/,:]/g,"")
+    .replace(/ઈ/g,"ઇ").replace(/ઊ/g,"ઉ").replace(/ી/g,"િ").replace(/ૂ/g,"ુ");
+}
+var STU_ALIAS_N = (function(){ var o = {}; Object.keys(STU_ALIASES).forEach(function(k){ o[normG_(k)] = STU_ALIASES[k]; }); return o; })();
+/* એક કૉલમ-હેડર → આંતરિક કી (ચોક્કસ મેળ, ન મળે તો શબ્દ-આધારિત અંદાજ) */
+function mapHeader_(h){
+  var n = normG_(h);
+  if (!n) return "";
+  if (STU_ALIAS_N[n]) return STU_ALIAS_N[n];
+  var has = function(x){ return n.indexOf(normG_(x)) > -1; };
+  if ((has("જન્મ") && has("તારીખ")) || (has("birth") && (has("date") || has("dob"))) || n === "dob") return "dob";
+  if ((has("દાખલ") && has("તારીખ")) || (has("admission") && has("date")) || (has("admit") && has("date"))) return "admit";
+  if (has("જિઆર") || has("જીઆર") || /^gr/.test(n) || n === "grno") return "gr";
+  if (has("પિતા") || has("father")) return (has("અંગ્રેજી") || /en$/.test(n)) ? "fatherEn" : "father";
+  if (has("માતા") || has("mother")) return "mother";
+  if (has("મોબાઇલ") || has("mobile") || has("phone") || has("ફોન")) return "mobile";
+  if (has("રોલ") || has("roll")) return "roll";
+  if (has("ધોરણ") || n === "std" || n === "class" || n === "standard") return "std";
+  if (has("વર્ગ") || has("ડિવિઝન") || has("division") || n === "div" || n === "section") return "div";
+  if ((has("વિદ્યાર્થી") && has("નામ")) || n === "name" || n === "studentname" || n === "નામ") return "name";
+  if (has("અટક") || has("surname")) return "surname";
+  if (has("જ્ઞાતિ") || has("caste")) return "cat";
+  if (has("જાતિ") || has("gender") || n === "sex") return "gender";
+  if (has("ધર્મ") || has("religion")) return "religion";
+  return "";
+}
+var STU_DATE_FIELDS = ["dob","admit"];
+var STU_TEXT_FIELDS = ["gr","mobile","roll","std","div","pen","apaar","seat","stdIn"];
+function cleanCell_(k, v){
+  if (STU_DATE_FIELDS.indexOf(k) > -1) return toIsoDate_(v);
+  if (v instanceof Date) return toIsoDate_(v);
+  if (typeof v === "number") return (STU_TEXT_FIELDS.indexOf(k) > -1 || Math.floor(v) === v) ? String(v) : String(v);
+  return String(v == null ? "" : v).trim();
+}
+/* Excel ની શીટ (array-of-arrays) માંથી હેડર-હરોળ શોધે (ઉપર શાળાનું નામ વગેરે હોય તો પણ) */
+function findStuHeader_(aoa){
+  var best = null;
+  for (var i=0; i<Math.min(aoa.length, 25); i++){
+    var map = {}, cnt = 0, hasKey = false, row = aoa[i] || [];
+    for (var c=0; c<row.length; c++){
+      var k = mapHeader_(row[c]);
+      if (k && !map.hasOwnProperty(c)){ map[c] = k; cnt++; if (k === "gr" || k === "name") hasKey = true; }
+    }
+    if (hasKey && cnt >= 2 && (!best || cnt > best.cnt)) best = {row:i, map:map, cnt:cnt};
+  }
+  return best;
+}
+function parseStudentSheets_(wb){
+  var names = wb.SheetNames.slice();
+  names.sort(function(a,b){ return (b.toLowerCase()==="students") - (a.toLowerCase()==="students"); });
+  for (var s0=0; s0<names.length; s0++){
+    var ws = wb.Sheets[names[s0]];
+    var aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:"", raw:true});
+    /* શાળાના બેકઅપ/ડેટાબેઝ ફોર્મેટ (કૉલમ: id, data = JSON) */
+    if (aoa.length > 1 && String(aoa[0][0]).toLowerCase() === "id" && String(aoa[0][1]).toLowerCase() === "data" && String(aoa[1][1]).charAt(0) === "{"){
+      var jr = [];
+      for (var q=1;q<aoa.length;q++){ try{ var o = JSON.parse(aoa[q][1]); o.id = aoa[q][0] || o.id; jr.push(o); }catch(e){} }
+      if (jr.length) return {rows:jr, sheet:names[s0], unknown:[], found:["(id/data JSON)"], emptyRows:0};
+    }
+    var h = findStuHeader_(aoa);
+    if (!h) continue;
+    var rows = [], emptyRows = 0;
+    var headers = aoa[h.row];
+    var unknown = headers.filter(function(x, c){ return String(x).trim() && !h.map.hasOwnProperty(c); }).map(String);
+    for (var r=h.row+1; r<aoa.length; r++){
+      var line = aoa[r], o2 = {}, any = false;
+      Object.keys(h.map).forEach(function(c){
+        var k = h.map[c], v = line[c];
+        if (v === "" || v == null) return;
+        o2[k] = cleanCell_(k, v); any = true;
+      });
+      if (!any){ emptyRows++; continue; }
+      rows.push(o2);
+    }
+    var found = Object.keys(h.map).map(function(c){ return String(headers[c]).trim() + " → " + h.map[c]; });
+    return {rows:rows, sheet:names[s0], unknown:unknown, found:found, emptyRows:emptyRows};
+  }
+  return null;
+}
+function stuSampleXlsx_(){
+  var rows = [{"જી.આર. નંબર":"101","નામ":"રાજ","પિતાનું નામ":"કિશન","અટક":"પટેલ","ધોરણ":"9","વર્ગ":"અ","રોલ નંબર":"1","જાતિ":"કુમાર",
+    "જ્ઞાતિ":"પટેલ","જન્મ તારીખ":"14/05/2010","દાખલ તારીખ":"15/06/2024","વાલીનો મોબાઇલ":"9876543210"}];
+  var ws = XLSX.utils.json_to_sheet(rows);
+  Object.keys(ws).forEach(function(a){ if (a[0] !== "!" && ws[a].t === "s") ws[a].z = "@"; });
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, "students");
+  XLSX.writeFile(wb, "students-sample.xlsx");
+}
 function grInfoWire(){
   var loadedId = "";
   var fields = ["sd_gr","sd_pen","sd_apaar","sd_admit","sd_std_in","sd_std","sd_div","sd_surname","sd_name","sd_father",
@@ -3047,46 +3223,63 @@ function grInfoWire(){
       + '<div style="text-align:center;font-weight:700;margin:10px 0">જી.આર.ની વિગત</div>'
       + '<table style="width:100%;border-collapse:collapse;font-size:13.5px">'
       + row("જી.આર. નં.", val("sd_gr")) + row("નામ", val("sd_name")) + row("પિતાનું નામ", val("sd_father"))
-      + row("ધોરણ/વર્ગ", val("sd_std")+" / "+val("sd_div")) + row("જન્મ તારીખ", val("sd_dob"))
-      + row("દાખલ તારીખ", val("sd_admit")) + row("વાલીનો મોબાઇલ", val("sd_mobile"))
+      + row("ધોરણ/વર્ગ", val("sd_std")+" / "+val("sd_div")) + row("જન્મ તારીખ", dmy(val("sd_dob")))
+      + row("દાખલ તારીખ", dmy(val("sd_admit"))) + row("વાલીનો મોબાઇલ", val("sd_mobile"))
       + '</table></div>';
     printPage("જી.આર.ની વિગત", body);
   };
   $("sd_xlexp").onclick = function(){
     if (typeof XLSX === "undefined") return toast("Excel લાયબ્રેરી લોડ થઈ નથી");
-    var rows = S.students.map(function(s){ var o={}; fields.forEach(function(id){ o[keyMap[id]] = s[keyMap[id]] || ""; }); o.id=s.id; return o; });
+    var rows = S.students.map(function(s){
+      var o={}; fields.forEach(function(id){ var k = keyMap[id]; o[k] = (k === "dob" || k === "admit") ? dmy(s[k]) : (s[k] || ""); });
+      o.id=s.id; return o;
+    });
     var wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "students");
+    var wsx = XLSX.utils.json_to_sheet(rows);
+    Object.keys(wsx).forEach(function(a){ if (a[0] !== "!" && wsx[a].t === "s") wsx[a].z = "@"; }); /* તારીખ લખાણ (dd/mm/yyyy) તરીકે રહે */
+    XLSX.utils.book_append_sheet(wb, wsx, "students");
     XLSX.writeFile(wb, "students-gr.xlsx");
   };
   $("sd_xlimpbtn").onclick = function(){ $("sd_xlimp").click(); };
-  $("sd_xlimp").onchange = function(e){
+  $("sd_xlsample").onclick = async function(){
+    if (!(await ensureXLSX_())) return toast("Excel લાયબ્રેરી લોડ થઈ નથી — ઇન્ટરનેટ ચકાસો");
+    stuSampleXlsx_();
+  };
+  $("sd_xlimp").onchange = async function(e){
     var f = e.target.files[0]; if (!f) return;
-    if (typeof XLSX === "undefined") { toast("Excel લાયબ્રેરી લોડ થઈ નથી"); e.target.value=""; return; }
-    var fr = new FileReader();
-    fr.onload = async function(){
-      try{
-        var wb = XLSX.read(new Uint8Array(fr.result), {type:"array", cellDates:true});
-        var rows = fixXlsxDates_(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]));
-        var n = 0, skipped = 0;
-        for (var i=0;i<rows.length;i++){
-          var r = normalizeStuRow_(rows[i]);
-          if (!r.gr && !r.name){ skipped++; continue; }
-          var existing = S.students.find(function(x){return String(x.gr)===String(r.gr);});
-          if (existing) await put("students", Object.assign({}, existing, r, {id:existing.id}));
-          else { delete r.id; await put("students", r); }
-          n++;
-        }
-        if (n === 0 && rows.length){
-          toast("કોઈ વિદ્યાર્થી આયાત ન થયો — કૉલમ હેડરમાં 'જી.આર. નંબર' અને 'નામ' (અથવા gr/name) હોવા જરૂરી. પહેલા 'Excel Export' દબાવી મળતો નમૂનો વાપરો.");
-        } else {
-          toast(n+" વિદ્યાર્થીની વિગત આયાત થઈ" + (skipped ? (", "+skipped+" હરોળ છોડી દેવાઈ (GR/નામ ખાલી હતું)") : ""));
-        }
-        render();
-      }catch(err){ toast("ફાઇલ વાંચી શકાઈ નહીં — ફાઇલ .xlsx ફોર્મેટમાં છે તેની ખાતરી કરો"); }
-    };
-    fr.readAsArrayBuffer(f);
     e.target.value = "";
+    toast("Excel ફાઇલ વાંચી રહ્યા છીએ…");
+    if (!(await ensureXLSX_())) return alert("Excel લાયબ્રેરી લોડ થઈ નથી.\n\nઇન્ટરનેટ ચાલુ છે તે ચકાસી પેજ રિફ્રેશ (Ctrl+F5) કરો અને ફરી પ્રયત્ન કરો.");
+    var buf;
+    try{ buf = await new Promise(function(res, rej){ var fr = new FileReader(); fr.onload = function(){ res(fr.result); }; fr.onerror = rej; fr.readAsArrayBuffer(f); }); }
+    catch(err){ return alert("ફાઇલ ખોલી શકાઈ નહીં."); }
+    var parsed;
+    try{
+      var wb = XLSX.read(new Uint8Array(buf), {type:"array"});
+      parsed = parseStudentSheets_(wb);
+    }catch(err){ return alert("ફાઇલ વાંચી શકાઈ નહીં. ફાઇલ .xlsx (Excel) ફોર્મેટમાં છે તેની ખાતરી કરો.\n\n" + err.message); }
+    if (!parsed){
+      return alert("કૉલમ હેડર ઓળખાયા નહીં.\n\nશીટમાં ઓછામાં ઓછા 'જી.આર. નંબર' અને 'નામ' કૉલમ (પહેલી હરોળમાં) હોવા જોઈએ.\n\n'📄 નમૂના Excel' બટનથી સાચો નમૂનો ઉતારી તેમાં ડેટા ભરો.");
+    }
+    var toSave = [], skipped = 0, created = 0, updated = 0, badDates = 0;
+    parsed.rows.forEach(function(r){
+      if (!r.gr && !r.name){ skipped++; return; }
+      ["dob","admit"].forEach(function(k){ if (r[k] && !/^\d{4}-\d{2}-\d{2}$/.test(r[k])) badDates++; });
+      var existing = r.gr ? S.students.find(function(x){ return String(x.gr) === String(r.gr); }) : null;
+      if (existing){ toSave.push(Object.assign({}, existing, r, {id:existing.id})); updated++; }
+      else { delete r.id; r.id = uid(); toSave.push(r); created++; }
+    });
+    if (!toSave.length) return alert("કોઈ વિદ્યાર્થી આયાત ન થયો — દરેક હરોળમાં જી.આર. અથવા નામ ખાલી છે.\n\nશીટ: " + parsed.sheet);
+    toast("સેવ થઈ રહ્યું છે… ("+toSave.length+" વિદ્યાર્થી)");
+    var res = await putMany("students", toSave, function(d, t){ toast("સેવ થઈ રહ્યું છે… "+d+" / "+t); });
+    var msg = "✔ " + toSave.length + " વિદ્યાર્થી આયાત થયા (નવા " + created + ", સુધારેલા " + updated + ")."
+      + (skipped ? "\nછોડેલી હરોળ: " + skipped + " (જી.આર./નામ ખાલી)." : "")
+      + (badDates ? "\n⚠ " + badDates + " તારીખ ઓળખાઈ નહીં (dd/mm/yyyy લખો) — તે જેમ છે તેમ રહી." : "")
+      + "\n\nશીટ: " + parsed.sheet + "\nઓળખાયેલ કૉલમ: " + parsed.found.join(", ")
+      + (parsed.unknown.length ? "\nન ઓળખાયેલ (છોડી દીધા): " + parsed.unknown.join(", ") : "");
+    if (res && res.remote && !res.ok) msg += "\n\n⚠ Google Sheet પર " + res.failed + " નોંધ સેવ ન થઈ — ઇન્ટરનેટ ચકાસી ફરી ઇમ્પોર્ટ કરો.";
+    alert(msg);
+    render();
   };
 }
 
@@ -3249,9 +3442,9 @@ function lcHTML(d, s){
     ["ધર્મ", d.religion],
     ["જ્ઞાતિ", s.cat],
     ["જન્મ સ્થળ", d.birthplace],
-    ["જન્મ તારીખ (અંકે)", s.dob],
+    ["જન્મ તારીખ (અંકે)", dmy(s.dob)],
     ["જન્મ તારીખ (અક્ષરે)", ""],
-    ["શાળામાં દાખલ થયાની તારીખ", d.admitdate || s.admit],
+    ["શાળામાં દાખલ થયાની તારીખ", dmy(d.admitdate || s.admit)],
     ["કયા ધોરણમાં દાખલ થયા", d.lastschool],
     ["અભ્યાસ કરેલ છેલ્લું ધોરણ", d.studying],
     ["અભ્યાસમાં પ્રગતિ", d.progress],
@@ -4654,11 +4847,11 @@ var CERT_DEFS = {
     '<b>'+esc((s.name||"").toUpperCase())+'</b> (G.R. No. '+esc(s.gr)+') has studied up to standard <b>'+esc(s.std)+'</b> in this school.',
     'This certificate is issued for the purpose of transfer.' ]; }},
   birth:{title:"જન્મ અંગેનું પ્રમાણપત્ર", titleEn:"Birthdate Certificate", make:function(s){ return [
-    'શાળાના દાખલા રજિસ્ટર મુજબ <b>'+esc(s.name)+'</b>, પિતા <b>'+esc(s.father)+'</b>, જી.આર. નંબર <b>'+esc(s.gr)+'</b> ની જન્મ તારીખ <b>'+esc(s.dob||"—")+'</b> નોંધાયેલ છે.',
+    'શાળાના દાખલા રજિસ્ટર મુજબ <b>'+esc(s.name)+'</b>, પિતા <b>'+esc(s.father)+'</b>, જી.આર. નંબર <b>'+esc(s.gr)+'</b> ની જન્મ તારીખ <b>'+esc(dmy(s.dob)||"—")+'</b> નોંધાયેલ છે.',
     'આ પ્રમાણપત્ર શાળા રેકોર્ડ પરથી આપવામાં આવે છે; સત્તાવાર જન્મ દાખલા માટે નગરપાલિકા/ગ્રામ પંચાયતનો સંપર્ક કરવો.' ]; },
     makeEn:function(s){ return [
     'This is to certify that, <b>'+esc((s.name||"").toUpperCase())+'</b> is studying in Std.'+esc(s.std)+' in this school.',
-    'Her/His birthdate <b>'+esc(s.dob||"—")+'</b> and birthplace <b>'+esc(s.birthplace||"—")+'</b> is registered to School\'s Register.' ]; }}
+    'Her/His birthdate <b>'+esc(dmy(s.dob)||"—")+'</b> and birthplace <b>'+esc(s.birthplace||"—")+'</b> is registered to School\'s Register.' ]; }}
 };
 function certView(key){
   if (!S.students.length) return emptyCard("વિદ્યાર્થી નોંધાયેલ હોવા જોઈએ.","વિદ્યાર્થી › નવો પ્રવેશ");
@@ -4772,7 +4965,7 @@ WIRE["reports:idcard"] = function(){
             + '<div style="text-align:center;font-weight:700;margin:6px 0">વિદ્યાર્થી ઓળખપત્ર</div>'
             + '<div>નામ: '+esc(s.name)+'</div>'
             + '<div>જી.આર.: '+esc(s.gr)+' &nbsp; ધોરણ: '+esc(s.std)+'-'+esc(s.div)+'</div>'
-            + '<div>જન્મ તારીખ: '+esc(s.dob||"—")+'</div>'
+            + '<div>જન્મ તારીખ: '+esc(dmy(s.dob)||"—")+'</div>'
             + '<div>વાલી મોબાઇલ: '+esc(s.mobile||"—")+'</div></div>';
         }).join("");
   }
@@ -4814,7 +5007,7 @@ WIRE["reports:grreg"] = function(){
     + '<th>ધોરણ/વર્ગ</th><th class="num">પ્રવેશ તારીખ</th></tr></thead><tbody>'
     + rows.map(function(s){
         return '<tr><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.father)+'</td>'
-          + '<td>'+esc(s.std)+' / '+esc(s.div)+'</td><td class="num">'+esc(s.admit||"—")+'</td></tr>';
+          + '<td>'+esc(s.std)+' / '+esc(s.div)+'</td><td class="num">'+esc(dmy(s.admit)||"—")+'</td></tr>';
       }).join("") + '</tbody></table></div>';
   $("gg_print").onclick = function(){ printPage("જી.આર. રજીસ્ટર", $("gg_body").innerHTML); };
 };
@@ -4869,7 +5062,7 @@ WIRE["reports:stdwise"] = function(){
       + '<div class="tw"><table><thead><tr>'+cols.map(function(c){return '<th'+(c[2]==="num"?' class="num"':'')+'>'+esc(c[0])+'</th>';}).join("")+'</tr></thead><tbody>'
       + kids.map(function(s){
           return '<tr>'+cols.map(function(c){
-            var v = c[3] ? c[3](s) : (s[c[1]]||"—");
+            var v = c[3] ? c[3](s) : ((c[1]==="dob"||c[1]==="admit") ? (dmy(s[c[1]])||"—") : (s[c[1]]||"—"));
             return '<td'+(c[2]==="num"?' class="num"':'')+'>'+esc(v)+'</td>';
           }).join("")+'</tr>';
         }).join("") + '</tbody></table></div>';
@@ -4911,7 +5104,7 @@ WIRE["reports:truecopy"] = function(){
       + box(1,"વિદ્યાર્થીનું પુરું નામ", fullGu, fullEn)
       + box(2,"જ્ઞાતિ", s.caste||s.cat, "")
       + box(3,"જન્મ સ્થળ", s.birthplace, "")
-      + box(4,"જન્મ તારીખ", s.dob)
+      + box(4,"જન્મ તારીખ", dmy(s.dob))
       + '<div style="display:flex;justify-content:space-between;margin-top:40px;font-weight:700"><span>વિદ્યાર્થીની સહી</span><span>વાલીની સહી</span></div></div>';
   }
   $("tc_stu").onchange = draw; draw();
@@ -4940,7 +5133,7 @@ WIRE["reports:genreg"] = function(){
           var l = left[s.id];
           var full = [s.surname, s.name, s.father].filter(Boolean).join(" ") || s.name;
           return '<tr><td class="num">'+esc(s.gr)+'</td><td>'+esc(full)+'</td><td>'+esc(s.religion||"—")+'</td><td>'+esc(s.caste||s.cat||"—")+'</td>'
-            + '<td>'+esc(s.birthplace||"—")+'</td><td class="num">'+esc(s.dob||"—")+'</td><td class="num">'+esc(s.admit||"—")+'</td>'
+            + '<td>'+esc(s.birthplace||"—")+'</td><td class="num">'+esc(dmy(s.dob)||"—")+'</td><td class="num">'+esc(dmy(s.admit)||"—")+'</td>'
             + '<td>'+esc(s.stdIn||s.std)+'</td><td class="num">'+esc(l?l.date:"")+'</td><td class="num">'+esc(l?l.no:"")+'</td></tr>';
         }).join("") + '</tbody></table></div>';
   }
@@ -5121,8 +5314,8 @@ WIRE["reports:utaro"] = function(){
       + row(1,"વિદ્યાર્થીનું પુરું નામ :", esc(full))
       + row(2,"પર્વે જાતિ અને પેટા જાતિ :", esc((s.religion||"")+" "+(s.caste||s.cat||"")))
       + row(3,"જન્મ સ્થળ :", esc(s.birthplace||"—"))
-      + row(4,"જન્મ તારીખ (અંકોમાં અને શબ્દોમાં) :", esc(s.dob||"—")+'<br>'+esc(dobWordsGu(s.dob)))
-      + row(5,"શાળામાં દાખલ તારીખ :", esc(s.admit||"—")+' &nbsp; ધોરણ : '+esc(s.stdIn||"—"))
+      + row(4,"જન્મ તારીખ (અંકોમાં અને શબ્દોમાં) :", esc(dmy(s.dob)||"—")+'<br>'+esc(dobWordsGu(s.dob)))
+      + row(5,"શાળામાં દાખલ તારીખ :", esc(dmy(s.admit)||"—")+' &nbsp; ધોરણ : '+esc(s.stdIn||"—"))
       + row(6,"હાલ ક્યા ધોરણમાં અભ્યાસ કરે છે :", esc(s.std))
       + row(7,"છેલ્લે કઈ શાળામાં ભણ્યા :", esc((s.lastSchool||"—")+(s.lastCity?" "+s.lastCity:"")))
       + row(8,"સરકારી શાળા તરફથી મળેલ જાતિ :", esc((s.religion||"")+" "+(s.caste||s.cat||"")))
@@ -5383,7 +5576,7 @@ WIRE["reports:newadm"] = function(){
     $("na_body").innerHTML = !rows.length ? '<div class="empty">આ ગાળામાં કોઈ નવો પ્રવેશ નોંધાયેલ નથી.</div>'
       : '<div class="tw"><table><thead><tr><th class="num">જી.આર.</th><th>નામ</th><th>ધોરણ/વર્ગ</th><th class="num">પ્રવેશ તારીખ</th></tr></thead><tbody>'
         + rows.map(function(s){
-            return '<tr><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.std)+'/'+esc(s.div)+'</td><td class="num">'+esc(s.admit)+'</td></tr>';
+            return '<tr><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.std)+'/'+esc(s.div)+'</td><td class="num">'+esc(dmy(s.admit))+'</td></tr>';
           }).join("") + '</tbody></table></div>';
   };
   $("na_print").onclick = function(){ printPage("નવા દાખલ થયેલ વિદ્યાર્થીઓનો રીપોર્ટ", $("na_body").innerHTML); };
@@ -5474,6 +5667,8 @@ $("menuBtn").onclick = function(){
   $("backdrop").classList.toggle("open");
 };
 $("backdrop").onclick = closeSidebarMobile;
+/* 🏠 હોમ: ગમે ત્યાંથી એક ક્લિકમાં ડેશબોર્ડ (ડેશબોર્ડની પરવાનગી ન હોય તો પહેલું મળેલું મેનુ) */
+$("homeBtn").onclick = function(){ goHome_(); };
 var LOGGED_IN = false;
 var CURRENT_USER = null; /* null = admin (full access); else {name,pass,menus} */
 function fillLoginUsers(){
