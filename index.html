@@ -273,6 +273,7 @@ td.num,th.num{font-family:"Inter",sans-serif}
       <div style="margin-top:12px"><button class="btn" id="rs_go">પ્રવેશ કરો</button></div>
       <p class="hint" id="rs_msg" style="margin-bottom:0"></p>
       <p class="hint" style="margin:8px 0 0" id="rs_install_wrap"><a href="javascript:void(0)" id="rs_install">📱 વિદ્યાર્થી એપ ફોનમાં ઇન્સ્ટોલ કરો</a></p>
+      <p class="hint" style="margin:8px 0 0" id="rs_apk_wrap"><a href="app.html">📲 Android એપ (APK) સીધી ડાઉનલોડ કરો</a></p>
     </div>
     <div id="rs_out"></div>
   </div>
@@ -327,6 +328,11 @@ try{
   }
 }catch(e){}
 var PWA_PROMPT = null;
+/* Android APK (WebView) ની અંદર ચાલતી હોય ત્યારે ઇન્સ્ટોલ/ડાઉનલોડ લિંક છુપાવો */
+var IN_APP = /VJPStudentApp/.test(navigator.userAgent || "");
+if (IN_APP) document.addEventListener("DOMContentLoaded", function(){
+  ["lg_install_wrap","rs_install_wrap","rs_apk_wrap"].forEach(function(id){ var w = document.getElementById(id); if (w) w.style.display = "none"; });
+});
 try{
   if ((window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone){
     document.addEventListener("DOMContentLoaded", function(){
@@ -336,6 +342,7 @@ try{
 }catch(e){}
 window.addEventListener("beforeinstallprompt", function(ev){
   ev.preventDefault(); PWA_PROMPT = ev;
+  if (IN_APP) return;
   var w = document.getElementById("lg_install_wrap"); if (w) w.style.display = "";
   var rw = document.getElementById("rs_install_wrap"); if (rw) rw.style.display = "";
 });
@@ -6000,10 +6007,19 @@ VIEWS["portal:link"] = function(){
   return '<div class="card"><h3>વિદ્યાર્થી પોર્ટલ / એપની લિંક</h3>'
     + '<p style="font-weight:700;word-break:break-all;margin:0 0 8px" id="pl_url">'+esc(url)+'</p>'
     + '<div class="row" style="gap:10px;flex-wrap:wrap"><button class="btn" id="pl_copy">લિંક કોપી કરો</button></div>'
+    + '<h3 style="margin:16px 0 6px">📲 Android એપ (APK) ડાઉનલોડ લિંક</h3>'
+    + '<p style="font-weight:700;word-break:break-all;margin:0 0 8px" id="pl_apk">'+esc(location.href.split("#")[0].split("?")[0].replace(/[^\/]*$/, "") + "app.html")+'</p>'
+    + '<div class="row" style="gap:10px;flex-wrap:wrap"><button class="btn sec" id="pl_apkcopy">ડાઉનલોડ પેજની લિંક કોપી કરો</button></div>'
+    + '<p class="hint">આ પેજ પરથી વિદ્યાર્થી Android એપ સીધી ડાઉનલોડ કરી ફોનમાં ઇન્સ્ટોલ કરી શકે છે (એપ બનાવવાની રીત: student-app ફોલ્ડર સાથેની સૂચનાઓ).</p>'
     + '<p class="hint">આ લિંક વિદ્યાર્થીઓ/વાલીઓને WhatsApp માં મોકલો. વિદ્યાર્થી પોતાનો જી.આર. નંબર અને જન્મ તારીખ નાખીને પ્રવેશ કરે છે અને ફક્ત પોતાની જ માહિતી જુએ છે: પરિણામ, હાજરી, સોંપણી, અભ્યાસ સામગ્રી, સૂચના/કાર્યક્રમ, પરીક્ષા સમય, રજાઓ.</p>'
     + '<p class="hint">ફોનમાં એપ તરીકે ઇન્સ્ટોલ કરવા: Chrome માં લિંક ખોલી ⋮ → Install app. પરિણામ બતાવવા માટે પરિક્ષા › ઓનલાઇન પરિણામ માંથી પરિણામ "પ્રકાશિત" કરેલું હોવું જોઈએ. હાજરી વિદ્યાર્થી › હાજરી ની એન્ટ્રી માંથી, રજાઓ શાળા › વાર્ષિક રજાઓ માંથી અને પરીક્ષા સમય શાળા › પરિક્ષા સમય પત્રક માંથી આપોઆપ આવે છે.</p></div>';
 };
 WIRE["portal:link"] = function(){
+  $("pl_apkcopy").onclick = function(){
+    var u = $("pl_apk").textContent;
+    try{ navigator.clipboard.writeText(u).then(function(){ toast("લિંક કોપી થઈ"); }, function(){ toast(u); }); }
+    catch(e){ toast(u); }
+  };
   $("pl_copy").onclick = function(){
     var u = $("pl_url").textContent;
     try{ navigator.clipboard.writeText(u).then(function(){ toast("લિંક કોપી થઈ"); }, function(){ toast(u); }); }
