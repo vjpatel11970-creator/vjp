@@ -219,6 +219,38 @@ td.num,th.num{font-family:"Inter",sans-serif}
 .iframebar a{color:#664d03;font-weight:700}
 @media (max-width:860px){ .iframebar{margin-left:0} }
 
+/* ---------- વધારાના રંગ-થીમ ---------- */
+:root[data-palette="indigo"]{--bg:#f1f1f6;--panel:#ffffff;--panel-2:#f7f7fa;--ink:#181726;--muted:#5d5c70;--line:#dcdbe6;--brand:#4338ca;--brand-ink:#ffffff;--accent:#f59e0b;--good:#1f7a4d;--bad:#b32d2d;--chip:#e6e6f0;--shadow:0 1px 2px rgba(0,0,0,.06);--side-dk:#19163b;}
+:root[data-palette="indigo"][data-theme="dark"]{--bg:#12121a;--panel:#1c1b25;--panel-2:#22212e;--ink:#ebeaf0;--muted:#a1a0b1;--line:#313040;--brand:#7169d3;--brand-ink:#0b1020;--accent:#e7b155;--good:#4cbb8a;--bad:#e06c6c;--chip:#2d2c3a;--shadow:none;--side-dk:#0d0c18;}
+@media (prefers-color-scheme: dark){:root[data-palette="indigo"]:not([data-theme="light"]){--bg:#12121a;--panel:#1c1b25;--panel-2:#22212e;--ink:#ebeaf0;--muted:#a1a0b1;--line:#313040;--brand:#7169d3;--brand-ink:#0b1020;--accent:#e7b155;--good:#4cbb8a;--bad:#e06c6c;--chip:#2d2c3a;--shadow:none;--side-dk:#0d0c18;}}
+:root[data-palette="purple"]{--bg:#f4f1f6;--panel:#ffffff;--panel-2:#f9f7fa;--ink:#1f1726;--muted:#675c70;--line:#e1dbe6;--brand:#7e22ce;--brand-ink:#ffffff;--accent:#f59e0b;--good:#1f7a4d;--bad:#b32d2d;--chip:#ebe6f0;--shadow:0 1px 2px rgba(0,0,0,.06);--side-dk:#2a163b;}
+:root[data-palette="purple"][data-theme="dark"]{--bg:#16121a;--panel:#201b25;--panel-2:#28212e;--ink:#edeaf0;--muted:#a9a0b1;--line:#393040;--brand:#a269d3;--brand-ink:#0b1020;--accent:#e7b155;--good:#4cbb8a;--bad:#e06c6c;--chip:#332c3a;--shadow:none;--side-dk:#120c18;}
+@media (prefers-color-scheme: dark){:root[data-palette="purple"]:not([data-theme="light"]){--bg:#16121a;--panel:#201b25;--panel-2:#28212e;--ink:#edeaf0;--muted:#a9a0b1;--line:#393040;--brand:#a269d3;--brand-ink:#0b1020;--accent:#e7b155;--good:#4cbb8a;--bad:#e06c6c;--chip:#332c3a;--shadow:none;--side-dk:#120c18;}}
+:root[data-palette="maroon"]{--bg:#f6f1f2;--panel:#ffffff;--panel-2:#faf7f8;--ink:#26171b;--muted:#705c61;--line:#e6dbde;--brand:#9f1239;--brand-ink:#ffffff;--accent:#0d9488;--good:#1f7a4d;--bad:#b32d2d;--chip:#f0e6e8;--shadow:0 1px 2px rgba(0,0,0,.06);--side-dk:#3b1621;}
+:root[data-palette="maroon"][data-theme="dark"]{--bg:#1a1214;--panel:#251b1e;--panel-2:#2e2125;--ink:#f0eaec;--muted:#b1a0a4;--line:#403035;--brand:#d36986;--brand-ink:#0b1020;--accent:#55e7da;--good:#4cbb8a;--bad:#e06c6c;--chip:#3a2c30;--shadow:none;--side-dk:#180c0f;}
+@media (prefers-color-scheme: dark){:root[data-palette="maroon"]:not([data-theme="light"]){--bg:#1a1214;--panel:#251b1e;--panel-2:#2e2125;--ink:#f0eaec;--muted:#b1a0a4;--line:#403035;--brand:#d36986;--brand-ink:#0b1020;--accent:#55e7da;--good:#4cbb8a;--bad:#e06c6c;--chip:#3a2c30;--shadow:none;--side-dk:#180c0f;}}
+:root[data-palette="orange"]{--bg:#f6f2f1;--panel:#ffffff;--panel-2:#faf8f7;--ink:#261b17;--muted:#70625c;--line:#e6dedb;--brand:#c2410c;--brand-ink:#ffffff;--accent:#0369a1;--good:#1f7a4d;--bad:#b32d2d;--chip:#f0e8e6;--shadow:0 1px 2px rgba(0,0,0,.06);--side-dk:#3b2116;}
+:root[data-palette="orange"][data-theme="dark"]{--bg:#1a1412;--panel:#251e1b;--panel-2:#2e2521;--ink:#f0ecea;--muted:#b1a5a0;--line:#403530;--brand:#d38869;--brand-ink:#0b1020;--accent:#55b3e7;--good:#4cbb8a;--bad:#e06c6c;--chip:#3a302c;--shadow:none;--side-dk:#180f0c;}
+@media (prefers-color-scheme: dark){:root[data-palette="orange"]:not([data-theme="light"]){--bg:#1a1412;--panel:#251e1b;--panel-2:#2e2521;--ink:#f0ecea;--muted:#b1a5a0;--line:#403530;--brand:#d38869;--brand-ink:#0b1020;--accent:#55b3e7;--good:#4cbb8a;--bad:#e06c6c;--chip:#3a302c;--shadow:none;--side-dk:#180f0c;}}
+:root[data-palette="teal"]{--bg:#f1f6f6;--panel:#ffffff;--panel-2:#f7fafa;--ink:#172625;--muted:#5c706f;--line:#dbe6e5;--brand:#0f766e;--brand-ink:#ffffff;--accent:#e11d48;--good:#1f7a4d;--bad:#b32d2d;--chip:#e6f0ef;--shadow:0 1px 2px rgba(0,0,0,.06);--side-dk:#163b38;}
+:root[data-palette="teal"][data-theme="dark"]{--bg:#121a19;--panel:#1b2524;--panel-2:#212e2d;--ink:#eaf0ef;--muted:#a0b1b0;--line:#30403f;--brand:#69d3cb;--brand-ink:#0b1020;--accent:#e75575;--good:#4cbb8a;--bad:#e06c6c;--chip:#2c3a39;--shadow:none;--side-dk:#0c1817;}
+@media (prefers-color-scheme: dark){:root[data-palette="teal"]:not([data-theme="light"]){--bg:#121a19;--panel:#1b2524;--panel-2:#212e2d;--ink:#eaf0ef;--muted:#a0b1b0;--line:#30403f;--brand:#69d3cb;--brand-ink:#0b1020;--accent:#e75575;--good:#4cbb8a;--bad:#e06c6c;--chip:#2c3a39;--shadow:none;--side-dk:#0c1817;}}
+:root[data-palette="slate"]{--bg:#f1f3f6;--panel:#ffffff;--panel-2:#f7f8fa;--ink:#171d26;--muted:#5c6470;--line:#dbdfe6;--brand:#334155;--brand-ink:#ffffff;--accent:#0ea5e9;--good:#1f7a4d;--bad:#b32d2d;--chip:#e6eaf0;--shadow:0 1px 2px rgba(0,0,0,.06);--side-dk:#16263b;}
+:root[data-palette="slate"][data-theme="dark"]{--bg:#12151a;--panel:#1b1f25;--panel-2:#21262e;--ink:#eaedf0;--muted:#a0a7b1;--line:#303740;--brand:#6995d3;--brand-ink:#0b1020;--accent:#55bae7;--good:#4cbb8a;--bad:#e06c6c;--chip:#2c323a;--shadow:none;--side-dk:#0c1118;}
+@media (prefers-color-scheme: dark){:root[data-palette="slate"]:not([data-theme="light"]){--bg:#12151a;--panel:#1b1f25;--panel-2:#21262e;--ink:#eaedf0;--muted:#a0a7b1;--line:#303740;--brand:#6995d3;--brand-ink:#0b1020;--accent:#55bae7;--good:#4cbb8a;--bad:#e06c6c;--chip:#2c323a;--shadow:none;--side-dk:#0c1118;}}
+:root[data-palette="pink"]{--bg:#f6f1f3;--panel:#ffffff;--panel-2:#faf7f8;--ink:#26171d;--muted:#705c64;--line:#e6dbdf;--brand:#be185d;--brand-ink:#ffffff;--accent:#4f46e5;--good:#1f7a4d;--bad:#b32d2d;--chip:#f0e6ea;--shadow:0 1px 2px rgba(0,0,0,.06);--side-dk:#3b1626;}
+:root[data-palette="pink"][data-theme="dark"]{--bg:#1a1215;--panel:#251b1f;--panel-2:#2e2126;--ink:#f0eaed;--muted:#b1a0a7;--line:#403037;--brand:#d36995;--brand-ink:#0b1020;--accent:#5e55e7;--good:#4cbb8a;--bad:#e06c6c;--chip:#3a2c32;--shadow:none;--side-dk:#180c11;}
+@media (prefers-color-scheme: dark){:root[data-palette="pink"]:not([data-theme="light"]){--bg:#1a1215;--panel:#251b1f;--panel-2:#2e2126;--ink:#f0eaed;--muted:#b1a0a7;--line:#403037;--brand:#d36995;--brand-ink:#0b1020;--accent:#5e55e7;--good:#4cbb8a;--bad:#e06c6c;--chip:#3a2c32;--shadow:none;--side-dk:#180c11;}}
+:root[data-palette="gold"]{--bg:#f6f4f1;--panel:#ffffff;--panel-2:#faf9f7;--ink:#262017;--muted:#70685c;--line:#e6e1db;--brand:#a16207;--brand-ink:#ffffff;--accent:#1d4ed8;--good:#1f7a4d;--bad:#b32d2d;--chip:#f0ece6;--shadow:0 1px 2px rgba(0,0,0,.06);--side-dk:#3b2c16;}
+:root[data-palette="gold"][data-theme="dark"]{--bg:#1a1612;--panel:#25211b;--panel-2:#2e2921;--ink:#f0eeea;--muted:#b1aaa0;--line:#403a30;--brand:#d3a869;--brand-ink:#0b1020;--accent:#557ce7;--good:#4cbb8a;--bad:#e06c6c;--chip:#3a342c;--shadow:none;--side-dk:#18130c;}
+@media (prefers-color-scheme: dark){:root[data-palette="gold"]:not([data-theme="light"]){--bg:#1a1612;--panel:#25211b;--panel-2:#2e2921;--ink:#f0eeea;--muted:#b1aaa0;--line:#403a30;--brand:#d3a869;--brand-ink:#0b1020;--accent:#557ce7;--good:#4cbb8a;--bad:#e06c6c;--chip:#3a342c;--shadow:none;--side-dk:#18130c;}}
+:root[data-palette="navy"]{--bg:#f1f2f6;--panel:#ffffff;--panel-2:#f7f8fa;--ink:#171b26;--muted:#5c6170;--line:#dbdee6;--brand:#1e3a8a;--brand-ink:#ffffff;--accent:#ea580c;--good:#1f7a4d;--bad:#b32d2d;--chip:#e6e8f0;--shadow:0 1px 2px rgba(0,0,0,.06);--side-dk:#16203b;}
+:root[data-palette="navy"][data-theme="dark"]{--bg:#12141a;--panel:#1b1d25;--panel-2:#21242e;--ink:#eaecf0;--muted:#a0a4b1;--line:#303440;--brand:#6984d3;--brand-ink:#0b1020;--accent:#e78755;--good:#4cbb8a;--bad:#e06c6c;--chip:#2c303a;--shadow:none;--side-dk:#0c0f18;}
+@media (prefers-color-scheme: dark){:root[data-palette="navy"]:not([data-theme="light"]){--bg:#12141a;--panel:#1b1d25;--panel-2:#21242e;--ink:#eaecf0;--muted:#a0a4b1;--line:#303440;--brand:#6984d3;--brand-ink:#0b1020;--accent:#e78755;--good:#4cbb8a;--bad:#e06c6c;--chip:#2c303a;--shadow:none;--side-dk:#0c0f18;}}
+:root[data-palette="brown"]{--bg:#f6f3f1;--panel:#ffffff;--panel-2:#faf8f7;--ink:#261c17;--muted:#70635c;--line:#e6dfdb;--brand:#78350f;--brand-ink:#ffffff;--accent:#0f766e;--good:#1f7a4d;--bad:#b32d2d;--chip:#f0e9e6;--shadow:0 1px 2px rgba(0,0,0,.06);--side-dk:#3b2416;}
+:root[data-palette="brown"][data-theme="dark"]{--bg:#1a1512;--panel:#251e1b;--panel-2:#2e2621;--ink:#f0ecea;--muted:#b1a6a0;--line:#403630;--brand:#d38f69;--brand-ink:#0b1020;--accent:#55e7db;--good:#4cbb8a;--bad:#e06c6c;--chip:#3a312c;--shadow:none;--side-dk:#18100c;}
+@media (prefers-color-scheme: dark){:root[data-palette="brown"]:not([data-theme="light"]){--bg:#1a1512;--panel:#251e1b;--panel-2:#2e2621;--ink:#f0ecea;--muted:#b1a6a0;--line:#403630;--brand:#d38f69;--brand-ink:#0b1020;--accent:#55e7db;--good:#4cbb8a;--bad:#e06c6c;--chip:#3a312c;--shadow:none;--side-dk:#18100c;}}
+
 /* ---------- લોગિન પેજ (બે ભાગ: બ્રાન્ડ પેનલ + ફોર્મ) ---------- */
 #gate{overflow:auto;place-items:safe center !important;
   background:
@@ -286,6 +318,170 @@ td.num,th.num{font-family:"Inter",sans-serif}
   .lg-main{padding:24px 20px 32px}
 }
 @media (max-width:420px){ .lg-links{grid-template-columns:1fr} }
+
+
+/* ======================= ERP લુક ======================= */
+:root{--side-dk:#10332a;--r:14px}
+:root[data-palette="blue"]{--side-dk:#0f2b4a}
+:root[data-theme="dark"]{--side-dk:#0b100f}
+:root[data-palette="blue"][data-theme="dark"]{--side-dk:#0a1219}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){--side-dk:#0b100f}
+  :root[data-palette="blue"]:not([data-theme="light"]){--side-dk:#0a1219}}
+body{background:
+  radial-gradient(1000px 360px at 70% -120px, color-mix(in srgb, var(--brand) 10%, transparent), transparent 70%),
+  var(--bg);background-attachment:fixed}
+.app{max-width:1440px;padding:16px 22px 26px}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:color-mix(in srgb, var(--muted) 45%, transparent);border-radius:99px;border:2px solid transparent;background-clip:padding-box}
+::-webkit-scrollbar-track{background:transparent}
+
+/* ટોપ બાર */
+header.top{
+  position:sticky;top:8px;z-index:60;border-radius:16px;padding:12px 18px;gap:12px;margin-bottom:6px;
+  background:linear-gradient(120deg, var(--brand), color-mix(in srgb, var(--brand) 62%, #000));
+  box-shadow:0 10px 26px -12px color-mix(in srgb, var(--brand) 70%, #000), inset 0 1px 0 rgba(255,255,255,.18);
+}
+.crest{border-radius:12px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3)}
+.top h1{font-size:18.5px;letter-spacing:.1px}
+.yearchip{background:rgba(255,255,255,.17);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(3px)}
+.iconbtn{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.2);transition:background .15s,transform .15s}
+.iconbtn:hover{background:rgba(255,255,255,.3);transform:translateY(-1px)}
+
+/* સાઇડબાર */
+.sidebar{
+  width:250px;padding:0 10px 18px;border-right:0;color:#e8eef4;
+  background:linear-gradient(185deg, var(--side-dk), color-mix(in srgb, var(--side-dk) 72%, #000));
+  box-shadow:6px 0 24px -14px rgba(0,0,0,.45);
+}
+.mainwrap{margin-left:250px}
+.iframebar{margin-left:250px}
+.sbrand{display:flex;gap:11px;align-items:center;padding:16px 6px 14px;margin-bottom:8px;position:sticky;top:0;z-index:2;
+  background:linear-gradient(185deg, var(--side-dk), color-mix(in srgb, var(--side-dk) 94%, #000));border-bottom:1px solid rgba(255,255,255,.1)}
+.sbrand .lg{width:38px;height:38px;border-radius:11px;display:grid;place-items:center;font-weight:800;font-size:16px;color:var(--brand-ink);
+  background:linear-gradient(140deg, var(--brand), color-mix(in srgb, var(--accent) 55%, var(--brand)));flex:0 0 auto;box-shadow:0 4px 10px rgba(0,0,0,.3)}
+.sbrand b{display:block;font-size:13.5px;line-height:1.25;color:#fff}
+.sbrand small{display:block;font-size:11px;color:rgba(255,255,255,.6);margin-top:1px}
+.navhead{color:#e8eef4;padding:9px 11px;border-radius:10px;font-size:13.5px;gap:8px;transition:background .15s}
+.navhead span:first-child{display:flex;gap:9px;align-items:center}
+.navhead .ni{width:26px;height:26px;border-radius:8px;display:grid;place-items:center;font-size:14px;background:rgba(255,255,255,.09);flex:0 0 auto}
+.navhead:hover{background:rgba(255,255,255,.09)}
+.navhead.on{background:rgba(255,255,255,.14);color:#fff;box-shadow:inset 3px 0 0 var(--accent)}
+.navhead.on .ni{background:var(--accent);color:#fff}
+.navhead .car{opacity:.6}
+.navsub{padding:2px 0 8px 8px;margin-left:15px;border-left:1px dashed rgba(255,255,255,.18)}
+.navtab{color:rgba(232,238,244,.72);padding:6px 10px;margin:1px 0;font-size:13px;font-weight:500;border-radius:8px;transition:background .12s}
+.navtab:hover{background:rgba(255,255,255,.08);color:#fff}
+.navtab.on{background:rgba(255,255,255,.17);color:#fff;font-weight:700}
+#navHome{background:rgba(255,255,255,.1);margin-bottom:8px}
+:root[data-side="light"] .sidebar{background:var(--panel);color:var(--ink);border-right:1px solid var(--line);box-shadow:none}
+:root[data-side="light"] .sbrand{background:var(--panel);border-bottom-color:var(--line)}
+:root[data-side="light"] .sbrand b{color:var(--ink)}
+:root[data-side="light"] .sbrand small{color:var(--muted)}
+:root[data-side="light"] .navhead{color:var(--ink)}
+:root[data-side="light"] .navhead .ni{background:var(--chip)}
+:root[data-side="light"] .navhead:hover{background:var(--panel-2)}
+:root[data-side="light"] .navhead.on{background:color-mix(in srgb, var(--brand) 12%, var(--panel));color:var(--brand)}
+:root[data-side="light"] .navsub{border-left-color:var(--line)}
+:root[data-side="light"] .navtab{color:var(--muted)}
+:root[data-side="light"] .navtab:hover{background:var(--panel-2);color:var(--ink)}
+:root[data-side="light"] .navtab.on{background:var(--brand);color:var(--brand-ink)}
+:root[data-side="light"] #navHome{background:var(--chip)}
+
+/* કાર્ડ, આંકડા */
+.card{border-radius:var(--r);border:1px solid var(--line);padding:18px;
+  box-shadow:0 1px 2px rgba(16,24,40,.05),0 8px 20px -12px rgba(16,24,40,.14)}
+.card h3{display:flex;align-items:center;gap:9px;font-size:15.5px;margin-bottom:14px}
+.card h3:before{content:"";width:4px;height:17px;border-radius:3px;background:linear-gradient(180deg,var(--brand),var(--accent));flex:0 0 auto}
+.stat{border-radius:13px;padding:14px 15px;border:1px solid var(--line);border-left-width:4px;
+  background:linear-gradient(135deg, color-mix(in srgb, var(--brand) 9%, var(--panel)), var(--panel));box-shadow:0 6px 16px -12px rgba(16,24,40,.25)}
+.stat .n{font-size:26px;letter-spacing:-.3px}
+.stat.good{background:linear-gradient(135deg, color-mix(in srgb, var(--good) 10%, var(--panel)), var(--panel))}
+.stat.bad{background:linear-gradient(135deg, color-mix(in srgb, var(--bad) 10%, var(--panel)), var(--panel))}
+.stat.accent{background:linear-gradient(135deg, color-mix(in srgb, var(--accent) 11%, var(--panel)), var(--panel))}
+.hello h2{font-size:22px;letter-spacing:-.2px}
+
+/* ટેબ */
+.tabs{gap:6px;border-bottom:1px solid var(--line)}
+.tabs button{padding:9px 13px;border-radius:10px 10px 0 0;border-bottom-width:3px;font-weight:600}
+.tabs button:hover{background:var(--panel-2);color:var(--ink)}
+.tabs button.on{background:color-mix(in srgb, var(--brand) 9%, var(--panel));color:var(--brand);border-bottom-color:var(--brand)}
+
+/* ફોર્મ */
+label.f{font-size:12.5px;font-weight:600;color:var(--muted);letter-spacing:.1px}
+input,select,textarea{padding:9px 11px;border-radius:10px;border:1.5px solid var(--line);background:var(--panel);
+  transition:border-color .15s, box-shadow .15s}
+input:hover,select:hover,textarea:hover{border-color:color-mix(in srgb, var(--brand) 35%, var(--line))}
+input:focus,select:focus,textarea:focus{outline:none;border-color:var(--brand);
+  box-shadow:0 0 0 4px color-mix(in srgb, var(--brand) 18%, transparent)}
+input[type=checkbox],input[type=radio]{accent-color:var(--brand)}
+.btn{border-radius:10px;padding:9px 18px;font-weight:700;letter-spacing:.1px;
+  background:linear-gradient(180deg, color-mix(in srgb, var(--brand) 90%, #fff), var(--brand));
+  box-shadow:0 1px 2px rgba(0,0,0,.18), inset 0 1px 0 rgba(255,255,255,.2);transition:transform .12s, filter .12s, box-shadow .12s}
+.btn:hover{filter:brightness(1.08);transform:translateY(-1px);box-shadow:0 6px 14px -6px color-mix(in srgb, var(--brand) 70%, #000)}
+.btn:active{transform:none}
+.btn.sec{background:var(--panel);border:1.5px solid var(--line);box-shadow:none;color:var(--ink)}
+.btn.sec:hover{border-color:var(--brand);color:var(--brand);box-shadow:none}
+.btn.warn{background:linear-gradient(180deg, color-mix(in srgb, var(--bad) 90%, #fff), var(--bad))}
+
+/* ટેબલ */
+.tw{border-radius:12px;box-shadow:0 1px 2px rgba(16,24,40,.04)}
+th{background:color-mix(in srgb, var(--brand) 8%, var(--panel-2));color:var(--ink);font-weight:700;
+  border-bottom:2px solid color-mix(in srgb, var(--brand) 25%, var(--line));text-transform:none;letter-spacing:.1px}
+th,td{padding:9px 12px}
+tbody tr:nth-child(even) td{background:color-mix(in srgb, var(--panel-2) 55%, var(--panel))}
+tbody tr:hover td{background:color-mix(in srgb, var(--brand) 8%, var(--panel))}
+.chip{border:1px solid color-mix(in srgb, currentColor 14%, transparent)}
+.empty{padding:34px}
+.minilist li{padding:9px 0}
+.toast{border-radius:12px;background:var(--ink);color:var(--bg);box-shadow:0 12px 30px -10px rgba(0,0,0,.4)}
+
+/* થીમ પસંદગી પોપઓવર */
+.themepop{position:fixed;z-index:450;width:318px;max-width:calc(100vw - 20px);background:var(--panel);color:var(--ink);
+  border:1px solid var(--line);border-radius:16px;padding:14px 14px 12px;box-shadow:0 24px 60px -18px rgba(0,0,0,.45)}
+.themepop h4{margin:0 0 10px;font-size:14.5px;display:flex;justify-content:space-between;align-items:center}
+.themepop h4 button{border:0;background:var(--panel-2);border-radius:8px;width:28px;height:28px;cursor:pointer;color:var(--ink)}
+.themepop .sec{font-size:11.5px;font-weight:700;color:var(--muted);margin:12px 0 6px;text-transform:uppercase;letter-spacing:.4px}
+.swgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.sw{border:1.5px solid var(--line);background:var(--panel-2);border-radius:12px;padding:8px 4px 6px;cursor:pointer;display:flex;flex-direction:column;
+  align-items:center;gap:5px;font-size:11.5px;font-weight:600;color:var(--ink);transition:transform .12s,border-color .12s}
+.sw:hover{transform:translateY(-2px);border-color:var(--brand)}
+.sw i{width:30px;height:30px;border-radius:50%;display:block;box-shadow:inset 0 0 0 2px rgba(255,255,255,.55),0 2px 6px rgba(0,0,0,.25)}
+.sw.on{border-color:var(--brand);background:color-mix(in srgb, var(--brand) 10%, var(--panel))}
+.seg{display:flex;background:var(--panel-2);border:1px solid var(--line);border-radius:10px;padding:3px;gap:3px}
+.seg button{flex:1;border:0;background:none;padding:6px 4px;border-radius:8px;cursor:pointer;font-weight:600;font-size:12.5px;color:var(--muted)}
+.seg button.on{background:var(--brand);color:var(--brand-ink)}
+.tp-row{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:13px}
+.tp-row input{width:auto}
+@media (max-width:560px){
+  header.top{gap:8px;padding:10px 12px;border-radius:14px}
+  header.top .crest,header.top .sub{display:none}
+  header.top h1{font-size:16px;flex:1 1 140px}
+  header.top .spacer{display:none}
+  .yearchip{font-size:11.5px;padding:4px 9px}
+  .iconbtn{width:32px;height:32px}
+}
+@media (max-width:860px){
+  .mainwrap,.iframebar{margin-left:0}
+  .sidebar{width:274px}
+  header.top{position:static;padding:11px 13px}
+  .app{padding:10px}
+}
+
+/* ---------- ગુજરાતી ટાઇપિંગ સૂચક ---------- */
+#guChip{position:fixed;z-index:400;display:none;gap:0;align-items:stretch;font-size:11px;font-weight:700;border-radius:8px;overflow:hidden;
+  box-shadow:0 2px 8px rgba(0,0,0,.25);background:var(--brand);color:var(--brand-ink)}
+#guChip button{border:0;background:none;color:inherit;font:inherit;padding:3px 9px;cursor:pointer;line-height:1.3}
+#guChip button+button{border-left:1px solid rgba(255,255,255,.35);padding:3px 8px}
+#guChip.en{background:#475569;color:#fff}
+#guChip.off{background:#b45309;color:#fff}
+#guHelp{position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.45);display:grid;place-items:center;padding:16px}
+.guh-card{background:var(--panel);color:var(--ink);border-radius:14px;max-width:520px;width:100%;max-height:90vh;overflow:auto;padding:16px 18px;box-shadow:0 20px 50px rgba(0,0,0,.35)}
+.guh-top{display:flex;justify-content:space-between;align-items:center;font-size:16px}
+.guh-top button{border:0;background:var(--panel-2);border-radius:8px;width:30px;height:30px;cursor:pointer;color:var(--ink)}
+.guh-card table{width:100%;min-width:0;margin:8px 0;font-size:13.5px}
+.guh-card td{padding:5px 6px;white-space:normal;text-align:left;border-bottom:1px solid var(--line)}
+.guh-card td:first-child{font-family:"Inter",monospace;font-weight:700;color:var(--brand)}
+.guh-n{font-size:12.5px;color:var(--muted)}
 </style>
 </head>
 <body>
@@ -743,10 +939,12 @@ var cur = {m:"shala", t:"dash"};
 
 function drawMenu(){
   var groups = MENU.filter(function(m){ return !LOGGED_IN || allowed(m.k); });
-  $("sidebar").innerHTML = '<button class="navhead" id="navHome" style="margin-bottom:6px"><span>🏠 ડેશબોર્ડ (હોમ)</span></button>' + groups.map(function(m){
+  var NAV_ICON = {shala:"🏫", system:"⚙️", staff:"👨‍🏫", student:"🎓", exam:"📝", portal:"📲", library:"📚", account:"💰", reports:"📊"};
+  $("sidebar").innerHTML = '<div class="sbrand"><div class="lg">શા</div><div><b>' + esc((S.school && S.school.name) || "શાળા વ્યવસ્થાપન") + '</b><small>શૈક્ષણિક વર્ષ ' + esc((S.settings && S.settings.year) || "—") + '</small></div></div>'
+    + '<button class="navhead" id="navHome"><span><i class="ni">🏠</i>ડેશબોર્ડ (હોમ)</span></button>' + groups.map(function(m){
     var isCur = cur.m === m.k;
     return '<div class="navgroup">'
-      + '<button class="navhead'+(isCur?" on":"")+'" data-m="'+m.k+'"><span>'+esc(m.t)+'</span><span class="car">'+(isCur?"▾":"▸")+'</span></button>'
+      + '<button class="navhead'+(isCur?" on":"")+'" data-m="'+m.k+'"><span><i class="ni">'+(NAV_ICON[m.k]||"📁")+'</i>'+esc(m.t)+'</span><span class="car">'+(isCur?"▾":"▸")+'</span></button>'
       + '<div class="navsub'+(isCur?" open":"")+'" data-grp="'+m.k+'">'
       + m.tabs.map(function(t){
           return '<button class="navtab'+(isCur && cur.t===t[0]?" on":"")+'" data-m="'+m.k+'" data-t="'+t[0]+'">'+esc(t[1])+'</button>';
@@ -1338,7 +1536,7 @@ VIEWS["shala:letter"] = function(){
     + '<div><label class="f">વિદ્યાર્થી (વૈકલ્પિક)</label><select id="lt_stu"><option value="">— કોઈ નહીં —</option>'
     + S.students.map(function(s){ return '<option value="'+s.id+'">'+esc(s.gr)+' — '+esc(s.name)+'</option>'; }).join("")
     + '</select></div>'
-    + fld("lt_out","જાવક નંબर", (Number(S.school.outward)||0)+1)
+    + fld("lt_out","જાવક નંબર", (Number(S.school.outward)||0)+1)
     + fld("lt_date","તારીખ",today(),"date")
     + '</div>'
     + '<div style="margin-top:10px"><label class="f">પ્રતિ (સંબોધન)</label><input id="lt_to" value="પ્રતિ,"></div>'
@@ -5740,12 +5938,252 @@ function delWire(coll, after){
   });
 }
 
+/* ---------- ગુજરાતી ફોનેટિક ટાઇપિંગ (English અક્ષરો → ગુજરાતી) ---------- */
+var GU = (function(){
+  var CONS = {
+    "chh":"છ","ksh":"ક્ષ","kh":"ખ","gh":"ઘ","ch":"ચ","jh":"ઝ","Th":"ઠ","Dh":"ઢ","th":"થ","dh":"ધ","ph":"ફ","bh":"ભ",
+    "sh":"શ","Sh":"ષ","gy":"જ્ઞ",
+    "k":"ક","g":"ગ","c":"ક","j":"જ","T":"ટ","D":"ડ","N":"ણ","t":"ત","d":"દ","n":"ન","p":"પ","f":"ફ","b":"બ","m":"મ",
+    "y":"ય","r":"ર","l":"લ","L":"ળ","v":"વ","w":"વ","s":"સ","S":"ષ","h":"હ","q":"ક","z":"ઝ","x":"ક્સ"
+  };
+  /* સ્વર: [સ્વતંત્ર, માત્રા] */
+  var VOW = {
+    "aa":["આ","ા"],"ai":["ઐ","ૈ"],"au":["ઔ","ૌ"],"ee":["ઈ","ી"],"ii":["ઈ","ી"],"oo":["ઊ","ૂ"],"uu":["ઊ","ૂ"],
+    "Ru":["ઋ","ૃ"],
+    "a":["અ",""],"i":["ઇ","િ"],"u":["ઉ","ુ"],"e":["એ","ે"],"o":["ઓ","ો"],
+    "A":["આ","ા"],"I":["ઈ","ી"],"U":["ઊ","ૂ"]
+  };
+  var MARK = {"M":"ં","H":"ઃ","~":"ઁ"};
+  var VIRAMA = "્";
+  function isLetter(ch){ return /[A-Za-z~]/.test(ch); }
+  function word(buf){
+    /* શબ્દની શરૂઆતનો મોટો અક્ષર નાનો ગણાય (નામ મોટા અક્ષરે લખવાની ટેવ). શરૂઆતમાં ટ/ડ/ઠ/ઢ માટે TT, DD, TTh, DDh */
+    var s = buf, keepFirst = false;
+    if (/^([TD])\1/.test(s)){ s = s.slice(1); keepFirst = true; }
+    if (!keepFirst && /^[A-Z]/.test(s)) s = s.charAt(0).toLowerCase() + s.slice(1);
+    s = s.charAt(0) + s.slice(1).replace(/[BCEFGJKOPQVWXYZ]/g, function(c){ return c.toLowerCase(); }).replace(/R(?!u)/g, "r");
+    if (s.charAt(0) === "R" && s.substr(1,1) !== "u") s = "r" + s.slice(1);
+    var out = "", i = 0, afterCons = false;
+    while (i < s.length){
+      var t3 = s.substr(i,3), t2 = s.substr(i,2), t1 = s.charAt(i), tok = null, type = null;
+      if (CONS[t3]){ tok = t3; type = "c"; }
+      else if (CONS[t2]){ tok = t2; type = "c"; }
+      else if (VOW[t2]){ tok = t2; type = "v"; }
+      else if (CONS[t1]){ tok = t1; type = "c"; }
+      else if (VOW[t1]){ tok = t1; type = "v"; }
+      else if (MARK[t1] !== undefined){ out += MARK[t1]; i++; afterCons = false; continue; }
+      else { out += t1; i++; afterCons = false; continue; }
+      if (type === "c"){
+        if (afterCons) out += VIRAMA;
+        out += CONS[tok]; afterCons = true;
+      } else {
+        out += afterCons ? VOW[tok][1] : VOW[tok][0];
+        afterCons = false;
+      }
+      i += tok.length;
+    }
+    return out;
+  }
+  return { translit: word, isLetter: isLetter };
+})();
+
+/* ---------- ખાનામાં આપોઆપ ગુજરાતી / English ટાઇપિંગ ---------- */
+var GU_ON = true;
+try{ if (localStorage.getItem("shala_gu") === "0") GU_ON = false; }catch(e){}
+var GU_SKIP_TYPES = {number:1,date:1,time:1,month:1,week:1,"datetime-local":1,email:1,tel:1,url:1,password:1,color:1,range:1,file:1,checkbox:1,radio:1,hidden:1,button:1,submit:1,reset:1,image:1};
+var GU_EN_RE = new RegExp([
+  "english","અંગ્રેજી","\\(en\\)","\\ben\\b","e-?mail","ઈ-?મેલ","ઇ-?મેલ","\\burl\\b","\\blink\\b","લિંક","https?:","ifsc","\\bpan\\b","\\bupi\\b",
+  "aadh?aa?r","આધાર","\\buan\\b","\\besi\\b","\\bpen\\b","apaar","\\bapi\\b","token","secret","\\bkey\\b","header","pass(word)?","પાસવર્ડ","પિન",
+  "gstin","\\ba\\/c\\b","account","નંબ","\\bનં\\b","નં\\.","કોડ","\\bcode\\b","\\bid\\b","મોબાઇલ","મોબાઈલ","mobile","phone","ફોન","\\broll\\b","રોલ",
+  "\\bseat\\b","સીટ","dise","ડાયસ","\\bgpf\\b","\\bcpf\\b","\\bnps\\b","\\bifs\\b","template","\\bjson\\b"
+].join("|"), "i");
+var GU_EN_ID = /(^|_)(en|eng|email|mail|url|link|ifsc|pan|upi|mobile|phone|mob|pin|pass|pw|roll|seat|code|key|token|secret|api|uan|esi|aadhar|aadhaar|account|gr|dise|pen|apaar)(_|\d|$)/i;
+function guLabelOf(el){
+  var t = "";
+  try{
+    if (el.id){ var l = document.querySelector('label[for="' + el.id + '"]'); if (l) t += " " + l.textContent; }
+    if (!t){
+      var p = el.parentNode, n = 0;
+      while (p && n < 3 && !t){ var lab = p.querySelector && p.querySelector("label"); if (lab && p.querySelectorAll("input,textarea,select").length <= 2) t = lab.textContent; p = p.parentNode; n++; }
+    }
+  }catch(e){}
+  return t;
+}
+function guMode(el){
+  if (!el || !el.tagName) return "";
+  var tag = el.tagName;
+  if (tag !== "INPUT" && tag !== "TEXTAREA") return "";
+  if (tag === "INPUT" && GU_SKIP_TYPES[(el.type || "text").toLowerCase()]) return "";
+  if (el.readOnly || el.disabled) return "";
+  var dl = el.getAttribute("data-lang");
+  if (dl === "en" || dl === "gu") return dl;
+  if (dl === "off") return "";
+  if (el.getAttribute("list")) return "en";
+  if (el.id === "lg_pin" || /^rs_/.test(el.id)) return "en";
+  if (el._guMode) return el._guMode;
+  var txt = guLabelOf(el) + " " + (el.placeholder || "") + " " + (el.title || "");
+  var mode = "gu", hasGu = /[\u0A80-\u0AFF]/.test(txt), hasLat = /[A-Za-z]{3}/.test(txt);
+  if (/શોધ|search/i.test(txt)) mode = "gu";
+  else if (hasLat && !hasGu) mode = "en";
+  else if (GU_EN_RE.test(txt)) mode = "en";
+  else if (GU_EN_ID.test(el.id || "") || GU_EN_ID.test(el.name || "")) mode = "en";
+  /* Gujarati લખાણ માટે સ્પષ્ટ શબ્દો હોય તો ગુજરાતી */
+  if (mode === "en" && /ગુજરાતી|\bgu\b/i.test(txt) && !/english|અંગ્રેજી/i.test(txt)) mode = "gu";
+  el._guMode = mode;
+  return mode;
+}
+function guState(el){
+  var s = el._gu;
+  if (!s){ var c = el.selectionStart == null ? el.value.length : el.selectionStart; s = el._gu = {buf:"", base:el.value.slice(0,c), tail:el.value.slice(c), out:""}; }
+  return s;
+}
+function guReset(el){
+  var c = el.selectionStart == null ? el.value.length : el.selectionStart;
+  el._gu = {buf:"", base:el.value.slice(0,c), tail:el.value.slice(c), out:""};
+}
+function guApply(el, s){
+  var out = s.buf ? GU.translit(s.buf) : "";
+  el.value = s.base + out + s.tail;
+  var pos = s.base.length + out.length;
+  try{ el.setSelectionRange(pos, pos); }catch(e){}
+  s.out = out;
+}
+var GU_WARN_T = 0;
+function guProcess(el){
+  var mode = guMode(el);
+  if (!mode || !GU_ON) return;
+  if (mode === "en"){
+    var v0 = el.value;
+    if (/[઀-૿]/.test(v0)){
+      var c0 = el.selectionStart, clean = v0.replace(/[઀-૿]/g, "");
+      el.value = clean;
+      try{ var np = Math.max(0, (c0 == null ? clean.length : c0) - (v0.length - clean.length)); el.setSelectionRange(np, np); }catch(e){}
+      var now = Date.now();
+      if (now - GU_WARN_T > 4000){ GU_WARN_T = now; if (typeof toast === "function") toast("આ ખાનામાં English માં જ લખો"); }
+    }
+    return;
+  }
+  var s = guState(el), v = el.value, c = el.selectionStart;
+  var exp = s.base + s.out + s.tail;
+  if (v === exp) return;
+  var add = v.length - exp.length;
+  if (add > 0 && c != null){
+    var p = c - add;
+    if (p >= 0 && v.slice(0, p) + v.slice(c) === exp){
+      var ins = v.slice(p, c), endPos = s.base.length + s.out.length;
+      if (/^[A-Za-z~]+$/.test(ins)){
+        if (!s.buf || p !== endPos){ s.base = exp.slice(0, p); s.tail = exp.slice(p); s.out = ""; s.buf = ""; }
+        s.buf += ins;
+        guApply(el, s);
+        return;
+      }
+    }
+  } else if (add < 0 && s.buf && c != null){
+    var ep = s.base.length + s.out.length;
+    if (add === -1 && c === ep - 1 && v === s.base + s.out.slice(0, -1) + s.tail){
+      var oldLen = s.out.length;
+      do { s.buf = s.buf.slice(0, -1); } while (s.buf && GU.translit(s.buf).length >= oldLen);
+      guApply(el, s);
+      return;
+    }
+  }
+  guReset(el);
+}
+document.addEventListener("input", function(e){ if (e.isComposing) return; guProcess(e.target); }, true);
+document.addEventListener("compositionend", function(e){ guProcess(e.target); }, true);
+document.addEventListener("focusin", function(e){
+  var el = e.target, mode = guMode(el);
+  if (!mode) { guChipHide(); return; }
+  el._guv = el.value;
+  if (mode === "gu"){
+    guReset(el);
+    try{ el.setAttribute("lang", "gu"); el.setAttribute("autocapitalize", "off"); el.setAttribute("autocorrect", "off"); el.setAttribute("spellcheck", "false"); }catch(err){}
+  } else {
+    try{ el.setAttribute("lang", "en"); }catch(err){}
+  }
+  guChipShow(el, mode);
+}, true);
+document.addEventListener("focusout", function(e){
+  var el = e.target;
+  if (el && el._gu && el._guv !== undefined && el.value !== el._guv){
+    try{ el.dispatchEvent(new Event("change", {bubbles:true})); }catch(err){}
+    el._guv = el.value;
+  }
+  setTimeout(function(){ if (!document.activeElement || !guMode(document.activeElement)) guChipHide(); }, 150);
+}, true);
+document.addEventListener("keydown", function(e){
+  if ((e.ctrlKey || e.metaKey) && (e.code === "Space" || e.key === " ")){
+    e.preventDefault(); guToggle();
+  }
+}, true);
+/* ખાના પર નાનું સૂચક: ગુ / EN */
+function guChipEl(){
+  var c = document.getElementById("guChip");
+  if (c) return c;
+  c = document.createElement("div"); c.id = "guChip";
+  c.innerHTML = '<button type="button" id="guChipT" title="ગુજરાતી ટાઇપિંગ ચાલુ/બંધ (Ctrl+Space)"></button><button type="button" id="guChipH" title="ગુજરાતી ટાઇપિંગની રીત">?</button>';
+  document.body.appendChild(c);
+  c.addEventListener("mousedown", function(ev){ ev.preventDefault(); });
+  document.getElementById("guChipT").onclick = function(){ guToggle(); var a = document.activeElement; if (a) guChipShow(a, guMode(a)); };
+  document.getElementById("guChipH").onclick = guHelp;
+  return c;
+}
+var GU_CHIP_FOR = null;
+function guChipShow(el, mode){
+  if (!mode){ guChipHide(); return; }
+  var c = guChipEl(), t = document.getElementById("guChipT");
+  GU_CHIP_FOR = el;
+  c.className = !GU_ON ? "off" : (mode === "gu" ? "gu" : "en");
+  t.textContent = !GU_ON ? "ટાઇપિંગ ઓફ" : (mode === "gu" ? "ગુ · ગુજરાતી" : "EN · English");
+  document.getElementById("guChipH").style.display = (GU_ON && mode === "gu") ? "" : "none";
+  var r = el.getBoundingClientRect();
+  c.style.display = "flex";
+  var w = c.offsetWidth || 120;
+  c.style.top = Math.max(2, r.top - 22) + "px";
+  c.style.left = Math.max(4, Math.min(window.innerWidth - w - 4, r.right - w)) + "px";
+}
+function guChipHide(){ var c = document.getElementById("guChip"); if (c) c.style.display = "none"; GU_CHIP_FOR = null; }
+window.addEventListener("scroll", function(){ if (GU_CHIP_FOR) guChipShow(GU_CHIP_FOR, guMode(GU_CHIP_FOR)); }, true);
+window.addEventListener("resize", function(){ if (GU_CHIP_FOR) guChipShow(GU_CHIP_FOR, guMode(GU_CHIP_FOR)); });
+function guToggle(){
+  GU_ON = !GU_ON;
+  try{ localStorage.setItem("shala_gu", GU_ON ? "1" : "0"); }catch(e){}
+  if (typeof toast === "function") toast(GU_ON ? "ગુજરાતી ટાઇપિંગ ચાલુ" : "ગુજરાતી ટાઇપિંગ બંધ — સીધું જેવું લખો તેવું");
+  var a = document.activeElement; if (a && guMode(a)) guChipShow(a, guMode(a));
+  var sw = document.getElementById("guSwitch"); if (sw) sw.checked = GU_ON;
+}
+function guHelp(){
+  var old = document.getElementById("guHelp"); if (old){ old.remove(); return; }
+  var d = document.createElement("div"); d.id = "guHelp";
+  d.innerHTML = '<div class="guh-card"><div class="guh-top"><b>ગુજરાતી ટાઇપિંગની રીત</b><button type="button" id="guhX">✕</button></div>'
+    + '<p>ગુજરાતી ખાનામાં English અક્ષરો (ફોનેટિક) લખો — આપોઆપ ગુજરાતી બનશે. <b>Ctrl + Space</b> થી ચાલુ/બંધ.</p>'
+    + '<table><tbody>'
+    + '<tr><td>aa</td><td>ા</td><td>raajesh → રાજેશ</td></tr>'
+    + '<tr><td>i / ee</td><td>િ / ી</td><td>kishan → કિશન, shitaa → શિતા</td></tr>'
+    + '<tr><td>u / oo</td><td>ુ / ૂ</td><td>sunil → સુનિલ</td></tr>'
+    + '<tr><td>e / ai</td><td>ે / ૈ</td><td>mahesh → મહેશ</td></tr>'
+    + '<tr><td>o / au</td><td>ો / ૌ</td><td>mohan → મોહન</td></tr>'
+    + '<tr><td>T Th D Dh N L</td><td>ટ ઠ ડ ઢ ણ ળ</td><td>paTel → પટેલ, shaaLaa → શાળા</td></tr>'
+    + '<tr><td>t th d dh n</td><td>ત થ દ ધ ન</td><td>dharmesh → ધર્મેશ</td></tr>'
+    + '<tr><td>sh / Sh</td><td>શ / ષ</td><td>kRuShNa → કૃષ્ણ</td></tr>'
+    + '<tr><td>gy · ksh</td><td>જ્ઞ · ક્ષ</td><td>gyaan → જ્ઞાન</td></tr>'
+    + '<tr><td>M · H · ~</td><td>ં · ઃ · ઁ</td><td>aMgrejee → અંગ્રેજી</td></tr>'
+    + '<tr><td>TT · DD (શબ્દની શરૂઆતમાં)</td><td>ટ · ડ</td><td>TTrasT → ટ્રસ્ટ</td></tr>'
+    + '</tbody></table>'
+    + '<p class="guh-n">શબ્દનો પહેલો મોટો અક્ષર નાનો ગણાય (Patel → પતેલ; પટેલ માટે paTel). Backspace દબાવતાં છેલ્લો અક્ષર ભૂંસાય. ફોનમાં Gujarati કીબોર્ડ હોય તો સીધું લખાશે. નંબર, મોબાઇલ, ઈમેલ, કોડ, લિંક જેવા ખાનામાં આપોઆપ English જ લખાય.</p>'
+    + '</div>';
+  document.body.appendChild(d);
+  d.onclick = function(ev){ if (ev.target === d || ev.target.id === "guhX") d.remove(); };
+}
+
 /* ---------- boot ---------- */
 try{
   var savedPalette = localStorage.getItem("shala_palette");
   if (savedPalette) document.documentElement.setAttribute("data-palette", savedPalette);
   var savedTheme = localStorage.getItem("shala_theme");
   if (savedTheme) document.documentElement.setAttribute("data-theme", savedTheme);
+  var savedSide = localStorage.getItem("shala_side");
+  if (savedSide) document.documentElement.setAttribute("data-side", savedSide);
 }catch(e){}
 $("themeBtn").onclick = function(){
   var d = document.documentElement;
@@ -5755,13 +6193,49 @@ $("themeBtn").onclick = function(){
   d.setAttribute("data-theme", next);
   try{ localStorage.setItem("shala_theme", next); }catch(e){}
 };
-$("paletteBtn").onclick = function(){
+var PALETTES = [["classic", "ગ્રીન", "#1b5e4b", "#b4531f"], ["blue", "વાદળી", "#1c5fa8", "#d97706"], ["indigo", "ઇન્ડિગો", "#4338ca", "#f59e0b"], ["purple", "જાંબલી", "#7e22ce", "#f59e0b"], ["maroon", "મરૂન", "#9f1239", "#0d9488"], ["orange", "કેસરી", "#c2410c", "#0369a1"], ["teal", "ટીલ", "#0f766e", "#e11d48"], ["slate", "સ્લેટ", "#334155", "#0ea5e9"], ["pink", "ગુલાબી", "#be185d", "#4f46e5"], ["gold", "સોનેરી", "#a16207", "#1d4ed8"], ["navy", "નેવી", "#1e3a8a", "#ea580c"], ["brown", "બ્રાઉન", "#78350f", "#0f766e"]];
+function applyAttr_(k, v, store){
   var d = document.documentElement;
-  var cur = d.getAttribute("data-palette") || "classic";
-  var next = cur === "blue" ? "classic" : "blue";
-  d.setAttribute("data-palette", next);
-  try{ localStorage.setItem("shala_palette", next); }catch(e){}
-};
+  if (v) d.setAttribute(k, v); else d.removeAttribute(k);
+  try{ if (v) localStorage.setItem(store, v); else localStorage.removeItem(store); }catch(e){}
+}
+function themePop(){
+  var old = document.getElementById("themePop"); if (old){ old.remove(); return; }
+  var d = document.documentElement, curP = d.getAttribute("data-palette") || "classic", curT = d.getAttribute("data-theme") || "", curS = d.getAttribute("data-side") || "dark";
+  var pop = document.createElement("div"); pop.className = "themepop"; pop.id = "themePop";
+  pop.innerHTML = '<h4>🎨 થીમ અને રંગ <button type="button" id="tpX">✕</button></h4>'
+    + '<div class="sec">રંગ</div><div class="swgrid">' + PALETTES.map(function(p){
+        return '<button type="button" class="sw' + (p[0] === curP ? " on" : "") + '" data-p="' + p[0] + '"><i style="background:linear-gradient(135deg,' + p[2] + ' 55%,' + p[3] + ' 55%)"></i>' + p[1] + '</button>';
+      }).join("") + '</div>'
+    + '<div class="sec">દેખાવ</div><div class="seg" id="tpT"><button type="button" data-t=""' + (curT === "" ? ' class="on"' : "") + '>ઓટો</button><button type="button" data-t="light"' + (curT === "light" ? ' class="on"' : "") + '>☀ લાઇટ</button><button type="button" data-t="dark"' + (curT === "dark" ? ' class="on"' : "") + '>🌙 ડાર્ક</button></div>'
+    + '<div class="sec">સાઇડબાર</div><div class="seg" id="tpS"><button type="button" data-s="dark"' + (curS === "dark" ? ' class="on"' : "") + '>ઘેરો</button><button type="button" data-s="light"' + (curS === "light" ? ' class="on"' : "") + '>આછો</button></div>'
+    + '<div class="sec">ગુજરાતી ટાઇપિંગ</div><div class="tp-row"><label style="display:flex;gap:8px;align-items:center;cursor:pointer"><input type="checkbox" id="guSwitch"' + (GU_ON ? " checked" : "") + '> English અક્ષરો → ગુજરાતી</label><a href="javascript:void(0)" id="tpHelp" style="font-size:12.5px">રીત</a></div>';
+  document.body.appendChild(pop);
+  var r = $("paletteBtn").getBoundingClientRect();
+  pop.style.top = Math.max(8, Math.min(window.innerHeight - pop.offsetHeight - 8, r.bottom + 8)) + "px";
+  pop.style.left = Math.max(8, Math.min(window.innerWidth - pop.offsetWidth - 8, r.right - pop.offsetWidth)) + "px";
+  function close(){ pop.remove(); document.removeEventListener("mousedown", away, true); }
+  function away(ev){ if (!pop.contains(ev.target) && ev.target !== $("paletteBtn")) close(); }
+  setTimeout(function(){ document.addEventListener("mousedown", away, true); }, 0);
+  $("tpX").onclick = close;
+  Array.prototype.forEach.call(pop.querySelectorAll(".sw"), function(b){ b.onclick = function(){
+    applyAttr_("data-palette", b.dataset.p === "classic" ? "" : b.dataset.p, "shala_palette");
+    try{ localStorage.setItem("shala_palette", b.dataset.p); }catch(e){}
+    Array.prototype.forEach.call(pop.querySelectorAll(".sw"), function(x){ x.classList.toggle("on", x === b); });
+  }; });
+  Array.prototype.forEach.call($("tpT").querySelectorAll("button"), function(b){ b.onclick = function(){
+    applyAttr_("data-theme", b.dataset.t, "shala_theme");
+    Array.prototype.forEach.call($("tpT").querySelectorAll("button"), function(x){ x.classList.toggle("on", x === b); });
+  }; });
+  Array.prototype.forEach.call($("tpS").querySelectorAll("button"), function(b){ b.onclick = function(){
+    applyAttr_("data-side", b.dataset.s, "shala_side");
+    Array.prototype.forEach.call($("tpS").querySelectorAll("button"), function(x){ x.classList.toggle("on", x === b); });
+  }; });
+  $("guSwitch").onchange = function(){ if (this.checked !== GU_ON) guToggle(); };
+  $("tpHelp").onclick = guHelp;
+}
+$("paletteBtn").onclick = themePop;
+
 $("menuBtn").onclick = function(){
   $("sidebar").classList.toggle("open");
   $("backdrop").classList.toggle("open");
@@ -5963,6 +6437,7 @@ WIRE["student:subsel"] = function(){
     return lim ? Math.max(0, lim - coreList().length) : 0; /* 0 = મર્યાદા નહીં */
   }
   function draw(){
+    if (!$("ss_std") || !$("ss_info")) return; /* સેવ દરમિયાન બીજી સ્ક્રીન ખુલી ગઈ હોય */
     SUBSEL.std = val("ss_std"); SUBSEL.div = val("ss_div");
     var kids = S.students.filter(function(s){
       return String(s.std) === SUBSEL.std && (!SUBSEL.div || String(s.div) === SUBSEL.div);
