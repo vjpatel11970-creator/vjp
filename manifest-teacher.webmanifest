@@ -1,0 +1,47 @@
+{
+  "id": "./?teacher=1",
+  "name": "શિક્ષક એપ",
+  "short_name": "શિક્ષક",
+  "description": "શિક્ષક માટે — હાજરી, ગૃહકાર્ય/નોંધ, સંદેશ, ટાઇમટેબલ અને વર્ગ માહિતી",
+  "lang": "gu",
+  "dir": "ltr",
+  "start_url": "./?teacher=1",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#f4f1ea",
+  "theme_color": "#1d4f91",
+  "icons": [
+    {
+      "src": "teacher-icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "teacher-icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "teacher-icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "હાજરી",
+      "short_name": "હાજરી",
+      "url": "./?teacher=1",
+      "icons": [
+        {
+          "src": "teacher-icon-192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    }
+  ]
+}
