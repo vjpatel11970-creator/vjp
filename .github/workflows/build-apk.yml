@@ -1,9 +1,10 @@
-name: Build Student APK
+name: Build Student + Teacher APK
 
 on:
   push:
     paths:
       - 'student-app/**'
+      - 'teacher-app/**'
       - '.github/workflows/build-apk.yml'
   workflow_dispatch:
 
@@ -28,24 +29,32 @@ jobs:
         with:
           gradle-version: '8.9'
 
-      - name: Build signed release APK
+      - name: Build student APK
         working-directory: student-app
         run: gradle assembleRelease --no-daemon
 
-      - name: Rename APK
-        run: cp student-app/app/build/outputs/apk/release/app-release.apk vidyarthi-app.apk
+      - name: Build teacher APK
+        working-directory: teacher-app
+        run: gradle assembleRelease --no-daemon
 
-      - name: Keep a copy as build artifact
+      - name: Rename APKs
+        run: |
+          cp student-app/app/build/outputs/apk/release/app-release.apk vidyarthi-app.apk
+          cp teacher-app/app/build/outputs/apk/release/app-release.apk shikshak-app.apk
+
+      - name: Keep copies as build artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: vidyarthi-app
-          path: vidyarthi-app.apk
+          name: apps
+          path: |
+            vidyarthi-app.apk
+            shikshak-app.apk
 
-      - name: Publish release (direct download link)
+      - name: Publish release (direct download links)
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
-          gh release create "app-v${{ github.run_number }}" vidyarthi-app.apk \
-            --title "Vidyarthi App v${{ github.run_number }}" \
-            --notes "Student portal Android app. Download vidyarthi-app.apk and install." \
+          gh release create "app-v${{ github.run_number }}" vidyarthi-app.apk shikshak-app.apk \
+            --title "School Apps v${{ github.run_number }}" \
+            --notes "Student app: vidyarthi-app.apk | Teacher app: shikshak-app.apk" \
             --latest
