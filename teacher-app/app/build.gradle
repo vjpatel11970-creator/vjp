@@ -1,0 +1,47 @@
+plugins {
+    id 'com.android.application'
+}
+
+android {
+    namespace 'com.vjpatel.shikshak'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId "com.vjpatel.shikshak"
+        minSdk 24
+        targetSdk 34
+        // દરેક નવા બિલ્ડ સાથે versionCode વધે છે, જેથી નવી એપ જૂની ઉપર અપડેટ થઈ શકે
+        versionCode Integer.parseInt(System.getenv("GITHUB_RUN_NUMBER") ?: "1")
+        versionName "1.0." + (System.getenv("GITHUB_RUN_NUMBER") ?: "1")
+    }
+
+    signingConfigs {
+        release {
+            storeFile file("../vjp-sideload.keystore")
+            storePassword "vjpstudent"
+            keyAlias "vjp"
+            keyPassword "vjpstudent"
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+}
