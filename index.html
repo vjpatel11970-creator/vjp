@@ -16,6 +16,7 @@
 /* વિદ્યાર્થીની લિંક (?result=1) પરથી ઇન્સ્ટોલ કરે તો એપ સીધી "પરિણામ" પાના પર ખૂલે,
    એડમિન/શિક્ષકની સામાન્ય લિંકથી ઇન્સ્ટોલ કરે તો લોગિન પાના પર — બંને અલગ એપ તરીકે. */
 try{ if (/[?&](result|student)=1/.test(location.search)) document.getElementById("pwaManifest").href = "manifest-student.webmanifest"; }catch(e){}
+try{ if (/[?&]teacher=1/.test(location.search)) document.getElementById("pwaManifest").href = "manifest-teacher.webmanifest"; }catch(e){}
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -482,6 +483,39 @@ tbody tr:hover td{background:color-mix(in srgb, var(--brand) 8%, var(--panel))}
 .guh-card td{padding:5px 6px;white-space:normal;text-align:left;border-bottom:1px solid var(--line)}
 .guh-card td:first-child{font-family:"Inter",monospace;font-weight:700;color:var(--brand)}
 .guh-n{font-size:12.5px;color:var(--muted)}
+/* ---------- શિક્ષક એપ ---------- */
+#teGate{position:fixed;inset:0;background:var(--bg);z-index:230;display:none;flex-direction:column;overflow:hidden}
+#teGate .te-top{display:flex;align-items:center;gap:10px;padding:10px 14px;background:var(--brand);color:#fff;flex:none}
+#teGate .te-top .t1{font-size:12px;opacity:.85;line-height:1.2}
+#teGate .te-top .t2{font-size:16px;font-weight:800;line-height:1.25}
+#teGate .te-top .sp{flex:1;min-width:0}
+#teGate .te-top button{background:rgba(255,255,255,.18);color:#fff;border:0;border-radius:8px;padding:7px 10px;font-size:15px;cursor:pointer}
+#teGate .te-scroll{flex:1;overflow:auto;padding:12px 12px 90px;-webkit-overflow-scrolling:touch}
+#teGate .te-in{max-width:760px;margin:0 auto;min-width:0}
+#teGate .te-tabs{position:absolute;left:0;right:0;bottom:0;display:flex;background:var(--panel);border-top:1px solid var(--line);box-shadow:0 -4px 14px rgba(0,0,0,.08);padding-bottom:env(safe-area-inset-bottom)}
+#teGate .te-tabs button{flex:1;border:0;background:none;color:var(--muted);padding:8px 2px 7px;font:inherit;font-size:11.5px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
+#teGate .te-tabs button b{font-size:20px;line-height:1}
+#teGate .te-tabs button.on{color:var(--brand);font-weight:700}
+#teGate .te-tabs button.on b{transform:translateY(-1px)}
+#teLogin{position:fixed;inset:0;z-index:231;background:var(--bg);display:none;place-items:center;padding:16px;overflow:auto}
+.te-pills{display:flex;gap:6px;overflow-x:auto;padding-bottom:8px;margin-bottom:4px}
+.te-pills button{white-space:nowrap}
+.te-st{display:flex;align-items:center;gap:10px;padding:9px 4px;border-bottom:1px solid var(--line)}
+.te-st .rl{width:30px;text-align:center;color:var(--muted);font-size:13px;flex:none}
+.te-st .nm{flex:1;min-width:0;font-weight:600;font-size:14.5px;overflow-wrap:anywhere}
+.te-tg{border:0;border-radius:20px;padding:8px 14px;font:inherit;font-size:13.5px;font-weight:700;cursor:pointer;min-width:88px;flex:none}
+.te-tg.p{background:var(--good);color:#fff}
+.te-tg.a{background:var(--bad);color:#fff}
+.te-savebar{position:sticky;bottom:-4px;background:var(--panel);border-top:1px solid var(--line);padding:10px 0 2px;margin-top:6px;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.te-seg{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.te-ttg{width:100%;min-width:560px;border-collapse:collapse;font-size:12.5px}
+.te-ttg th,.te-ttg td{border:1px solid var(--line);padding:5px 4px;text-align:center;vertical-align:top}
+.te-ttg td .c{display:block;background:var(--panel-2);border-radius:6px;padding:3px 4px;margin:2px 0;line-height:1.3}
+.te-ttg td .c i{font-style:normal;color:var(--muted);font-size:11px}
+.te-ttg td .c u{text-decoration:none;color:var(--bad);cursor:pointer;margin-left:4px}
+.te-act{display:inline-block;text-decoration:none;padding:6px 10px;border-radius:8px;font-size:13px;font-weight:700;color:#fff;background:var(--brand)}
+.te-act.wa{background:#1fa855}
+@media print{#teGate{display:none !important}}
 </style>
 </head>
 <body>
@@ -524,10 +558,11 @@ tbody tr:hover td{background:color-mix(in srgb, var(--brand) 8%, var(--panel))}
       <button class="btn lg-go" id="lg_go">પ્રવેશ કરો →</button>
       <p class="lg-msg" id="lg_msg"></p>
 
-      <div class="lg-or">વિદ્યાર્થી / વાલી માટે</div>
+      <div class="lg-or">વિદ્યાર્થી / વાલી / શિક્ષક માટે</div>
       <div class="lg-links">
         <a class="lg-link" href="javascript:void(0)" id="lg_paylink"><span class="t">💳 ફી ઓનલાઇન ભરો</span><span class="s">વાલી માટે</span></a>
         <a class="lg-link" href="javascript:void(0)" id="lg_reslink"><span class="t">🎓 વિદ્યાર્થી પોર્ટલ</span><span class="s">પરિણામ, હાજરી, સોંપણી</span></a>
+        <a class="lg-link" href="javascript:void(0)" id="lg_telink"><span class="t">👩‍🏫 શિક્ષક એપ</span><span class="s">હાજરી, ગૃહકાર્ય, સંદેશ</span></a>
       </div>
       <p class="lg-install" id="lg_install_wrap"><a href="javascript:void(0)" id="lg_install">📱 આ એપ ફોનમાં ઇન્સ્ટોલ કરો</a></p>
     </section>
@@ -566,6 +601,29 @@ tbody tr:hover td{background:color-mix(in srgb, var(--brand) 8%, var(--panel))}
     </div>
     <div id="rs_out"></div>
   </div>
+</div>
+<div id="teLogin">
+  <div class="card" style="width:100%;max-width:420px;margin:0">
+    <div style="text-align:center;margin-bottom:8px"><div style="font-size:38px">👩‍🏫</div>
+      <h2 style="margin:4px 0 0" id="teL_school">શિક્ષક એપ</h2>
+      <div class="hint" style="margin:2px 0 0">શિક્ષક લોગિન</div></div>
+    <label class="f" for="te_u">યુઝરનેમ</label><input id="te_u" type="text" data-lang="off" autocomplete="username" autocapitalize="none" autocorrect="off">
+    <label class="f" for="te_p" style="margin-top:10px">પાસવર્ડ</label><input id="te_p" type="password" autocomplete="current-password">
+    <label style="display:flex;gap:8px;align-items:center;margin-top:12px;font-size:13.5px"><input type="checkbox" id="te_rem" style="width:18px;height:18px"> આ ફોનમાં લોગિન યાદ રાખો (ફક્ત તમારા પોતાના ફોનમાં)</label>
+    <div style="margin-top:12px"><button class="btn" id="te_go" style="width:100%">પ્રવેશ કરો</button></div>
+    <p class="hint" id="te_msg" style="margin:8px 0 0"></p>
+    <p class="hint" style="margin:8px 0 0">યુઝરનેમ/પાસવર્ડ શાળા (આચાર્ય) તરફથી મળશે.</p>
+    <p class="hint" style="margin:8px 0 0" id="te_apk_wrap"><a href="teacher-app.html">📲 શિક્ષક એપ (APK) ડાઉનલોડ કરો</a></p>
+  </div>
+</div>
+<div id="teGate">
+  <div class="te-top">
+    <div class="sp"><div class="t1" id="teT1">—</div><div class="t2" id="teT2">—</div></div>
+    <button id="teRef" title="તાજી માહિતી લાવો">⟳</button>
+    <button id="teOut" title="બહાર નીકળો">⏻</button>
+  </div>
+  <div class="te-scroll" id="teScroll"><div class="te-in" id="teBody"></div></div>
+  <div class="te-tabs" id="teTabs"></div>
 </div>
 <nav class="sidebar" id="sidebar"></nav>
 <div class="backdrop" id="backdrop"></div>
@@ -618,7 +676,7 @@ try{
 }catch(e){}
 var PWA_PROMPT = null;
 /* Android APK (WebView) ની અંદર ચાલતી હોય ત્યારે ઇન્સ્ટોલ/ડાઉનલોડ લિંક છુપાવો */
-var IN_APP = /VJPStudentApp/.test(navigator.userAgent || "");
+var IN_APP = /VJPStudentApp|VJPTeacherApp/.test(navigator.userAgent || "");
 if (IN_APP) document.addEventListener("DOMContentLoaded", function(){
   ["lg_install_wrap","rs_install_wrap","rs_apk_wrap"].forEach(function(id){ var w = document.getElementById(id); if (w) w.style.display = "none"; });
 });
@@ -657,7 +715,7 @@ function pwaInstall(){
 }
 
 /* ---------- app data ---------- */
-var COLLS =["students","staff","books","issues","ledger","exams","attendance","letters","lcs","payslips","holidays","rooms","heads","feeMaster","timetable","examtt","leaves","scholarships","increments","payM1","payM3","payM10","payM12","smsLog","assignments","materials","notices"];
+var COLLS =["students","staff","books","issues","ledger","exams","attendance","letters","lcs","payslips","holidays","rooms","heads","feeMaster","timetable","examtt","leaves","scholarships","increments","payM1","payM3","payM10","payM12","smsLog","assignments","materials","notices","messages"];
 var S = {
   school:{name:"",udise:"",index:"",village:"",taluka:"",district:"",principal:"",
           medium:"ગુજરાતી",type:"માધ્યમિક",board:"ગુજરાત માધ્યમિક અને ઉચ્ચતર માધ્યમિક શિક્ષણ બોર્ડ, ગાંધીનગર",
@@ -1805,25 +1863,33 @@ VIEWS["system:users"] = function(){
     + '<div class="row" style="flex-wrap:wrap;gap:14px;margin-top:6px">'
     + menuNames.map(function(m){ return chk("us_m_"+m[0], m[1], false); }).join("")
     + '</div></div>'
+    + '<div style="margin-top:14px;border-top:1px solid var(--line);padding-top:12px"><label class="f">👩‍🏫 શિક્ષક એપ</label>'
+    + '<div class="row" style="flex-wrap:wrap;gap:14px;margin:6px 0">' + chk("us_teacher","આ યુઝર શિક્ષક એપમાં લોગિન કરી શકે",false) + chk("us_allcls","બધા વર્ગની પરવાનગી (આચાર્ય/ઉપ-આચાર્ય)",false) + '</div>'
+    + '<div class="grid">' + fld("us_tname","શિક્ષકનું નામ (ટાઇમટેબલ/વર્ગ વ્યવસ્થામાં લખ્યું છે તે જ)","") + '</div>'
+    + '<p class="hint" style="margin:6px 0 0">શિક્ષકને ફક્ત તેના વર્ગોની (ટાઇમટેબલમાં તેનું નામ હોય તે + વર્ગ વ્યવસ્થામાં વર્ગ શિક્ષક તરીકે) માહિતી દેખાશે. શિક્ષક એપની લિંક: <b>?teacher=1</b></p></div>'
     + '<div style="margin-top:14px"><button class="btn" id="us_save">સેવ</button></div></div>'
     + '<div class="card"><h3>યુઝર યાદી</h3>'
     + (users.length
-      ? '<div class="tw"><table><thead><tr><th>યુઝરનું નામ</th><th>પરવાનગી મેનુ</th><th></th></tr></thead><tbody>'
+      ? '<div class="tw"><table><thead><tr><th>યુઝરનું નામ</th><th>પરવાનગી મેનુ</th><th>શિક્ષક એપ</th><th></th></tr></thead><tbody>'
         + users.map(function(u){
             var mlabels = (u.menus||[]).map(function(k){ var f=menuNames.find(function(x){return x[0]===k;}); return f?f[1]:k; });
             return '<tr><td>'+esc(u.name)+'</td><td>'+esc(mlabels.join(", ")||"—")+'</td>'
+              + '<td>'+(u.teacher ? '👩‍🏫 '+esc(u.tname||u.name)+(u.allClasses ? ' (બધા વર્ગ)' : '') : '—')+'</td>'
               + '<td><button class="btn sm sec" data-del="'+esc(u.name)+'">દૂર</button></td></tr>';
           }).join("") + '</tbody></table></div>'
       : '<div class="empty">હજુ કોઈ યુઝર બનાવેલ નથી.</div>')
     + '<p class="hint">દરેક યુઝર પોતાના યુઝરનેમ અને પાસવર્ડથી લોગિન કરી શકે છે — ફક્ત ઉપર પસંદ કરેલા મેનુ જ એ યુઝરને દેખાશે. "આચાર્ય (એડમિન)" તરીકે એડમિન પાસવર્ડથી (સીસ્ટમ › સેટિંગ) લોગિન કરવાથી બધા મેનુ મળે છે.</p></div>';
 };
 WIRE["system:users"] = function(){
+  $("us_name").setAttribute("data-lang","off"); /* યુઝરનેમ જેવું લખો તેવું (શિક્ષક એપ લોગિન સાથે મેળ) */
   $("us_save").onclick = async function(){
     var name = val("us_name"); if (!name) return toast("યુઝરનું નામ ભરો");
     if (val("us_pass") !== val("us_pass2")) return toast("પાસવર્ડ મેળ ખાતો નથી");
     var menus = MENU.filter(function(m){ return $("us_m_"+m.k).checked; }).map(function(m){ return m.k; });
     var users = (S.settings.users || []).filter(function(u){ return u.name !== name; });
-    users.push({name:name, pass:val("us_pass"), menus:menus});
+    var nu = {name:name, pass:val("us_pass"), menus:menus};
+    if ($("us_teacher").checked){ nu.teacher = true; nu.tname = val("us_tname") || name; if ($("us_allcls").checked) nu.allClasses = true; }
+    users.push(nu);
     S.settings.users = users;
     await saveMeta(); toast("યુઝર સચવાયો"); render();
   };
@@ -6580,10 +6646,17 @@ VIEWS["portal:link"] = function(){
     + '<p style="font-weight:700;word-break:break-all;margin:0 0 8px" id="pl_apk">'+esc(location.href.split("#")[0].split("?")[0].replace(/[^\/]*$/, "") + "app.html")+'</p>'
     + '<div class="row" style="gap:10px;flex-wrap:wrap"><button class="btn sec" id="pl_apkcopy">ડાઉનલોડ પેજની લિંક કોપી કરો</button></div>'
     + '<p class="hint">આ પેજ પરથી વિદ્યાર્થી Android એપ સીધી ડાઉનલોડ કરી ફોનમાં ઇન્સ્ટોલ કરી શકે છે (એપ બનાવવાની રીત: student-app ફોલ્ડર સાથેની સૂચનાઓ).</p>'
+    + '<h3 style="margin:18px 0 6px">👩‍🏫 શિક્ષક એપની લિંક</h3>'
+    + '<p style="font-weight:700;word-break:break-all;margin:0 0 4px" id="pl_turl">'+esc(location.href.split("#")[0].split("?")[0] + "?teacher=1")+'</p>'
+    + '<p style="font-weight:700;word-break:break-all;margin:0 0 8px" id="pl_tapk">'+esc(location.href.split("#")[0].split("?")[0].replace(/[^\/]*$/, "") + "teacher-app.html")+'</p>'
+    + '<div class="row" style="gap:10px;flex-wrap:wrap"><button class="btn sec" id="pl_tcopy">વેબ લિંક કોપી</button><button class="btn sec" id="pl_tapkcopy">APK ડાઉનલોડ પેજ લિંક કોપી</button></div>'
+    + '<p class="hint">શિક્ષક લિંક ખોલી પોતાનું યુઝરનેમ/પાસવર્ડથી લોગિન કરે (યુઝર સીસ્ટમ › યુઝર બનાવવા માં "શિક્ષક એપ" ટિક કરીને બનાવો). શિક્ષકને ફક્ત તેના વર્ગોની માહિતી દેખાય છે; હાજરી, ગૃહકાર્ય/નોંધ, સંદેશ અને ટાઇમટેબલ તરત વિદ્યાર્થી એપમાં દેખાય છે.</p>'
     + '<p class="hint">આ લિંક વિદ્યાર્થીઓ/વાલીઓને WhatsApp માં મોકલો. વિદ્યાર્થી પોતાનો જી.આર. નંબર અને જન્મ તારીખ નાખીને પ્રવેશ કરે છે અને ફક્ત પોતાની જ માહિતી જુએ છે: પરિણામ, હાજરી, સોંપણી, અભ્યાસ સામગ્રી, સૂચના/કાર્યક્રમ, પરીક્ષા સમય, રજાઓ.</p>'
     + '<p class="hint">ફોનમાં એપ તરીકે ઇન્સ્ટોલ કરવા: Chrome માં લિંક ખોલી ⋮ → Install app. પરિણામ બતાવવા માટે પરિક્ષા › ઓનલાઇન પરિણામ માંથી પરિણામ "પ્રકાશિત" કરેલું હોવું જોઈએ. હાજરી વિદ્યાર્થી › હાજરી ની એન્ટ્રી માંથી, રજાઓ શાળા › વાર્ષિક રજાઓ માંથી અને પરીક્ષા સમય શાળા › પરિક્ષા સમય પત્રક માંથી આપોઆપ આવે છે.</p></div>';
 };
 WIRE["portal:link"] = function(){
+  function cp_(id){ return function(){ var u = $(id).textContent; try{ navigator.clipboard.writeText(u).then(function(){ toast("લિંક કોપી થઈ"); }, function(){ toast(u); }); }catch(e){ toast(u); } }; }
+  $("pl_tcopy").onclick = cp_("pl_turl"); $("pl_tapkcopy").onclick = cp_("pl_tapk");
   $("pl_apkcopy").onclick = function(){
     var u = $("pl_apk").textContent;
     try{ navigator.clipboard.writeText(u).then(function(){ toast("લિંક કોપી થઈ"); }, function(){ toast(u); }); }
@@ -6655,6 +6728,7 @@ function ptLink(u, label){
   var s = ptSafeUrl(u);
   return s ? '<a class="btn sm" href="'+esc(s)+'" target="_blank" rel="noopener noreferrer" style="display:inline-block;margin-top:6px;text-decoration:none">'+esc(label||"ખોલો ↗")+'</a>' : '';
 }
+function ptBy(x){ return (x.kind ? '<span class="chip g">'+esc(x.kind)+'</span> ' : '') + (x.by ? '<span class="hint">👩‍🏫 '+esc(x.by)+'</span>' : ''); }
 function ptCard(inner){ return '<div class="card" style="margin-bottom:10px">'+inner+'</div>'; }
 function ptEmpty(t){ return '<div class="card"><div class="empty">'+esc(t)+'</div></div>'; }
 
@@ -6687,6 +6761,10 @@ function ptHome(d){
     + ptStat("બાકી સોંપણી", String(asg.length), asg.length ? "સોંપણી ટેબ જુઓ" : "કોઈ બાકી નથી", asg.length ? "bad" : "good")
     + ptStat("આગામી રજા", ho ? esc(ho.name) : "—", ho ? ptD(ho.date)+((ho.to && ho.to !== ho.date) ? " – "+ptD(ho.to) : "") : "કોઈ નથી", "")
     + '</div>';
+  var ms = (d.messages || []).slice(0, 2);
+  if (ms.length) h += ptCard('<h3 style="margin-top:0">💬 શિક્ષકનો સંદેશ</h3>' + ms.map(function(m){
+    return '<div style="padding:6px 0;border-bottom:1px solid var(--line)"><span class="chip '+(m.personal ? 'r' : 'g')+'">'+(m.personal ? 'તમારા માટે' : 'વર્ગ')+'</span> <b>'+esc(m.title)+'</b> <span class="hint">'+ptD(m.date)+'</span>'+(m.text ? '<div style="font-size:13.5px">'+ptText(m.text)+'</div>' : '')+'</div>';
+  }).join(""));
   var nt = (d.notices || []).slice(0, 3);
   h += ptCard('<h3 style="margin-top:0">🔔 તાજેતરની સૂચના</h3>' + (nt.length ? nt.map(function(n){
     return '<div style="padding:6px 0;border-bottom:1px solid var(--line)"><span class="chip">'+esc(n.type||"સૂચના")+'</span> <b>'+esc(n.title)+'</b> <span class="hint">'+ptD(n.date)+'</span></div>';
@@ -6729,7 +6807,7 @@ function ptAssignments(d){
   if (!all.length) return ptEmpty("હજુ કોઈ સોંપણી નથી.");
   function item(a){
     var late = a.due && a.due < t;
-    return ptCard('<div><span class="chip">'+esc(a.subject||"સામાન્ય")+'</span> '
+    return ptCard('<div>'+ptBy(a)+' <span class="chip">'+esc(a.subject||"સામાન્ય")+'</span> '
       + (a.due ? '<span class="chip '+(late?'r':'g')+'">છેલ્લી તારીખ: '+ptD(a.due)+'</span>' : '') + '</div>'
       + '<div style="font-weight:700;margin:6px 0 2px">'+esc(a.title)+'</div>'
       + (a.text ? '<div style="font-size:14px">'+ptText(a.text)+'</div>' : '')
@@ -6747,7 +6825,7 @@ function ptMaterials(d){
   all.forEach(function(m){ var k = m.subject || "સામાન્ય"; (by[k] = by[k] || []).push(m); });
   return Object.keys(by).sort().map(function(k){
     return '<h3 style="margin:10px 0 6px">'+esc(k)+'</h3>' + by[k].map(function(m){
-      return ptCard('<div style="font-weight:700">'+esc(m.title)+'</div>'
+      return ptCard('<div>'+ptBy(m)+'</div><div style="font-weight:700">'+esc(m.title)+'</div>'
         + (m.text ? '<div style="font-size:14px">'+ptText(m.text)+'</div>' : '')
         + ptLink(m.link, "ખોલો / ડાઉનલોડ ↗") + '<div class="hint" style="margin:6px 0 0">'+ptD(m.date)+'</div>');
     }).join("");
@@ -6765,7 +6843,7 @@ function ptNotices(d){
     : '<div class="hint">હજુ પરીક્ષા સમય પત્રક મૂકાયું નથી.</div>'));
   var nt = d.notices || [];
   h += '<h3 style="margin:12px 0 6px">🔔 સૂચના / કાર્યક્રમ</h3>' + (nt.length ? nt.map(function(n){
-    return ptCard('<div><span class="chip">'+esc(n.type||"સૂચના")+'</span> <span class="hint">'+ptD(n.date)+'</span></div>'
+    return ptCard('<div><span class="chip">'+esc(n.type||"સૂચના")+'</span> <span class="hint">'+ptD(n.date)+'</span> '+(n.by ? '<span class="hint">👩‍🏫 '+esc(n.by)+'</span>' : '')+'</div>'
       + '<div style="font-weight:700;margin:4px 0 2px">'+esc(n.title)+'</div>'
       + (n.text ? '<div style="font-size:14px">'+ptText(n.text)+'</div>' : ''));
   }).join("") : '<div class="hint">કોઈ સૂચના નથી.</div>');
@@ -6782,10 +6860,18 @@ function ptHolidays(d){
       }).join("") + '</tbody></table></div>');
 }
 
+function ptMessages(d){
+  var all = d.messages || [];
+  if (!all.length) return ptEmpty("શિક્ષક તરફથી હજુ કોઈ સંદેશ નથી.");
+  return all.map(function(m){
+    return ptCard('<div><span class="chip '+(m.personal ? 'r' : 'g')+'">'+(m.personal ? '👤 તમારા માટે' : '👥 વર્ગ')+'</span> '+(m.by ? '<span class="hint">👩‍🏫 '+esc(m.by)+'</span> ' : '')+'<span class="hint">'+ptD(m.date)+' '+esc(m.time||"")+'</span></div>'
+      + '<div style="font-weight:700;margin:4px 0 2px">'+esc(m.title)+'</div>' + (m.text ? '<div style="font-size:14px">'+ptText(m.text)+'</div>' : ''));
+  }).join("");
+}
 function paintPortal(){
   var d = PORTAL, s = d.student || {};
-  var tabs = [["home","🏠 હોમ"],["res","📊 પરિણામ"],["att","🗓 હાજરી"],["asg","📝 સોંપણી"],["mat","📚 અભ્યાસ"],["ntc","🔔 સૂચના"],["hol","🎉 રજાઓ"]];
-  var body = {home:ptHome, res:ptResults, att:ptAttendance, asg:ptAssignments, mat:ptMaterials, ntc:ptNotices, hol:ptHolidays}[PTAB](d);
+  var tabs = [["home","🏠 હોમ"],["res","📊 પરિણામ"],["att","🗓 હાજરી"],["asg","📝 સોંપણી"],["mat","📚 અભ્યાસ"],["msg","💬 સંદેશ"],["ntc","🔔 સૂચના"],["hol","🎉 રજાઓ"]];
+  var body = {home:ptHome, res:ptResults, att:ptAttendance, asg:ptAssignments, mat:ptMaterials, msg:ptMessages, ntc:ptNotices, hol:ptHolidays}[PTAB](d);
   $("rs_out").innerHTML =
     '<div class="card noprint" style="margin-bottom:10px"><div class="row" style="justify-content:space-between;align-items:center;gap:10px">'
     + '<div><div style="font-size:12.5px;color:var(--muted)">'+esc((d.school && d.school.name) || "")+'</div>'
@@ -6857,11 +6943,484 @@ async function resLookup(auto){
   showPortal(res);
 }
 $("lg_reslink").onclick = openResGate;
+$("lg_telink").onclick = function(){ teShowLogin(); };
 $("lg_install").onclick = pwaInstall;
 $("rs_install").onclick = pwaInstall;
 $("rs_close").onclick = closeResGate;
 $("rs_go").onclick = resLookup;
 $("rs_dob").onkeydown = $("rs_gr").onkeydown = function(e){ if (e.key === "Enter") resLookup(); };
+
+/* ---------- શિક્ષક એપ (?teacher=1) ---------- */
+var TE_MODE = false;
+try{ TE_MODE = /[?&]teacher=1/.test(location.search); }catch(e){}
+var TE = {d:null, tab:"home", ci:0, date:"", marks:null, more:"tt", msgSeg:"send", u:"", p:"", dirty:false};
+var TE_KEY = "shala_tch", TE_LAST = "shala_tch_data";
+var TE_KINDS = [["ક્લાસવર્ક","📘"],["ગૃહકાર્ય","🏠"],["સોંપણી","📝"],["નોંધ","🗒"],["અભ્યાસક્રમ","📚"],["સામગ્રી","📎"],["સૂચના","🔔"]];
+var TE_DAYS = ["સોમવાર","મંગળવાર","બુધવાર","ગુરુવાર","શુક્રવાર","શનિવાર"];
+function teNk(s){ return String(s == null ? "" : s).replace(/\s+/g, " ").trim().toLowerCase(); }
+function teDays(){ return (TE.d && TE.d.days && TE.d.days.length) ? TE.d.days : TE_DAYS; }
+function teIso(d){ return d.getFullYear() + "-" + ("0" + (d.getMonth()+1)).slice(-2) + "-" + ("0" + d.getDate()).slice(-2); }
+function teAddDays(n){ var d = new Date(); d.setDate(d.getDate() + n); return teIso(d); }
+function teDayOf(iso){
+  var d = new Date(iso + "T00:00:00"), g = d.getDay();
+  return g === 0 ? "રવિવાર" : teDays()[g-1];
+}
+function teMsg(t){ var e = $("te_msg"); if (e) e.textContent = t || ""; }
+function teCls(){ return (TE.d && TE.d.classes) || []; }
+function teCur(){ var c = teCls(); return c[Math.min(TE.ci, c.length - 1)] || null; }
+function teClsName(c){ return "ધોરણ " + c.std + (c.div ? " / " + c.div : ""); }
+function teClsIdx(std, div){
+  var c = teCls();
+  for (var i = 0; i < c.length; i++) if (c[i].std === String(std) && c[i].div === String(div || "")) return i;
+  return -1;
+}
+function teHoliday(iso){
+  var h = (TE.d && TE.d.holidays) || [];
+  for (var i = 0; i < h.length; i++) if (h[i].date <= iso && (h[i].to || h[i].date) >= iso) return h[i].name;
+  return "";
+}
+function teCall(action, extra){
+  var o = {action:action, u:TE.u, p:TE.p};
+  Object.keys(extra || {}).forEach(function(k){ o[k] = extra[k]; });
+  return gasPost(o).catch(function(){ return null; });
+}
+function teShowLogin(){
+  $("gate").style.display = "none"; $("payGate").style.display = "none"; $("resGate").style.display = "none";
+  $("teGate").style.display = "none"; $("teLogin").style.display = "grid";
+}
+function teShowApp(){
+  $("teLogin").style.display = "none"; $("teGate").style.display = "flex";
+}
+async function teLogin(auto){
+  var u = val("te_u"), p = $("te_p").value;
+  if (!u || !p) return teMsg("યુઝરનેમ અને પાસવર્ડ બંને ભરો.");
+  if (!GAS_READY) return teMsg("એપ હજુ ચાલુ થઈ નથી — શાળાનો સંપર્ક કરો.");
+  $("te_go").disabled = true; teMsg("લોગિન થઈ રહ્યું છે…");
+  TE.u = u; TE.p = p;
+  var res = await teCall("teacherData");
+  $("te_go").disabled = false;
+  if (!res){
+    try{
+      var last = JSON.parse(localStorage.getItem(TE_LAST) || "null");
+      if (last && last.me && last.me.name === u){ last.__offline = true; teMsg(""); return teStart(last); }
+    }catch(e){}
+    return teMsg("જોડાણમાં તકલીફ પડી. ઇન્ટરનેટ ચકાસી ફરી પ્રયત્ન કરો.");
+  }
+  if (!res.ok){
+    if (/unknown action/i.test(res.error || "")) return teMsg("શાળાએ Code.gs નું નવું વર્ઝન Deploy કરવું બાકી છે.");
+    try{ localStorage.removeItem(TE_KEY); localStorage.removeItem(TE_LAST); }catch(e){}
+    return teMsg(res.error || "લોગિન ન થયું.");
+  }
+  teMsg("");
+  try{
+    if ($("te_rem").checked){
+      localStorage.setItem(TE_KEY, JSON.stringify({u:u, p:p}));
+      localStorage.setItem(TE_LAST, JSON.stringify(res));
+    } else { localStorage.removeItem(TE_KEY); localStorage.removeItem(TE_LAST); }
+  }catch(e){}
+  teStart(res);
+}
+function teStart(d){
+  TE.d = d; TE.tab = "home"; TE.ci = 0; TE.date = ptToday(); TE.marks = null; TE.more = "tt"; TE.msgSeg = "send";
+  $("teT1").textContent = (d.school && d.school.name) || "શિક્ષક એપ";
+  $("teT2").textContent = "નમસ્તે, " + (d.me && d.me.tname || "");
+  teShowApp(); tePaint();
+}
+async function teRefresh(quiet){
+  var res = await teCall("teacherData");
+  if (!res){ if (!quiet) toast("ઇન્ટરનેટ નથી"); return false; }
+  if (!res.ok){ if (!quiet) toast(res.error || "માહિતી ન મળી"); return false; }
+  TE.d = res; TE.marks = null;
+  try{ if (localStorage.getItem(TE_KEY)) localStorage.setItem(TE_LAST, JSON.stringify(res)); }catch(e){}
+  tePaint();
+  return true;
+}
+function teLogout(){
+  TE.d = null; TE.u = ""; TE.p = "";
+  try{ localStorage.removeItem(TE_KEY); localStorage.removeItem(TE_LAST); }catch(e){}
+  $("te_p").value = ""; teMsg("");
+  teShowLogin();
+}
+async function teWrite(action, extra, okMsg){
+  var res = await teCall(action, extra);
+  if (!res){ toast("ઇન્ટરનેટ નથી — ફરી પ્રયત્ન કરો"); return null; }
+  if (!res.ok){ toast(res.error || "સચવાયું નહીં"); return null; }
+  if (okMsg) toast(okMsg);
+  return res;
+}
+function teSel(id, opts, cur, extra){
+  return '<select id="'+id+'" '+(extra||"")+'>' + opts.map(function(o){
+    var v = Array.isArray(o) ? o[0] : o, t = Array.isArray(o) ? o[1] : o;
+    return '<option value="'+esc(v)+'"'+(String(v) === String(cur) ? " selected" : "")+'>'+esc(t)+'</option>';
+  }).join("") + '</select>';
+}
+function teClassPills(){
+  var c = teCls();
+  if (c.length < 2) return "";
+  return '<div class="te-pills">' + c.map(function(x, i){
+    return '<button class="btn sm '+(i === TE.ci ? "" : "sec")+'" data-ci="'+i+'">'+esc(teClsName(x))+'</button>';
+  }).join("") + '</div>';
+}
+function teBindPills(fn){
+  Array.prototype.forEach.call(document.querySelectorAll("#teBody [data-ci]"), function(b){
+    b.onclick = function(){ TE.ci = Number(b.dataset.ci) || 0; TE.marks = null; (fn || tePaint)(); };
+  });
+}
+function teNoClass(){
+  return '<div class="card"><div class="empty">હજુ તમને કોઈ વર્ગ સોંપાયો નથી.<br><span class="hint">આચાર્યે ટાઇમટેબલમાં તમારું નામ (<b>'+esc(TE.d.me.tname)+'</b>) ઉમેરવું જોઈએ અથવા વર્ગ વ્યવસ્થામાં તમને વર્ગ શિક્ષક બનાવવા જોઈએ.</span></div></div>';
+}
+
+/* ---------- ટૅબ: હોમ ---------- */
+function teHome(){
+  var d = TE.d, today = ptToday(), dn = teDayOf(today), me = teNk(d.me.tname);
+  var cls = teCls(), nStu = 0;
+  cls.forEach(function(c){ nStu += c.students.length; });
+  var h = '<div class="stats" style="margin-bottom:10px">'
+    + '<div class="stat brand"><div class="n">'+cls.length+'</div><div class="l">મારા વર્ગ</div></div>'
+    + '<div class="stat good"><div class="n">'+nStu+'</div><div class="l">કુલ વિદ્યાર્થી</div></div>'
+    + '<div class="stat accent"><div class="n">'+(d.posts.assignments.length + d.posts.materials.length + d.posts.notices.length)+'</div><div class="l">મારી પોસ્ટ</div></div></div>';
+  if (d.__offline) h += '<p class="hint" style="color:var(--bad)">ઇન્ટરનેટ નથી — છેલ્લી વખતની માહિતી બતાવી છે. હાજરી/પોસ્ટ માટે ઇન્ટરનેટ જોઈએ.</p>';
+  var hol = teHoliday(today);
+  h += '<div class="card"><h3 style="margin-top:0">📅 આજે — '+esc(dn)+', '+ptD(today)+'</h3>';
+  if (hol) h += '<div class="chip r" style="margin-bottom:8px">🎉 આજે રજા: '+esc(hol)+'</div>';
+  var mine = d.timetable.filter(function(t){ return teNk(t.teacher) === me && t.day === dn; })
+    .sort(function(a,b){ return Number(a.period) - Number(b.period); });
+  h += mine.length ? mine.map(function(t){
+    var i = teClsIdx(t.std, t.div);
+    return '<div class="te-st"><div class="rl"><b>'+esc(t.period)+'</b></div><div class="nm">'+esc(t.subject)+'<div class="hint" style="margin:0">ધોરણ '+esc(t.std)+(t.div?' / '+esc(t.div):'')+'</div></div>'
+      + (i >= 0 ? '<button class="btn sm" data-att="'+i+'">✅ હાજરી</button>' : '') + '</div>';
+  }).join("") : '<div class="hint">'+(dn === "રવિવાર" ? "આજે રવિવાર છે." : "આજે તમારો કોઈ તાસ ટાઇમટેબલમાં નથી.")+'</div>';
+  h += '</div>';
+  var pend = [];
+  if (dn !== "રવિવાર" && !hol) cls.forEach(function(c, i){
+    if (!c.isCT) return;
+    var done = c.attendance.some(function(r){ return r.date === today; });
+    if (!done) pend.push(i);
+  });
+  h += '<div class="card"><h3 style="margin-top:0">✅ આજની હાજરી</h3>' + (pend.length
+    ? pend.map(function(i){ return '<div class="te-st"><div class="nm">'+esc(teClsName(cls[i]))+' <span class="chip r">બાકી</span></div><button class="btn sm" data-att="'+i+'">હાજરી ભરો</button></div>'; }).join("")
+    : '<div class="hint">'+(cls.some(function(c){return c.isCT;}) ? "તમારા વર્ગની આજની હાજરી ભરાઈ ગઈ છે (અથવા આજે રજા છે)." : "હાજરી ટૅબમાંથી કોઈ પણ વર્ગની હાજરી ભરી શકાય.")+'</div>') + '</div>';
+  var all = [];
+  d.posts.assignments.concat(d.posts.materials, d.posts.notices).forEach(function(x){ all.push(x); });
+  all.sort(function(a,b){ return (String(b.date||"")+String(b.time||"")).localeCompare(String(a.date||"")+String(a.time||"")); });
+  h += '<div class="card"><h3 style="margin-top:0">📤 તાજેતરની મારી પોસ્ટ</h3>' + (all.length
+    ? all.slice(0,4).map(tePostRow).join("") : '<div class="hint">હજુ કોઈ પોસ્ટ નથી. "પોસ્ટ" ટૅબમાંથી ગૃહકાર્ય/નોંધ મૂકો.</div>') + '</div>';
+  return h;
+}
+function tePostRow(x, withDel){
+  return '<div class="te-st"><div class="nm"><span class="chip">'+esc(x.kind || x.type || "")+'</span> '+esc(x.title)
+    + '<div class="hint" style="margin:0">ધોરણ '+esc(x.std)+(x.div?' / '+esc(x.div):'')+(x.subject?' · '+esc(x.subject):'')+' · '+ptD(x.date)+(x.due?' · છેલ્લી: '+ptD(x.due):'')+'</div></div>'
+    + (withDel ? '<button class="btn sm sec" data-pdel="'+esc(x.id)+'" data-pcoll="'+esc(x._c)+'">🗑</button>' : '') + '</div>';
+}
+
+/* ---------- ટૅબ: હાજરી ---------- */
+function teAttMarks(c){
+  if (TE.marks && TE.marks.__k === c.std + "|" + c.div + "|" + TE.date) return TE.marks;
+  var rec = null;
+  c.attendance.forEach(function(r){ if (r.date === TE.date) rec = r; });
+  var m = {__k: c.std + "|" + c.div + "|" + TE.date, __saved: !!rec};
+  c.students.forEach(function(s){ m[s.id] = rec ? rec.marks[s.id] !== false : true; });
+  TE.marks = m;
+  return m;
+}
+function teAtt(){
+  var c = teCur();
+  if (!c) return teNoClass();
+  var m = teAttMarks(c), pres = 0;
+  c.students.forEach(function(s){ if (m[s.id]) pres++; });
+  var hol = teHoliday(TE.date), dn = teDayOf(TE.date);
+  var h = teClassPills()
+    + '<div class="card"><div class="row" style="gap:10px;flex-wrap:wrap;align-items:end">'
+    + '<div><label class="f" for="te_date">તારીખ</label><input type="date" id="te_date" value="'+esc(TE.date)+'" min="'+teAddDays(-120)+'" max="'+ptToday()+'"></div>'
+    + '<div class="grow"><b>'+esc(teClsName(c))+'</b>'+(c.isCT ? ' <span class="chip g">વર્ગ શિક્ષક</span>' : '')+'<div class="hint" style="margin:0">'+esc(dn)+' · '+(m.__saved ? '✔ આ તારીખની હાજરી સચવાયેલી છે' : 'હજુ સચવાઈ નથી')+'</div></div></div>'
+    + (hol ? '<div class="chip r" style="margin-top:8px">🎉 આ દિવસે રજા: '+esc(hol)+'</div>' : (dn === "રવિવાર" ? '<div class="chip r" style="margin-top:8px">રવિવાર</div>' : ''))
+    + '</div>';
+  h += '<div class="card" style="padding-top:6px"><div class="row" style="gap:8px;flex-wrap:wrap;margin:6px 0"><button class="btn sm sec" id="te_allp">બધા હાજર</button><button class="btn sm sec" id="te_alla">બધા ગેરહાજર</button>'
+    + '<span class="hint" style="margin:0 0 0 auto" id="te_cnt">હાજર '+pres+' · ગેરહાજર '+(c.students.length - pres)+' · કુલ '+c.students.length+'</span></div>'
+    + (c.students.length ? c.students.map(function(s){
+        var on = m[s.id];
+        return '<div class="te-st"><div class="rl">'+esc(s.roll || "")+'</div><div class="nm">'+esc((s.name||"")+" "+(s.surname||""))+'</div>'
+          + '<button class="te-tg '+(on ? "p" : "a")+'" data-tg="'+esc(s.id)+'">'+(on ? "✔ હાજર" : "✖ ગેરહાજર")+'</button></div>';
+      }).join("") : '<div class="empty">આ વર્ગમાં વિદ્યાર્થી નથી.</div>')
+    + '<div class="te-savebar"><button class="btn" id="te_attsave"'+(c.students.length ? "" : " disabled")+'>💾 હાજરી સાચવો</button></div></div>';
+  var hist = c.attendance.slice(0, 7);
+  h += '<div class="card"><h3 style="margin-top:0">છેલ્લા દિવસોની હાજરી</h3>' + (hist.length ? hist.map(function(r){
+    var p = 0, t = 0; c.students.forEach(function(s){ if (r.marks[s.id] !== undefined || true){ t++; if (r.marks[s.id] !== false) p++; } });
+    return '<div class="te-st"><div class="nm">'+ptD(r.date)+' <span class="hint">'+esc(teDayOf(r.date))+'</span></div><div>'+p+' / '+t+'</div><button class="btn sm sec" data-hd="'+esc(r.date)+'">ખોલો</button></div>';
+  }).join("") : '<div class="hint">હજુ કોઈ નોંધ નથી.</div>') + '</div>';
+  return h;
+}
+function teAttWire(){
+  var c = teCur(); if (!c) return;
+  teBindPills();
+  $("te_date").onchange = function(){
+    var v = $("te_date").value;
+    if (!v) return;
+    if (v > ptToday()) { toast("ભવિષ્યની તારીખ ચાલે નહીં"); $("te_date").value = TE.date; return; }
+    TE.date = v; TE.marks = null; tePaint();
+  };
+  function cnt(){
+    var m = TE.marks, p = 0; c.students.forEach(function(s){ if (m[s.id]) p++; });
+    $("te_cnt").textContent = "હાજર " + p + " · ગેરહાજર " + (c.students.length - p) + " · કુલ " + c.students.length;
+  }
+  Array.prototype.forEach.call(document.querySelectorAll("#teBody [data-tg]"), function(b){
+    b.onclick = function(){
+      var id = b.dataset.tg, m = TE.marks; m[id] = !m[id];
+      b.className = "te-tg " + (m[id] ? "p" : "a"); b.textContent = m[id] ? "✔ હાજર" : "✖ ગેરહાજર"; cnt();
+    };
+  });
+  $("te_allp").onclick = function(){ c.students.forEach(function(s){ TE.marks[s.id] = true; }); tePaint(); };
+  $("te_alla").onclick = function(){ c.students.forEach(function(s){ TE.marks[s.id] = false; }); tePaint(); };
+  Array.prototype.forEach.call(document.querySelectorAll("#teBody [data-hd]"), function(b){
+    b.onclick = function(){ TE.date = b.dataset.hd; TE.marks = null; tePaint(); try{ $("teScroll").scrollTop = 0; }catch(e){} };
+  });
+  $("te_attsave").onclick = async function(){
+    var btn = $("te_attsave"), m = TE.marks, marks = {};
+    c.students.forEach(function(s){ marks[s.id] = !!m[s.id]; });
+    btn.disabled = true; btn.textContent = "સાચવી રહ્યા છીએ…";
+    var res = await teWrite("tAttendance", {std:c.std, div:c.div, date:TE.date, marks:marks});
+    if (res){
+      toast("હાજરી સચવાઈ — હાજર " + res.present + ", ગેરહાજર " + res.absent);
+      var keep = TE.date; await teRefresh(true); TE.date = keep; tePaint();
+    } else { btn.disabled = false; btn.textContent = "💾 હાજરી સાચવો"; }
+  };
+}
+
+/* ---------- ટૅબ: પોસ્ટ ---------- */
+function teSubjects(){
+  var d = TE.d, me = teNk(d.me.tname), mine = [], seen = {};
+  d.timetable.forEach(function(t){ if (teNk(t.teacher) === me && t.subject && !seen[t.subject]){ seen[t.subject] = 1; mine.push(t.subject); } });
+  (d.subjects || []).forEach(function(s){ if (!seen[s]){ seen[s] = 1; mine.push(s); } });
+  return mine;
+}
+function tePost(){
+  var c = teCur();
+  if (!c) return teNoClass();
+  var cls = teCls(), subs = teSubjects();
+  var h = '<div class="card"><h3 style="margin-top:0">📤 નવી પોસ્ટ</h3><div class="grid">'
+    + '<div><label class="f" for="tp_kind">પ્રકાર</label>' + teSel("tp_kind", TE_KINDS.map(function(k){ return [k[0], k[1]+" "+k[0]]; }), TE.kind || "ગૃહકાર્ય") + '</div>'
+    + '<div><label class="f" for="tp_cls">વર્ગ</label>' + teSel("tp_cls", cls.map(function(x, i){ return [i, teClsName(x)]; }), TE.ci) + '</div>'
+    + '<div><label class="f" for="tp_sub">વિષય</label>' + (subs.length ? teSel("tp_sub", [["","— સામાન્ય —"]].concat(subs), "") : '<input id="tp_sub" type="text">') + '</div>'
+    + '<div id="tp_duew"><label class="f" for="tp_due">છેલ્લી તારીખ</label><input type="date" id="tp_due" min="'+ptToday()+'"></div>'
+    + '</div>'
+    + '<label class="f" for="tp_title" style="margin-top:10px">શીર્ષક *</label><input id="tp_title" type="text" maxlength="150">'
+    + '<label class="f" for="tp_text" style="margin-top:10px">વિગત / સૂચના</label><textarea id="tp_text" rows="4" maxlength="1500"></textarea>'
+    + '<label class="f" for="tp_link" style="margin-top:10px">લિંક (Google Drive / YouTube વગેરે — વૈકલ્પિક)</label><input id="tp_link" type="url" data-lang="en" placeholder="https://">'
+    + '<div style="margin-top:12px"><button class="btn" id="tp_go">📤 પોસ્ટ કરો</button></div>'
+    + '<p class="hint" style="margin:8px 0 0">આ પોસ્ટ પસંદ કરેલા વર્ગના વિદ્યાર્થીઓને તેમની એપમાં તરત દેખાશે. ફાઇલ/ફોટો હોય તો Google Drive માં મૂકી તેની લિંક અહીં મૂકો.</p></div>';
+  var all = [];
+  [["assignments"],["materials"],["notices"]].forEach(function(k){ TE.d.posts[k[0]].forEach(function(x){ x._c = k[0]; all.push(x); }); });
+  all.sort(function(a,b){ return (String(b.date||"")+String(b.time||"")).localeCompare(String(a.date||"")+String(a.time||"")); });
+  h += '<div class="card"><h3 style="margin-top:0">મારી પોસ્ટ ('+all.length+')</h3>' + (all.length ? all.map(function(x){ return tePostRow(x, true); }).join("") : '<div class="hint">હજુ કોઈ પોસ્ટ નથી.</div>') + '</div>';
+  return h;
+}
+function tePostWire(){
+  function kindUi(){ var k = $("tp_kind").value; $("tp_duew").style.display = (k === "ક્લાસવર્ક" || k === "ગૃહકાર્ય" || k === "સોંપણી") ? "" : "none"; TE.kind = k; }
+  $("tp_kind").onchange = kindUi; kindUi();
+  $("tp_cls").onchange = function(){ TE.ci = Number($("tp_cls").value) || 0; };
+  $("tp_go").onclick = async function(){
+    var c = teCls()[Number($("tp_cls").value) || 0];
+    var title = val("tp_title"); if (!title) return toast("શીર્ષક લખો");
+    var link = val("tp_link"); if (link && !/^https?:\/\//i.test(link)) return toast("લિંક https:// થી શરૂ થવી જોઈએ");
+    var btn = $("tp_go"); btn.disabled = true;
+    var res = await teWrite("tPost", {kind:$("tp_kind").value, std:c.std, div:c.div, subject:val("tp_sub"), title:title, text:$("tp_text").value.trim(), due:$("tp_duew").style.display === "none" ? "" : $("tp_due").value, link:link}, "પોસ્ટ થઈ ગઈ ✔");
+    btn.disabled = false;
+    if (res){ TE.ci = Number($("tp_cls").value) || 0; await teRefresh(true); }
+  };
+  Array.prototype.forEach.call(document.querySelectorAll("#teBody [data-pdel]"), function(b){
+    b.onclick = async function(){
+      if (!confirm("આ પોસ્ટ કાઢી નાખવી છે?")) return;
+      var res = await teWrite("tDelete", {coll:b.dataset.pcoll, id:b.dataset.pdel}, "પોસ્ટ કાઢી નાખી");
+      if (res) teRefresh(true);
+    };
+  });
+}
+
+/* ---------- ટૅબ: સંદેશ / વાલી સંપર્ક ---------- */
+function teWaLink(mob, text){
+  var m = String(mob || "").replace(/[^\d]/g, "");
+  if (m.length === 10) m = "91" + m;
+  return m.length >= 11 ? "https://wa.me/" + m + (text ? "?text=" + encodeURIComponent(text) : "") : "";
+}
+function teMsgTab(){
+  var c = teCur();
+  if (!c) return teNoClass();
+  var h = '<div class="te-seg"><button class="btn sm '+(TE.msgSeg === "send" ? "" : "sec")+'" data-seg="send">✉ સંદેશ મોકલો</button>'
+    + '<button class="btn sm '+(TE.msgSeg === "call" ? "" : "sec")+'" data-seg="call">📞 વાલી સંપર્ક</button></div>' + teClassPills();
+  if (TE.msgSeg === "send"){
+    h += '<div class="card"><h3 style="margin-top:0">✉ સંદેશ — '+esc(teClsName(c))+'</h3>'
+      + '<label class="f" for="tm_to">કોને?</label>' + teSel("tm_to", [["","👥 આખા વર્ગને"]].concat(c.students.map(function(s){ return [s.id, (s.roll ? s.roll+". " : "")+(s.name||"")+" "+(s.surname||"")]; })), "")
+      + '<label class="f" for="tm_title" style="margin-top:10px">વિષય (વૈકલ્પિક)</label><input id="tm_title" type="text" maxlength="150">'
+      + '<label class="f" for="tm_text" style="margin-top:10px">સંદેશ *</label><textarea id="tm_text" rows="4" maxlength="1500"></textarea>'
+      + '<div style="margin-top:12px"><button class="btn" id="tm_go">📨 મોકલો</button></div>'
+      + '<p class="hint" style="margin:8px 0 0">વર્ગના સંદેશ આખા વર્ગના વિદ્યાર્થી/વાલીને, અને ચોક્કસ વિદ્યાર્થીનો સંદેશ ફક્ત તેને જ તેની એપમાં દેખાશે.</p></div>';
+    var ms = TE.d.posts.messages.filter(function(x){ return x.std === c.std && x.div === c.div; });
+    h += '<div class="card"><h3 style="margin-top:0">મોકલેલા સંદેશ ('+ms.length+')</h3>' + (ms.length ? ms.map(function(x){
+      var st = c.students.filter(function(s){ return s.id === x.sid; })[0];
+      return '<div class="te-st"><div class="nm"><span class="chip">'+(x.sid ? "👤 "+esc(st ? st.name : "વિદ્યાર્થી") : "👥 વર્ગ")+'</span> <b>'+esc(x.title)+'</b>'
+        + '<div style="font-size:13.5px;font-weight:400">'+ptText(x.text)+'</div><div class="hint" style="margin:0">'+ptD(x.date)+' '+esc(x.time||"")+'</div></div>'
+        + '<button class="btn sm sec" data-mdel="'+esc(x.id)+'">🗑</button></div>';
+    }).join("") : '<div class="hint">હજુ કોઈ સંદેશ મોકલ્યો નથી.</div>') + '</div>';
+  } else {
+    h += '<div class="card" style="padding-top:6px"><h3 style="margin:8px 0 2px">📞 વાલી સંપર્ક — '+esc(teClsName(c))+'</h3><div class="hint" style="margin:0 0 6px">ફોન કૉલ અથવા WhatsApp સીધું ખુલશે.</div>'
+      + (c.students.length ? c.students.map(function(s){
+          var tel = String(s.mobile || "").replace(/[^\d]/g, ""), wa = teWaLink(s.mobile, "નમસ્તે, "+(s.name||"")+" વિશે શાળા તરફથી — ");
+          return '<div class="te-st"><div class="rl">'+esc(s.roll||"")+'</div><div class="nm">'+esc((s.name||"")+" "+(s.surname||""))
+            + '<div class="hint" style="margin:0">'+(s.father ? "પિતા: "+esc(s.father)+" · " : "")+(tel ? esc(tel) : "મોબાઇલ નથી")+'</div></div>'
+            + (tel ? '<a class="te-act" href="tel:'+esc(tel)+'">📞</a>' + (wa ? ' <a class="te-act wa" target="_blank" rel="noopener noreferrer" href="'+esc(wa)+'">WA</a>' : '') : '') + '</div>';
+        }).join("") : '<div class="empty">વિદ્યાર્થી નથી.</div>') + '</div>';
+  }
+  return h;
+}
+function teMsgWire(){
+  teBindPills();
+  Array.prototype.forEach.call(document.querySelectorAll("#teBody [data-seg]"), function(b){ b.onclick = function(){ TE.msgSeg = b.dataset.seg; tePaint(); }; });
+  if ($("tm_go")) $("tm_go").onclick = async function(){
+    var c = teCur(), text = $("tm_text").value.trim(); if (!text) return toast("સંદેશ લખો");
+    var btn = $("tm_go"); btn.disabled = true;
+    var res = await teWrite("tMessage", {std:c.std, div:c.div, sid:$("tm_to").value, title:val("tm_title"), text:text}, "સંદેશ મોકલાયો ✔");
+    btn.disabled = false;
+    if (res) await teRefresh(true);
+  };
+  Array.prototype.forEach.call(document.querySelectorAll("#teBody [data-mdel]"), function(b){
+    b.onclick = async function(){
+      if (!confirm("આ સંદેશ કાઢી નાખવો છે?")) return;
+      var res = await teWrite("tDelete", {coll:"messages", id:b.dataset.mdel}, "કાઢી નાખ્યો");
+      if (res) teRefresh(true);
+    };
+  });
+}
+
+/* ---------- ટૅબ: વધુ (ટાઇમટેબલ / વર્ગ માહિતી) ---------- */
+function teGrid(rows, mineOnly){
+  var days = teDays(), maxP = 8;
+  rows.forEach(function(t){ var p = Number(t.period); if (p > maxP) maxP = p; });
+  var me = teNk(TE.d.me.tname), h = '<div class="tw"><table class="te-ttg"><thead><tr><th>તાસ</th>' + days.map(function(d){ return '<th>'+esc(d.replace("વાર",""))+'</th>'; }).join("") + '</tr></thead><tbody>';
+  for (var p = 1; p <= maxP; p++){
+    h += '<tr><th>'+p+'</th>' + days.map(function(d){
+      var cell = rows.filter(function(t){ return t.day === d && Number(t.period) === p; });
+      return '<td>' + cell.map(function(t){
+        var own = teNk(t.teacher) === me;
+        return '<span class="c"><b>'+esc(t.subject)+'</b><br><i>'+(mineOnly ? esc("ધો."+t.std+(t.div?"/"+t.div:"")) : esc(t.teacher||""))+'</i>'
+          + (own ? '<u data-ttdel="'+esc(t.id)+'" title="કાઢો">✕</u>' : '') + '</span>';
+      }).join("") + '</td>';
+    }).join("") + '</tr>';
+  }
+  return h + '</tbody></table></div>';
+}
+function teMore(){
+  var seg = '<div class="te-seg">' + [["tt","🗓 ટાઇમટેબલ"],["cl","🏫 વર્ગ માહિતી"],["me","👤 પ્રોફાઇલ"]].map(function(x){
+    return '<button class="btn sm '+(TE.more === x[0] ? "" : "sec")+'" data-more="'+x[0]+'">'+x[1]+'</button>'; }).join("") + '</div>';
+  var d = TE.d, me = teNk(d.me.tname), cls = teCls(), c = teCur();
+  if (TE.more === "tt"){
+    var mine = d.timetable.filter(function(t){ return teNk(t.teacher) === me; });
+    var subs = teSubjects();
+    var h = seg + '<div class="card"><h3 style="margin-top:0">🗓 મારું સાપ્તાહિક ટાઇમટેબલ</h3>' + teGrid(mine, true) + '<p class="hint" style="margin:6px 0 0">તમારો તાસ ✕ દબાવી કાઢી શકાય.</p></div>';
+    if (cls.length){
+      h += '<div class="card"><h3 style="margin-top:0">➕ તાસ ઉમેરો</h3><div class="grid">'
+        + '<div><label class="f" for="tt_cls">વર્ગ</label>' + teSel("tt_cls", cls.map(function(x,i){ return [i, teClsName(x)]; }), TE.ci) + '</div>'
+        + '<div><label class="f" for="tt_day">વાર</label>' + teSel("tt_day", teDays(), teDayOf(ptToday()) === "રવિવાર" ? teDays()[0] : teDayOf(ptToday())) + '</div>'
+        + '<div><label class="f" for="tt_per">તાસ નંબર</label>' + teSel("tt_per", [1,2,3,4,5,6,7,8,9,10], 1) + '</div>'
+        + '<div><label class="f" for="tt_sub">વિષય</label>' + (subs.length ? teSel("tt_sub", subs, subs[0]) : '<input id="tt_sub" type="text">') + '</div>'
+        + '</div><div style="margin-top:12px"><button class="btn" id="tt_add">ઉમેરો</button></div>'
+        + '<p class="hint" style="margin:8px 0 0">એક જ વર્ગમાં કે એક જ તાસે તમારા બે વર્ગ હોય તો ઉમેરાશે નહીં.</p></div>';
+      cls.filter(function(x){ return x.isCT; }).forEach(function(x){
+        h += '<div class="card"><h3 style="margin-top:0">🏫 '+esc(teClsName(x))+' નું ટાઇમટેબલ (વર્ગ શિક્ષક)</h3>'
+          + teGrid(d.timetable.filter(function(t){ return t.std === x.std && t.div === x.div; }), false) + '</div>';
+      });
+    }
+    return h;
+  }
+  if (TE.more === "cl"){
+    if (!c) return seg + teNoClass();
+    var boys = c.students.filter(function(s){ return s.gender === "કુમાર"; }).length, girls = c.students.filter(function(s){ return s.gender === "કન્યા"; }).length;
+    return seg + teClassPills()
+      + '<div class="card"><h3 style="margin-top:0">🏫 '+esc(teClsName(c))+'</h3>'
+      + '<div class="stats"><div class="stat brand"><div class="n">'+c.students.length+'</div><div class="l">કુલ વિદ્યાર્થી</div></div>'
+      + '<div class="stat"><div class="n">'+boys+'</div><div class="l">કુમાર</div></div><div class="stat"><div class="n">'+girls+'</div><div class="l">કન્યા</div></div>'
+      + '<div class="stat accent"><div class="n">'+esc(c.room || "—")+'</div><div class="l">રૂમ'+(c.cap ? ' · ક્ષમતા '+esc(c.cap) : '')+'</div></div></div>'
+      + '<p class="hint" style="margin:8px 0 0">વર્ગ શિક્ષક: <b>'+esc(c.classTeacher || "—")+'</b>'+(c.isCT ? ' (તમે)' : '')+'</p></div>'
+      + '<div class="card" style="padding-top:6px"><h3 style="margin:8px 0 4px">વિદ્યાર્થી યાદી</h3>'
+      + (c.students.length ? c.students.map(function(s){
+          return '<div class="te-st"><div class="rl">'+esc(s.roll||"")+'</div><div class="nm">'+esc((s.name||"")+" "+(s.surname||""))
+            + '<div class="hint" style="margin:0">જી.આર. '+esc(s.gr||"")+(s.father ? " · પિતા: "+esc(s.father) : "")+'</div>'
+            + (c.isCT ? '<div class="row" style="gap:6px;margin-top:4px"><input type="tel" inputmode="numeric" maxlength="14" id="ct_'+esc(s.id)+'" value="'+esc(s.mobile||"")+'" placeholder="મોબાઇલ (10 આંકડા)" style="max-width:170px"><button class="btn sm" data-ct="'+esc(s.id)+'">સાચવો</button></div>'
+                       : '<div class="hint" style="margin:0">'+(s.mobile ? esc(s.mobile) : "મોબાઇલ નથી")+'</div>')
+            + '</div></div>';
+        }).join("") : '<div class="empty">વિદ્યાર્થી નથી.</div>')
+      + (c.isCT ? '<p class="hint">વર્ગ શિક્ષક તરીકે તમે વાલીનો મોબાઇલ નંબર સુધારી શકો.</p>' : '') + '</div>';
+  }
+  return seg + '<div class="card"><h3 style="margin-top:0">👤 '+esc(d.me.tname)+'</h3>'
+    + '<p class="hint">લોગિન: '+esc(d.me.name)+(d.me.all ? ' · બધા વર્ગની પરવાનગી' : '')+'<br>મારા વર્ગ: '+(cls.length ? cls.map(function(x){ return esc(teClsName(x)); }).join(", ") : "—")+'</p>'
+    + '<div class="row" style="gap:8px"><button class="btn sec" id="te_ref2">⟳ તાજી માહિતી લાવો</button><button class="btn warn" id="te_out2">બહાર નીકળો</button></div>'
+    + (d.__offline ? '<p class="hint" style="color:var(--bad)">ઇન્ટરનેટ નથી — જૂની માહિતી.</p>' : '')
+    + '<p class="hint" style="margin-bottom:0">જો ટાઇમટેબલ/વર્ગમાં ફેરફાર જોઈએ તો આચાર્યનો સંપર્ક કરો.</p></div>';
+}
+function teMoreWire(){
+  teBindPills();
+  Array.prototype.forEach.call(document.querySelectorAll("#teBody [data-more]"), function(b){ b.onclick = function(){ TE.more = b.dataset.more; tePaint(); }; });
+  if ($("tt_add")) $("tt_add").onclick = async function(){
+    var c = teCls()[Number($("tt_cls").value) || 0], sub = val("tt_sub"); if (!sub) return toast("વિષય લખો");
+    var btn = $("tt_add"); btn.disabled = true;
+    var res = await teWrite("tTimetable", {std:c.std, div:c.div, day:$("tt_day").value, period:$("tt_per").value, subject:sub}, "તાસ ઉમેર્યો ✔");
+    btn.disabled = false;
+    if (res){ TE.ci = Number($("tt_cls").value) || 0; await teRefresh(true); }
+  };
+  Array.prototype.forEach.call(document.querySelectorAll("#teBody [data-ttdel]"), function(b){
+    b.onclick = async function(){
+      if (!confirm("આ તાસ કાઢી નાખવો છે?")) return;
+      var res = await teWrite("tDelete", {coll:"timetable", id:b.dataset.ttdel}, "તાસ કાઢ્યો");
+      if (res) teRefresh(true);
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("#teBody [data-ct]"), function(b){
+    b.onclick = async function(){
+      var sid = b.dataset.ct, mob = $("ct_" + sid).value.replace(/[^\d]/g, "");
+      if (mob && mob.length !== 10) return toast("મોબાઇલ 10 આંકડાનો હોવો જોઈએ");
+      b.disabled = true;
+      var res = await teWrite("tContact", {sid:sid, mobile:mob}, "મોબાઇલ સચવાયો ✔");
+      b.disabled = false;
+      if (res) teRefresh(true);
+    };
+  });
+  if ($("te_ref2")) $("te_ref2").onclick = function(){ teRefresh(); };
+  if ($("te_out2")) $("te_out2").onclick = teLogout;
+}
+
+function tePaint(){
+  if (!TE.d) return;
+  var tabs = [["home","🏠","હોમ"],["att","✅","હાજરી"],["post","📤","પોસ્ટ"],["msg","💬","સંદેશ"],["more","☰","વધુ"]];
+  $("teTabs").innerHTML = tabs.map(function(t){ return '<button data-tt="'+t[0]+'" class="'+(TE.tab === t[0] ? "on" : "")+'"><b>'+t[1]+'</b>'+t[2]+'</button>'; }).join("");
+  Array.prototype.forEach.call(document.querySelectorAll("#teTabs [data-tt]"), function(b){
+    b.onclick = function(){ TE.tab = b.dataset.tt; tePaint(); try{ $("teScroll").scrollTop = 0; }catch(e){} };
+  });
+  var body = {home:teHome, att:teAtt, post:tePost, msg:teMsgTab, more:teMore}[TE.tab]();
+  var st = $("teScroll").scrollTop;
+  $("teBody").innerHTML = body;
+  $("teScroll").scrollTop = st;
+  if (TE.tab === "home") Array.prototype.forEach.call(document.querySelectorAll("#teBody [data-att]"), function(b){
+    b.onclick = function(){ TE.ci = Number(b.dataset.att) || 0; TE.tab = "att"; TE.date = ptToday(); TE.marks = null; tePaint(); try{ $("teScroll").scrollTop = 0; }catch(e){} };
+  });
+  if (TE.tab === "att") teAttWire();
+  if (TE.tab === "post") tePostWire();
+  if (TE.tab === "msg") teMsgWire();
+  if (TE.tab === "more") teMoreWire();
+}
+$("te_go").onclick = function(){ teLogin(); };
+$("te_p").onkeydown = $("te_u").onkeydown = function(e){ if (e.key === "Enter") teLogin(); };
+$("teRef").onclick = function(){ teRefresh(); };
+$("teOut").onclick = teLogout;
+if (IN_APP_T()) { var aw = $("te_apk_wrap"); if (aw) aw.style.display = "none"; }
+function IN_APP_T(){ return /VJPTeacherApp/.test(navigator.userAgent || ""); }
+function teBoot(){
+  teShowLogin();
+  try{
+    var standalone = (window.matchMedia && matchMedia("(display-mode: standalone)").matches) || navigator.standalone;
+    if (standalone || IN_APP_T()) $("te_rem").checked = true;
+    var sv = JSON.parse(localStorage.getItem(TE_KEY) || "null");
+    if (sv && sv.u && sv.p){ $("te_u").value = sv.u; $("te_p").value = sv.p; $("te_rem").checked = true; teLogin(true); }
+  }catch(e){}
+}
 
 drawMenu(); render();
 if (RES_MODE){
@@ -6874,6 +7433,8 @@ if (RES_MODE){
     var sv = JSON.parse(localStorage.getItem(PT_KEY) || "null");
     if (sv && sv.gr && sv.dob){ $("rs_gr").value = sv.gr; $("rs_dob").value = sv.dob; $("rs_remember").checked = true; resLookup(); }
   }catch(e){}
+} else if (TE_MODE){
+  teBoot();
 } else {
   initStore().then(function(){
     $("gateTitle").textContent = S.school.name || "શાળા વ્યવસ્થાપન સિસ્ટમ";
