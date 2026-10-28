@@ -925,7 +925,10 @@ async function put(coll, obj){
   if (!found) arr.push(obj);
   lsWrite();
   if (GAS_READY){
-    try{ await gasPost({action:"put", coll:coll, obj:obj}); }
+    try{
+      var pr = await gasPost({action:"put", coll:coll, obj:obj});
+      if (pr && pr.ok === false) toast("⚠ Google Sheet પર સચવાયું નહીં: " + (pr.error || "અજાણી ભૂલ") + " (સ્થાનિક નકલ સચવાઈ છે)");
+    }
     catch(e){ toast("Google Sheet પર સાચવવામાં તકલીફ પડી (સ્થાનિક નકલ સચવાઈ છે)"); }
   }
   return obj;
@@ -1746,10 +1749,7 @@ function letterHTML(d){
     + '<div style="margin-bottom:6px">'+esc(d.to).replace(/\n/g,"<br>")+'</div>'
     + (d.subject ? '<div style="font-weight:700;margin:10px 0">વિષય: '+esc(d.subject)+'</div>' : "")
     + '<div style="text-align:justify;white-space:pre-wrap;margin-top:8px">'+esc(d.body)+'</div>'
-    + '<div style="margin-top:44px;text-align:left;font-size:14px">'
-      + '<div>આચાર્યશ્રી, '+esc(k.name||"")+'</div>'
-      + '<div style="margin-top:6px;font-size:12px;color:#555">(શાળાનો સિક્કો)</div>'
-    + '</div></div>';
+    + '</div>';
 }
 WIRE["shala:letter"] = function(){
   function fill(){
@@ -4377,12 +4377,19 @@ VIEWS["exam:list"] = function(){
       : emptyCard("હજુ કોઈ પરીક્ષા ઉમેરી નથી.","ઉપરના ફોર્મમાંથી ઉમેરો"));
 };
 WIRE["exam:list"] = function(){
+  var exBusy = false;
   $("ex_save").onclick = async function(){
-    if (!val("ex_name")) return toast("પરીક્ષાનું નામ ભરો");
-    await put("exams",{name:val("ex_name"),kind:val("ex_kind"),std:val("ex_std"),date:val("ex_date"),
-      total:Number(val("ex_total"))||100, marks:{}, subjects:[]});
-    toast("પરીક્ષા ઉમેરાઈ"); render();
+    if (exBusy) return;
+    var nm = val("ex_name");
+    if (!nm){ toast("પરીક્ષાનું નામ ભરો"); try{ $("ex_name").focus(); }catch(e){} return; }
+    exBusy = true;
+    try{
+      await put("exams",{name:nm,kind:val("ex_kind"),std:val("ex_std"),date:val("ex_date"),
+        total:Number(val("ex_total"))||100, marks:{}, subjects:[]});
+      toast("પરીક્ષા ઉમેરાઈ: " + nm); render();
+    } finally { exBusy = false; }
   };
+  $("ex_name").onkeydown = function(e){ if (e.key === "Enter"){ e.preventDefault(); $("ex_save").click(); } };
   Array.prototype.forEach.call(document.querySelectorAll("[data-del]"), function(b){
     b.onclick = async function(){
       var ex = S.exams.find(function(x){ return x.id === b.dataset.del; });
@@ -6516,7 +6523,7 @@ function allowed(mkey){
   return (CURRENT_USER.menus || []).indexOf(mkey) > -1;
 }
 $("outBtn").onclick = function(){
-  LOGGED_IN = false; CURRENT_USER = null;
+  LOGGED_IN = false; CURRENT_USER = null; LOGIN_CRED = null;
   try{ sessionStorage.removeItem("shala_login"); }catch(e){}
   fillLoginUsers();
   $("gate").style.display = "grid";
@@ -6557,6 +6564,7 @@ $("lg_go").onclick = function(){
       return;
     }
   }
+  LOGIN_CRED = {u: uv, p: pw};
   enter(uv);
 };
 $("lg_eye").onclick = function(){ var f = $("lg_pin"); f.type = f.type === "password" ? "text" : "password"; };
@@ -6766,14 +6774,86 @@ function ptD(s){
 function ptSafeUrl(u){ u = String(u || "").trim(); return /^https?:\/\//i.test(u) ? u : ""; }
 function ptText(s){ return esc(s).replace(/\n/g, "<br>"); }
 
+/* ---------- ફાઇલ અપલોડ (PDF / ફોટો / ડોક્યુમેન્ટ) → Google Drive ---------- */
+var UP_MAX_BYTES = 5 * 1024 * 1024, LOGIN_CRED = null;
+var UP_ACCEPT = ".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*,application/pdf";
+var UP_MIME = {pdf:"application/pdf", jpg:"image/jpeg", jpeg:"image/jpeg", png:"image/png", webp:"image/webp", doc:"application/msword",
+  docx:"application/vnd.openxmlformats-officedocument.wordprocessingml.document", xls:"application/vnd.ms-excel",
+  xlsx:"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", ppt:"application/vnd.ms-powerpoint",
+  pptx:"application/vnd.openxmlformats-officedocument.presentationml.presentation", txt:"text/plain"};
+function upCreds_(){
+  if (typeof TE_MODE !== "undefined" && TE_MODE && TE.u) return {u:TE.u, p:TE.p};
+  if (LOGIN_CRED) return LOGIN_CRED;
+  var p = prompt("ફાઇલ ચઢાવવા તમારો પાસવર્ડ / PIN ફરી લખો:");
+  if (!p) return null;
+  LOGIN_CRED = {u: CURRENT_USER ? CURRENT_USER.name : "__admin__", p: p};
+  return LOGIN_CRED;
+}
+function upWidget_(prefix){
+  return '<div style="grid-column:1/-1"><label class="f" for="'+prefix+'_file">📎 ફાઇલ ચઢાવો (PDF / ફોટો / Word) — વૈકલ્પિક</label>'
+    + '<input type="file" id="'+prefix+'_file" accept="'+UP_ACCEPT+'">'
+    + '<div class="hint" id="'+prefix+'_fst" style="margin:4px 0 0">મહત્તમ 5 MB. ફાઇલ તમારા Google Drive ("School Uploads" ફોલ્ડર) માં સચવાશે અને લિંક ઉપર આપોઆપ ભરાશે.</div></div>';
+}
+function upReadFile_(file){
+  return new Promise(function(resolve, reject){
+    var ext = (file.name.split(".").pop() || "").toLowerCase(), mime = file.type || UP_MIME[ext] || "";
+    if (!UP_MIME[ext] && !/^image\/(jpeg|png|webp)$/.test(mime)) return reject(new Error("ફક્ત PDF, ફોટો (JPG/PNG) અથવા Word/Excel/PowerPoint ફાઇલ ચાલશે."));
+    function plain(){
+      if (file.size > UP_MAX_BYTES) return reject(new Error("ફાઇલ 5 MB થી મોટી છે."));
+      var fr = new FileReader();
+      fr.onload = function(){ resolve({name:file.name, mime:UP_MIME[ext] || mime, data:String(fr.result).split(",")[1] || ""}); };
+      fr.onerror = function(){ reject(new Error("ફાઇલ વંચાઈ નહીં.")); };
+      fr.readAsDataURL(file);
+    }
+    if (!/^image\/(jpeg|png|webp)$/.test(mime)) return plain();
+    /* ફોટો: નાનો કરીને (મહત્તમ 1600px, JPEG) ચઢાવીએ — ઝડપી અને ઓછી જગ્યા */
+    var img = new Image(), url = URL.createObjectURL(file);
+    img.onload = function(){
+      try{
+        var sc = Math.min(1, 1600 / Math.max(img.width, img.height)), cv = document.createElement("canvas");
+        cv.width = Math.max(1, Math.round(img.width * sc)); cv.height = Math.max(1, Math.round(img.height * sc));
+        var cx = cv.getContext("2d"); cx.fillStyle = "#fff"; cx.fillRect(0, 0, cv.width, cv.height); cx.drawImage(img, 0, 0, cv.width, cv.height);
+        var d = cv.toDataURL("image/jpeg", 0.82); URL.revokeObjectURL(url);
+        resolve({name:file.name.replace(/\.[^.]+$/, "") + ".jpg", mime:"image/jpeg", data:d.split(",")[1] || ""});
+      }catch(e){ URL.revokeObjectURL(url); plain(); }
+    };
+    img.onerror = function(){ URL.revokeObjectURL(url); plain(); };
+    img.src = url;
+  });
+}
+function upWire_(prefix){
+  var inp = $(prefix + "_file"); if (!inp) return;
+  inp.onchange = async function(){
+    var f = inp.files && inp.files[0], st = $(prefix + "_fst"); if (!f) return;
+    function say(t, bad){ st.textContent = t; st.style.color = bad ? "var(--bad)" : ""; }
+    if (!GAS_READY) return say("ફાઇલ ચઢાવવા Google Sheet/Apps Script જોડાયેલ હોવું જોઈએ.", true);
+    var cr = upCreds_(); if (!cr){ inp.value = ""; return say("પાસવર્ડ વગર ફાઇલ ચઢાવી શકાશે નહીં.", true); }
+    say("ફાઇલ ચઢાવી રહ્યા છીએ… રાહ જુઓ");
+    inp.disabled = true;
+    try{
+      var pack = await upReadFile_(f);
+      var res = await gasPost({action:"uploadFile", u:cr.u, p:cr.p, name:pack.name, mime:pack.mime, data:pack.data});
+      if (res && res.ok){
+        $(prefix + "_link").value = res.url;
+        say("✔ ફાઇલ ચઢી ગઈ: " + res.name + (res.shared === false ? " (⚠ શેરિંગ ચાલુ ન થયું — Drive માં જાતે 'લિંક ધરાવનાર જોઈ શકે' કરો)" : ""));
+      } else {
+        if (res && /પાસવર્ડ/.test(res.error || "")) LOGIN_CRED = null;
+        say("✖ " + ((res && res.error) || "ફાઇલ ચઢી નહીં"), true);
+        if (res && /unknown action|bad json/i.test(res.error || "")) say("✖ Code.gs નું નવું વર્ઝન Deploy કરવું બાકી છે.", true);
+      }
+    }catch(e){ say("✖ " + (e && e.message ? e.message : "ફાઇલ ચઢી નહીં — ઇન્ટરનેટ ચકાસો"), true); }
+    inp.disabled = false; inp.value = "";
+  };
+}
+
 var PORTAL_CFG = {
   assign:{coll:"assignments", title:"સોંપણી / ગૃહકાર્ય", pre:"pa",
     fields:[["std","ધોરણ","std"],["div","વર્ગ","div"],["subject","વિષય","subject"],["title","શીર્ષક *","text"],
-            ["due","છેલ્લી તારીખ","date"],["link","લિંક (વૈકલ્પિક, https://…)","url"],["text","વિગત / સૂચના","area"]],
+            ["due","છેલ્લી તારીખ","date"],["link","લિંક (વૈકલ્પિક, https://…) — અથવા નીચે ફાઇલ ચઢાવો","url"],["text","વિગત / સૂચના","area"]],
     cols:[["date","તારીખ"],["std","ધોરણ"],["div","વર્ગ"],["subject","વિષય"],["title","શીર્ષક"],["due","છેલ્લી તારીખ"]]},
   material:{coll:"materials", title:"અભ્યાસ સામગ્રી (Study Guide)", pre:"pm",
     fields:[["std","ધોરણ","std"],["subject","વિષય","subject"],["title","શીર્ષક *","text"],
-            ["link","લિંક (PDF / Drive / YouTube, https://…)","url"],["text","વિગત","area"]],
+            ["link","લિંક (PDF / Drive / YouTube, https://…) — અથવા નીચે ફાઇલ ચઢાવો","url"],["text","વિગત","area"]],
     cols:[["date","તારીખ"],["std","ધોરણ"],["subject","વિષય"],["title","શીર્ષક"]]},
   notice:{coll:"notices", title:"સૂચના / કાર્યક્રમ", pre:"pn",
     fields:[["type","પ્રકાર","type",["સૂચના","કાર્યક્રમ","પરીક્ષા","રજા","અન્ય"]],["std","ધોરણ","std"],["date","તારીખ","date"],
@@ -6797,7 +6877,8 @@ function portalView_(key){
   var items = S[c.coll].slice().sort(function(a,b){ return String(b.date||"").localeCompare(String(a.date||"")); });
   return '<div class="card"><h3>'+esc(c.title)+' ઉમેરો</h3>'
     + '<p class="hint" style="margin:0 0 10px">ધોરણ/વર્ગ ખાલી ("બધા") રાખો તો બધા વિદ્યાર્થીઓને દેખાશે. વિદ્યાર્થી પોર્ટલમાં દેખાશે.</p>'
-    + '<div class="grid">' + c.fields.map(function(f){ return portalField_(c, f); }).join("") + '</div>'
+    + '<div class="grid">' + c.fields.map(function(f){ return portalField_(c, f); }).join("")
+    + (c.fields.some(function(f){ return f[0] === "link"; }) ? upWidget_(c.pre) : "") + '</div>'
     + '<div style="margin-top:14px"><button class="btn" id="'+c.pre+'_add">ઉમેરો</button></div></div>'
     + '<div class="card"><h3>યાદી</h3>'
     + (items.length
@@ -6813,6 +6894,7 @@ function portalView_(key){
 }
 function portalWire_(key){
   var c = PORTAL_CFG[key];
+  upWire_(c.pre);
   $(c.pre + "_add").onclick = async function(){
     var o = {};
     c.fields.forEach(function(f){ o[f[0]] = val(c.pre + "_" + f[0]); });
@@ -7006,7 +7088,7 @@ function ptAssignments(d){
       + (a.due ? '<span class="chip '+(late?'r':'g')+'">છેલ્લી તારીખ: '+ptD(a.due)+'</span>' : '') + '</div>'
       + '<div style="font-weight:700;margin:6px 0 2px">'+esc(a.title)+'</div>'
       + (a.text ? '<div style="font-size:14px">'+ptText(a.text)+'</div>' : '')
-      + ptLink(a.link, "લિંક ખોલો ↗")
+      + ptLink(a.link, "📎 ફાઇલ / લિંક ખોલો ↗")
       + '<div class="hint" style="margin:6px 0 0">આપ્યાની તારીખ: '+ptD(a.date)+'</div>');
   }
   var open = ptOpenAssignments(d), done = all.filter(function(a){ return a.due && a.due < t; });
@@ -7022,7 +7104,7 @@ function ptMaterials(d){
     return '<h3 style="margin:10px 0 6px">'+esc(k)+'</h3>' + by[k].map(function(m){
       return ptCard('<div>'+ptBy(m)+'</div><div style="font-weight:700">'+esc(m.title)+'</div>'
         + (m.text ? '<div style="font-size:14px">'+ptText(m.text)+'</div>' : '')
-        + ptLink(m.link, "ખોલો / ડાઉનલોડ ↗") + '<div class="hint" style="margin:6px 0 0">'+ptD(m.date)+'</div>');
+        + ptLink(m.link, "📎 ખોલો / ડાઉનલોડ ↗") + '<div class="hint" style="margin:6px 0 0">'+ptD(m.date)+'</div>');
     }).join("");
   }).join("");
 }
@@ -7401,6 +7483,7 @@ function tePost(){
     + '<label class="f" for="tp_title" style="margin-top:10px">શીર્ષક *</label><input id="tp_title" type="text" maxlength="150">'
     + '<label class="f" for="tp_text" style="margin-top:10px">વિગત / સૂચના</label><textarea id="tp_text" rows="4" maxlength="1500"></textarea>'
     + '<label class="f" for="tp_link" style="margin-top:10px">લિંક (Google Drive / YouTube વગેરે — વૈકલ્પિક)</label><input id="tp_link" type="url" data-lang="en" placeholder="https://">'
+    + '<div style="margin-top:10px">' + upWidget_("tp") + '</div>'
     + '<div style="margin-top:12px"><button class="btn" id="tp_go">📤 પોસ્ટ કરો</button></div>'
     + '<p class="hint" style="margin:8px 0 0">આ પોસ્ટ પસંદ કરેલા વર્ગના વિદ્યાર્થીઓને તેમની એપમાં તરત દેખાશે. ફાઇલ/ફોટો હોય તો Google Drive માં મૂકી તેની લિંક અહીં મૂકો.</p></div>';
   var all = [];
@@ -7412,6 +7495,7 @@ function tePost(){
 function tePostWire(){
   function kindUi(){ var k = $("tp_kind").value; $("tp_duew").style.display = (k === "ક્લાસવર્ક" || k === "ગૃહકાર્ય" || k === "સોંપણી") ? "" : "none"; TE.kind = k; }
   $("tp_kind").onchange = kindUi; kindUi();
+  upWire_("tp");
   $("tp_cls").onchange = function(){ TE.ci = Number($("tp_cls").value) || 0; };
   $("tp_go").onclick = async function(){
     var c = teCls()[Number($("tp_cls").value) || 0];
