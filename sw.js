@@ -5,7 +5,7 @@
      ડેટા હંમેશાં સીધો સર્વરથી જ આવે/જાય છે. */
 var VERSION = "v1";
 var CACHE = "shala-" + VERSION;
-var SHELL = ["./", "./index.html", "./manifest.webmanifest", "./manifest-student.webmanifest",
+var SHELL = ["./", "./index.html", "./manifest.webmanifest", "./manifest-student.webmanifest", "./manifest-teacher.webmanifest",
              "./icon-192.png", "./icon-512.png", "./icon-maskable-512.png"];
 
 self.addEventListener("install", function(e){
