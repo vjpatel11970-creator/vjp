@@ -4257,11 +4257,12 @@ function autoRollList_(std, div, order, gmode, lang){
 VIEWS["student:autoroll"] = function(){
   return '<div class="card"><h3>ઓટોમેટીક રોલ નંબર બનાવવા</h3><div class="grid">'
     + sel("ar_std","ધોરણ",stdList(),"")
-    + '<div><label class="f" for="ar_div">વર્ગ</label><select id="ar_div">'+opts(divList(),"")+'<option value="__none__">(વર્ગ નક્કી નથી)</option></select></div>'
+    + '<div><label class="f" for="ar_div">વર્ગ</label><select id="ar_div"><option value="">બધા વર્ગ (આખું ધોરણ)</option>'+opts(divList(),"")+'<option value="__none__">(વર્ગ નક્કી નથી)</option></select></div>'
     + sel("ar_order","ઓર્ડરિંગ ક્રમ",["જી.આર.નં.","અટક","નામ","પિતાનું નામ"],"નામ")
     + sel("ar_lang","નામ ગોઠવવાની રીત",AR_LANG,AR_LANG[0])
     + sel("ar_gender","કુમાર / કન્યા ક્રમ",AR_GENDER,AR_GENDER[0])
     + '</div><p class="hint">"અંગ્રેજી A-B-C-D" માં વિદ્યાર્થીના <b>અંગ્રેજી નામ</b> (નવો પ્રવેશમાં ભરેલું) પ્રમાણે ગોઠવાય છે; અંગ્રેજી નામ ખાલી હોય તો ગુજરાતી નામ પરથી અંદાજે અંગ્રેજી અક્ષરો લેવાય છે. "યાદી બનાવો" દબાવ્યા પછી નીચે યાદીમાં ▲ ▼ બટનથી કે નવો રોલ નંબર લખીને કોઈને પણ આગળ-પાછળ કરી શકો છો; છેલ્લે "રોલ નંબર સાચવો" દબાવો.</p>'
+    + '<div id="ar_count" class="hint" style="margin-top:6px"></div>'
     + '<div style="margin-top:10px"><button class="btn" id="ar_run">યાદી બનાવો</button></div></div>'
     + '<div class="card" id="ar_body"></div>';
 };
@@ -4276,7 +4277,7 @@ WIRE["student:autoroll"] = function(){
   }
   function paint(focusIx){
     var missing = LIST.filter(function(s){ return !String(s.nameEn || "").trim(); }).length;
-    $("ar_body").innerHTML = '<h3>યાદી — ધોરણ '+esc(CTX.std)+(CTX.div === "__none__" ? "" : " / "+esc(CTX.div))+' ('+LIST.length+' વિદ્યાર્થી)</h3>'
+    $("ar_body").innerHTML = '<h3>યાદી — ધોરણ '+esc(CTX.std)+(CTX.div === "__none__" ? " / વર્ગ વગર" : CTX.div ? " / "+esc(CTX.div) : " (બધા વર્ગ)")+' ('+LIST.length+' વિદ્યાર્થી)</h3>'
       + (CTX.lang === AR_LANG[0] && missing ? '<p class="hint" style="color:var(--bad)">'+missing+' વિદ્યાર્થીનું અંગ્રેજી નામ ખાલી છે — તેમનો ક્રમ ગુજરાતી નામ પરથી અંદાજે ગોઠવાયો છે (બરાબર ન લાગે તો ▲ ▼ થી સુધારો).</p>' : '')
       + '<div class="tw"><table><thead><tr><th class="num">નવો રોલ</th><th>ગોઠવો</th><th class="num">જી.આર.</th><th>નામ</th><th>English</th><th>જાતિ</th><th class="num">હાલનો રોલ</th></tr></thead><tbody>'
       + LIST.map(function(s, i){
@@ -4311,10 +4312,19 @@ WIRE["student:autoroll"] = function(){
     toast("રોલ નંબર સચવાયા — " + kids.length + " વિદ્યાર્થી");
     render();
     if ($("ar_std")){ $("ar_std").value = ctx.std; $("ar_div").value = ctx.div; $("ar_order").value = ctx.order; $("ar_gender").value = ctx.gmode; $("ar_lang").value = ctx.lang; }
-    if ($("ar_body")) $("ar_body").innerHTML = '<h3>સચવાયેલા રોલ નંબર — ધોરણ '+esc(ctx.std)+(ctx.div === "__none__" ? "" : " / "+esc(ctx.div))+'</h3><div class="tw"><table><thead><tr><th class="num">રોલ નં.</th><th class="num">જી.આર.</th><th>નામ</th><th>English</th><th>જાતિ</th></tr></thead><tbody>'
+    if ($("ar_body")) $("ar_body").innerHTML = '<h3>સચવાયેલા રોલ નંબર — ધોરણ '+esc(ctx.std)+(ctx.div === "__none__" ? " / વર્ગ વગર" : ctx.div ? " / "+esc(ctx.div) : " (બધા વર્ગ)")+'</h3><div class="tw"><table><thead><tr><th class="num">રોલ નં.</th><th class="num">જી.આર.</th><th>નામ</th><th>English</th><th>જાતિ</th></tr></thead><tbody>'
       + kids.map(function(s, i){ return '<tr><td class="num">'+(i+1)+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(fullName(s))+'</td><td>'+esc(enName(s) || "—")+'</td><td>'+esc(s.gender||"")+'</td></tr>'; }).join("")
       + '</tbody></table></div>';
   }
+  function counts(){
+    var std = val("ar_std"), all = S.students.filter(function(x){ return String(x.std) === std; });
+    var act = all.filter(function(x){ return !x.relieveDate; });
+    var sel_ = val("ar_div"), n = activeKids_(std, sel_).length;
+    var byDiv = divList().concat(["__none__"]).map(function(d){ var c = activeKids_(std, d).length; return c ? (d === "__none__" ? "વર્ગ વગર" : d) + ": " + c : ""; }).filter(Boolean).join(" • ");
+    if ($("ar_count")) $("ar_count").innerHTML = 'ધોરણ '+esc(std)+': કુલ <b>'+all.length+'</b> વિદ્યાર્થી'+(all.length !== act.length ? ' (છોડી ગયેલ '+(all.length-act.length)+' બાદ કરતાં '+act.length+')' : '')
+      + (byDiv ? ' — '+esc(byDiv) : '') + '. પસંદ કરેલ: <b>'+n+'</b> વિદ્યાર્થી'+(sel_ ? ' (ફક્ત તે વર્ગ — આખા ધોરણ માટે "બધા વર્ગ" પસંદ કરો)' : '')+'.';
+  }
+  $("ar_std").onchange = counts; $("ar_div").onchange = counts; counts();
   $("ar_run").onclick = build;
 };
 
