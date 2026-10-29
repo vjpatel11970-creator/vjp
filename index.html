@@ -4623,7 +4623,11 @@ function structureWire(){
       var filled = drop_.filter(function(k){ return Object.keys(marks[k] || {}).length; });
       if (filled.length && !confirm("આ વિષયોના ભરેલા ગુણ ભૂંસાઈ જશે: " + filled.join(", ") + "\n\nચાલુ રાખવું?")) return;
       drop_.forEach(function(k){ delete marks[k]; });
-      await put("exams", Object.assign({}, ex, {subjects: working.map(function(w){ return {name:w.name, max:w.max, pass:w.pass}; }), marks: marks}));
+      var tpAll = ex.marksTP ? Object.assign({}, ex.marksTP) : null;
+      if (tpAll) drop_.forEach(function(k){ delete tpAll[k]; });
+      var upd_ = Object.assign({}, ex, {subjects: working.map(function(w){ return {name:w.name, max:w.max, pass:w.pass}; }), marks: marks});
+      if (tpAll) upd_.marksTP = tpAll;
+      await put("exams", upd_);
       toast("માળખું સચવાયું"); working = null; render();
     };
   }
@@ -4696,15 +4700,24 @@ function marksKindWire(){
     var subCfg = (ex.subjects||[]).find(function(x){return x.name===sub;});
     var maxM = subCfg ? subCfg.max : (ex.total||100);
     var m = (ex.marks && ex.marks[sub]) || {};
+    var tpOn = subHasTP_(sub), tpm = (ex.marksTP && ex.marksTP[sub]) || {};
     $("mk_body").innerHTML = (isCompulsory(sub) ? '' : '<p class="hint" style="margin:6px 0">વૈકલ્પિક વિષય — ફક્ત આ વિષય પસંદ કરનાર '+kids.length+' વિદ્યાર્થી (કુલ '+allKids.length+' માંથી).'
         + (notSet ? ' <b>'+notSet+' વિદ્યાર્થીની પસંદગી હજુ નોંધાઈ નથી</b> (વિદ્યાર્થી › વૈકલ્પિક વિષયની પસંદગી).' : '') + '</p>')
       + '<div class="tw"><table><thead><tr><th class="num">જી.આર.</th><th>નામ</th>'
-      + '<th class="num">ગુણ (કુલ '+maxM+')</th><th class="num">કુલ (અત્યાર સુધી)</th><th class="num">ટકા</th></tr></thead><tbody>'
+      + (tpOn ? '<th class="num">થીયરી</th><th class="num">પ્રેક્ટીકલ</th><th class="num">કુલ (મહત્તમ '+maxM+')</th>' : '<th class="num">ગુણ (કુલ '+maxM+')</th>')
+      + '<th class="num">કુલ (અત્યાર સુધી)</th><th class="num">ટકા</th></tr></thead><tbody>'
       + kids.map(function(s){
           var c = examCalc(ex, s.id);
-          return '<tr><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td>'
-            + '<td><input type="number" min="0" max="'+maxM+'" data-k="'+s.id+'" value="'
-            + (m[s.id]!=null?esc(m[s.id]):"") + '" style="width:90px"></td>'
+          var inputs;
+          if (tpOn){
+            var tp = tpm[s.id] || {}, legacy = (m[s.id] != null && !tpm[s.id]);
+            inputs = '<td><input type="number" min="0" max="'+maxM+'" step="any" data-t="'+s.id+'" value="'+(tp.t != null ? esc(tp.t) : "")+'" style="width:80px"></td>'
+              + '<td><input type="number" min="0" max="'+maxM+'" step="any" data-p="'+s.id+'" value="'+(tp.p != null ? esc(tp.p) : "")+'" style="width:80px"></td>'
+              + '<td><input type="number" readonly tabindex="-1" data-k="'+s.id+'"'+(legacy ? ' data-legacy="1"' : '')+' value="'+(m[s.id]!=null?esc(m[s.id]):"")+'" style="width:80px;background:var(--bg2,#f3f4f6);font-weight:700"></td>';
+          } else {
+            inputs = '<td><input type="number" min="0" max="'+maxM+'" data-k="'+s.id+'" value="'+(m[s.id]!=null?esc(m[s.id]):"")+'" style="width:90px"></td>';
+          }
+          return '<tr><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td>' + inputs
             + '<td class="num">'+c.got+' / '+c.max+'</td><td class="num">'+c.pct.toFixed(1)+'%</td></tr>';
         }).join("") + '</tbody></table></div>'
       + '<div style="margin-top:12px" class="row">'
@@ -4712,14 +4725,41 @@ function marksKindWire(){
       + '<button class="btn sec" id="mk_reset">વિદ્યાર્થી રીસેટ કરવા</button>'
       + '<button class="btn sec" id="mk_xls">Excel</button>'
       + '</div>';
+    /* થીયરી + પ્રેક્ટીકલ = કુલ (આપોઆપ) */
+    function tpSum(id){
+      var t = $("mk_body").querySelector('input[data-t="'+id+'"]'), p = $("mk_body").querySelector('input[data-p="'+id+'"]'), k = $("mk_body").querySelector('input[data-k="'+id+'"]');
+      if (!t || !p || !k) return;
+      if (t.value === "" && p.value === ""){ if (!k.dataset.legacy) k.value = ""; return; }
+      delete k.dataset.legacy;
+      var sum = (Number(t.value) || 0) + (Number(p.value) || 0);
+      k.value = Math.round(sum * 100) / 100;
+      k.style.color = sum > maxM ? "var(--bad)" : "";
+    }
+    if (tpOn) Array.prototype.forEach.call($("mk_body").querySelectorAll("input[data-t],input[data-p]"), function(i){
+      i.oninput = function(){ tpSum(i.dataset.t || i.dataset.p); };
+    });
     $("mk_save").onclick = async function(){
-      var obj = {};
-      Array.prototype.forEach.call($("mk_body").querySelectorAll("input"), function(i){
+      var obj = {}, tpo = {}, over = [];
+      if (tpOn) kids.forEach(function(s){
+        var t = $("mk_body").querySelector('input[data-t="'+s.id+'"]'), p = $("mk_body").querySelector('input[data-p="'+s.id+'"]'), k = $("mk_body").querySelector('input[data-k="'+s.id+'"]');
+        if (!t || !p || !k) return;
+        if (t.value !== "" || p.value !== ""){
+          var tv = Number(t.value) || 0, pv = Number(p.value) || 0;
+          if (tv < 0 || pv < 0 || tv + pv > maxM) over.push(s.name);
+          obj[s.id] = Math.round((tv + pv) * 100) / 100;
+          tpo[s.id] = {t: t.value === "" ? null : tv, p: p.value === "" ? null : pv};
+        } else if (k.dataset.legacy && k.value !== ""){
+          obj[s.id] = Number(k.value);
+        }
+      });
+      else Array.prototype.forEach.call($("mk_body").querySelectorAll("input"), function(i){
         if (i.value !== "") obj[i.dataset.k] = Number(i.value);
       });
+      if (over.length) return toast("થીયરી + પ્રેક્ટીકલ મહત્તમ " + maxM + " થી વધુ છે: " + over.slice(0,3).join(", ") + (over.length > 3 ? " …" : ""));
       var copy = Object.assign({}, ex);
       copy.marks = Object.assign({}, ex.marks || {});
       copy.marks[sub] = obj;
+      if (tpOn){ copy.marksTP = Object.assign({}, ex.marksTP || {}); copy.marksTP[sub] = tpo; }
       await put("exams", copy);
       toast(sub + " ના ગુણ સાચવાયા"); draw();
     };
@@ -4728,6 +4768,7 @@ function marksKindWire(){
       var copy = Object.assign({}, ex);
       copy.marks = Object.assign({}, ex.marks || {});
       copy.marks[sub] = {};
+      if (copy.marksTP){ copy.marksTP = Object.assign({}, copy.marksTP); delete copy.marksTP[sub]; }
       await put("exams", copy);
       toast("ગુણ સાફ કરાયા"); draw();
     };
@@ -4735,7 +4776,11 @@ function marksKindWire(){
       if (typeof XLSX === "undefined") return toast("Excel લાયબ્રેરી લોડ થઈ નથી");
       var rows = kids.map(function(s){
         var c = examCalc(ex, s.id);
-        return {"જી.આર.":s.gr, "નામ":s.name, "ગુણ":(m[s.id]!=null?m[s.id]:""), "કુલ":c.got+"/"+c.max, "ટકા":c.pct.toFixed(1)};
+        var row = {"જી.આર.":s.gr, "નામ":s.name};
+        if (tpOn){ var tq = tpm[s.id] || {}; row["થીયરી"] = tq.t != null ? tq.t : ""; row["પ્રેક્ટીકલ"] = tq.p != null ? tq.p : ""; row["કુલ ગુણ"] = (m[s.id]!=null?m[s.id]:""); }
+        else row["ગુણ"] = (m[s.id]!=null?m[s.id]:"");
+        row["કુલ"] = c.got+"/"+c.max; row["ટકા"] = c.pct.toFixed(1);
+        return row;
       });
       var wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), "marks");
@@ -6739,13 +6784,36 @@ async function payViaRazorpay(){
 var SUBSEL = {std:"", div:""};
 var SUBSEL_HIDE = ["ચિત્ર"];
 function subselElectives_(){ return electiveList().filter(function(n){ return SUBSEL_HIDE.indexOf(n) < 0; }); }
+/* જૂથ: દરેક જૂથમાંથી વિદ્યાર્થી ફક્ત એક જ વિષય પસંદ કરે */
+var ELECTIVE_GROUPS = [["હિન્દી","સંસ્કૃત"],["શારીરિક શિક્ષણ","કમ્પ્યુટર"]];
+function subCanon_(n){ return String(n||"").replace(/\s+/g," ").trim().replace(/કોમ્પ્યુટર|કૉમ્પ્યુટર|કોમ્પ્યૂટર/g,"કમ્પ્યુટર"); }
+function subIsPE_(n){ return subCanon_(n) === "શારીરિક શિક્ષણ"; }
+function subIsComp_(n){ return subCanon_(n) === "કમ્પ્યુટર"; }
+/* ગુણ એન્ટ્રીમાં થીયરી + પ્રેક્ટીકલ + કુલ વાળા વિષયો */
+function subHasTP_(n){
+  if (subIsPE_(n) || subIsComp_(n)) return true;
+  var it = subjectItems().find(function(x){ return x.gu === n; });
+  return !!(it && it.practical);
+}
+function electiveSplit_(electives){
+  var used = {}, groups = [];
+  ELECTIVE_GROUPS.forEach(function(g){
+    var items = [];
+    g.forEach(function(want){
+      electives.forEach(function(n, i){ if (!used[i] && subCanon_(n) === want){ used[i] = true; items.push(n); } });
+    });
+    if (items.length) groups.push({label: items.join(" / "), items: items});
+  });
+  var rest = electives.filter(function(n, i){ return !used[i]; });
+  return {groups: groups, rest: rest};
+}
 VIEWS["student:subsel"] = function(){
   var electives = subselElectives_();
   if (!subList().length) return emptyCard("પહેલા વિષયો ઉમેરો.","શાળા › વિષયની એન્ટ્રી");
   if (!electives.length) return emptyCard("કોઈ વૈકલ્પિક વિષય નથી — બધા વિષયો ફરજિયાત છે.","શાળા › વિષયની એન્ટ્રી (વિષયનો પ્રકાર 'વૈકલ્પિક' કરો)");
   var std = "10";
   return '<div class="card"><h3>વૈકલ્પિક વિષયની પસંદગી (ધોરણ 10)</h3>'
-    + '<p class="hint" style="margin:0 0 10px">ફરજિયાત વિષયો (' + esc(coreList().join(", ") || "—") + ') બધા વિદ્યાર્થી માટે આપોઆપ છે. અહીં દરેક વિદ્યાર્થી પોતાના વૈકલ્પિક વિષયો પસંદ કરે તે ટિક કરો.</p>'
+    + '<p class="hint" style="margin:0 0 10px">ફરજિયાત વિષયો (' + esc(coreList().join(", ") || "—") + ') બધા વિદ્યાર્થી માટે આપોઆપ છે. અહીં દરેક વિદ્યાર્થીનો વૈકલ્પિક વિષય પસંદ કરો — હિન્દી/સંસ્કૃતમાંથી એક અને શારીરિક શિક્ષણ/કમ્પ્યુટરમાંથી એક.</p>'
     + '<div class="row" style="gap:10px;flex-wrap:wrap;align-items:end">'
     + '<div><label class="f">ધોરણ</label><select id="ss_std"><option value="10" selected>10</option></select></div>'
     + '<div><label class="f">વર્ગ</label><select id="ss_div"><option value="">બધા</option>'+opts(divList(), SUBSEL.div)+'</select></div></div>'
@@ -6772,45 +6840,65 @@ WIRE["student:subsel"] = function(){
       ? ("ધોરણ "+SUBSEL.std+": કુલ "+lim+" વિષયો = "+coreList().length+" ફરજિયાત + વધુમાં વધુ "+mx+" વૈકલ્પિક.")
       : ("ધોરણ "+SUBSEL.std+": વિષયોની મર્યાદા નથી.");
     if (!kids.length){ $("ss_body").innerHTML = '<div class="empty">આ ધોરણ/વર્ગમાં કોઈ વિદ્યાર્થી નથી.</div>'; return; }
+    var sp = electiveSplit_(electives), groups = sp.groups, rest = sp.rest;
     $("ss_body").innerHTML = '<div class="tw"><table><thead><tr><th class="num">રોલ</th><th class="num">જી.આર.</th><th>નામ</th>'
-      + electives.map(function(e){
+      + groups.map(function(g){ return '<th>'+esc(g.label)+'<div style="font-weight:400;font-size:11px">(એક પસંદ કરો)</div></th>'; }).join("")
+      + rest.map(function(e){
           var miss = inStruct && inStruct.indexOf(e) < 0;
           return '<th class="num"'+(miss?' title="આ વિષય મુખ્ય પરીક્ષાના માળખામાં નથી" style="opacity:.6"':'')+'>'+esc(e)+(miss?' ⚠':'')+'</th>';
         }).join("") + '<th class="num">પસંદ</th></tr></thead><tbody>'
       + kids.map(function(s){
           var has = Array.isArray(s.electives);
           return '<tr data-stu="'+s.id+'"><td class="num">'+esc(s.roll||"")+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+(has?'':' <span class="chip">બાકી</span>')+'</td>'
-            + electives.map(function(e,i){
+            + groups.map(function(g, gi){
+                var cur = has ? g.items.find(function(n){ return s.electives.indexOf(n) > -1; }) : "";
+                var miss = inStruct && g.items.some(function(n){ return inStruct.indexOf(n) < 0; });
+                return '<td><select data-grp="'+gi+'" style="min-width:120px"><option value="">— પસંદ કરો —</option>'
+                  + g.items.map(function(n){ return '<option value="'+esc(n)+'"'+(n===cur?' selected':'')+'>'+esc(n)+((inStruct && inStruct.indexOf(n) < 0) ? ' ⚠' : '')+'</option>'; }).join("")
+                  + '</select></td>';
+              }).join("")
+            + rest.map(function(e,i){
                 return '<td class="num"><input type="checkbox" data-el="'+i+'" style="width:20px;height:20px"'+((has && s.electives.indexOf(e)>-1)?" checked":"")+'></td>';
               }).join("") + '<td class="num" data-cnt></td></tr>';
         }).join("") + '</tbody></table></div>'
       + '<div class="row" style="margin-top:12px;gap:10px;flex-wrap:wrap"><button class="btn" id="ss_save">પસંદગી સાચવો</button>'
-      + '<button class="btn sec" id="ss_all">બધા વિષય ટિક કરો</button><button class="btn sec" id="ss_none">બધા ટિક કાઢો</button></div>'
-      + '<p class="hint">"બાકી" = હજુ પસંદગી નોંધાઈ નથી; ત્યાં સુધી તે વિદ્યાર્થી બધા વૈકલ્પિક વિષયોમાં ગણાય છે. ⚠ વાળો વિષય આ ધોરણની મુખ્ય પરીક્ષાના માળખામાં નથી, એટલે તેના ગુણ તે પરીક્ષામાં આવશે નહીં.</p>';
+      + (rest.length ? '<button class="btn sec" id="ss_all">બાકીના વિષય ટિક કરો</button>' : '')
+      + '<button class="btn sec" id="ss_none">બધી પસંદગી કાઢો</button></div>'
+      + '<p class="hint">દરેક જૂથમાંથી વિદ્યાર્થી એક જ વિષય લઈ શકે ('+esc(groups.map(function(g){ return g.label; }).join(" ; "))+'). "બાકી" = હજુ પસંદગી નોંધાઈ નથી; ત્યાં સુધી તે વિદ્યાર્થી બધા વૈકલ્પિક વિષયોમાં ગણાય છે. ⚠ વાળો વિષય આ ધોરણની મુખ્ય પરીક્ષાના માળખામાં નથી, એટલે તેના ગુણ તે પરીક્ષામાં આવશે નહીં.</p>';
+    function rowChosen(tr){
+      var chosen = [];
+      Array.prototype.forEach.call(tr.querySelectorAll("select[data-grp]"), function(sl){ if (sl.value) chosen.push(sl.value); });
+      Array.prototype.forEach.call(tr.querySelectorAll("input[data-el]"), function(c){ if (c.checked) chosen.push(rest[Number(c.dataset.el)]); });
+      return chosen;
+    }
     function recount(){
       Array.prototype.forEach.call($("ss_body").querySelectorAll("tr[data-stu]"), function(tr){
-        var n = tr.querySelectorAll("input:checked").length, c = tr.querySelector("[data-cnt]");
+        var n = rowChosen(tr).length, c = tr.querySelector("[data-cnt]");
         c.textContent = n + (mx ? " / "+mx : ""); c.style.color = (mx && n > mx) ? "var(--bad)" : "";
       });
     }
-    Array.prototype.forEach.call($("ss_body").querySelectorAll("input[type=checkbox]"), function(c){ c.onchange = recount; });
+    Array.prototype.forEach.call($("ss_body").querySelectorAll("input[type=checkbox],select[data-grp]"), function(c){ c.onchange = recount; });
     recount();
-    $("ss_all").onclick = function(){ Array.prototype.forEach.call($("ss_body").querySelectorAll("input[type=checkbox]"), function(c){ c.checked = true; }); recount(); };
-    $("ss_none").onclick = function(){ Array.prototype.forEach.call($("ss_body").querySelectorAll("input[type=checkbox]"), function(c){ c.checked = false; }); recount(); };
+    if ($("ss_all")) $("ss_all").onclick = function(){ Array.prototype.forEach.call($("ss_body").querySelectorAll("input[type=checkbox]"), function(c){ c.checked = true; }); recount(); };
+    $("ss_none").onclick = function(){
+      Array.prototype.forEach.call($("ss_body").querySelectorAll("input[type=checkbox]"), function(c){ c.checked = false; });
+      Array.prototype.forEach.call($("ss_body").querySelectorAll("select[data-grp]"), function(sl){ sl.value = ""; });
+      recount();
+    };
     $("ss_save").onclick = async function(){
       var bad = [];
-      var upd = [];
+      var upd = [], noGrp = 0;
       Array.prototype.forEach.call($("ss_body").querySelectorAll("tr[data-stu]"), function(tr){
         var s = S.students.find(function(x){ return x.id === tr.dataset.stu; });
-        var chosen = [];
-        Array.prototype.forEach.call(tr.querySelectorAll("input[data-el]"), function(c){ if (c.checked) chosen.push(electives[Number(c.dataset.el)]); });
+        var chosen = rowChosen(tr);
+        if (groups.length && tr.querySelectorAll("select[data-grp]").length && Array.prototype.some.call(tr.querySelectorAll("select[data-grp]"), function(sl){ return !sl.value; })) noGrp++;
         if (mx && chosen.length > mx) bad.push(s.name);
         upd.push({s:s, chosen:chosen});
       });
       if (bad.length) return toast("વધુ વિષય પસંદ થયા (મહત્તમ "+mx+"): " + bad.slice(0,3).join(", ") + (bad.length>3?" …":""));
       var sb = $("ss_save"); if (sb){ sb.disabled = true; sb.textContent = "સાચવી રહ્યા છીએ…"; }
       await putMany("students", upd.map(function(u){ return Object.assign({}, u.s, {electives: u.chosen}); }), function(d, t){ if (sb) sb.textContent = "સાચવી રહ્યા છીએ… " + d + "/" + t; });
-      toast(upd.length + " વિદ્યાર્થીની પસંદગી સચવાઈ"); draw();
+      toast(upd.length + " વિદ્યાર્થીની પસંદગી સચવાઈ" + (noGrp ? " — " + noGrp + " વિદ્યાર્થીએ કોઈ જૂથમાં વિષય પસંદ કર્યો નથી" : "")); draw();
     };
   }
   $("ss_std").onchange = draw; $("ss_div").onchange = draw; draw();
