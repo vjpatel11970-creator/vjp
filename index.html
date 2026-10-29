@@ -2333,15 +2333,16 @@ function prTable_(cols, rows, numCols){
 
 /* ---------- શેર્ડ પ્રિન્ટ પોપ-અપ (A4 સાઈઝ) ---------- */
 function printPage(title, bodyHtml, opts){
-  var blk = !!(opts && opts.block);
+  var blk = !!(opts && opts.block), land = !!(opts && opts.landscape);
+  var pw = land ? "297mm" : "210mm", ph = land ? "182mm" : "269mm";
   var w = window.open("", "_blank");
   if (!w) return toast("છાપવા માટે પોપ-અપ ચાલુ કરો");
   w.document.write('<html lang="gu"><head><meta charset="utf-8"><title>'+esc(title)+'</title>'
     + '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gujarati:wght@400;700&display=swap" rel="stylesheet">'
-    + '<style>@page{size:A4;margin:14mm}'
-    + 'body{font-family:"Noto Sans Gujarati",sans-serif;margin:0;padding:0;width:210mm;'
-    + (blk ? '' : 'min-height:269mm;display:flex;flex-direction:column;') + 'box-sizing:border-box}'
-    + '@media screen{body{padding:16px;max-width:210mm;' + (blk ? '' : 'min-height:calc(269mm + 32px);') + 'margin:0 auto}}'
+    + '<style>@page{size:A4' + (land ? ' landscape' : '') + ';margin:14mm}'
+    + 'body{font-family:"Noto Sans Gujarati",sans-serif;margin:0;padding:0;width:'+pw+';'
+    + (blk ? '' : 'min-height:'+ph+';display:flex;flex-direction:column;') + 'box-sizing:border-box}'
+    + '@media screen{body{padding:16px;max-width:'+pw+';' + (blk ? '' : 'min-height:calc('+ph+' + 32px);') + 'margin:0 auto}}'
     + 'table{width:100%}</style></head><body>'
     + bodyHtml + '</body></html>');
   w.document.close();
@@ -3555,6 +3556,8 @@ function grInfoView(){
     + sel("sd_cat","જ્ઞાતિ",["સા.શૈ.પ.વ.","અનુ.જાતિ","અનુ.જનજાતિ","બિન અનામત","આ.ન.વ."],"સા.શૈ.પ.વ.")
     + sel("sd_gender","જાતિ",["કુમાર","કન્યા"],"કુમાર")
     + sel("sd_disable","વિકલાંગ",["No","Yes"],"No")
+    + sel("sd_vichar","વિચરતી / વિમુક્ત જાતિ",["No","Yes"],"No")
+    + sel("sd_exsol","માજી સૈનિકનું સંતાન",["No","Yes"],"No")
     + fld("sd_birthplace","જન્મ સ્થળ","")
     + sel("sd_category","કેટેગરી",["GENERAL","OBC","SC","ST","EWS"],"GENERAL")
     + fld("sd_dob","જન્મ તારીખ","","date")
@@ -3598,6 +3601,7 @@ var STU_ALIASES = {
   "cat":"cat","caste":"cat","જ્ઞાતિ":"cat",
   "gender":"gender","sex":"gender","જાતિ":"gender",
   "disable":"disable","disability":"disable","વિકલાંગ":"disable",
+  "vichar":"vichar","વિચરતીજાતિ":"vichar","વિચરતીવિમુક્તજાતિ":"vichar","exsoldier":"exSoldier","માજીસૈનિક":"exSoldier","માજીસૈનિકનુંસંતાન":"exSoldier",
   "birthplace":"birthplace","જન્મસ્થળ":"birthplace",
   "category":"category","કેટેગરી":"category",
   "dob":"dob","dateofbirth":"dob","જન્મતારીખ":"dob",
@@ -3713,12 +3717,12 @@ function grInfoWire(){
   var loadedId = "";
   var fields = ["sd_gr","sd_pen","sd_apaar","sd_admit","sd_std_in","sd_std","sd_div","sd_surname","sd_name","sd_father",
     "sd_surnameen","sd_nameen","sd_fatheren","sd_fatherfull","sd_fatherocc","sd_mother","sd_motherfull","sd_motherocc",
-    "sd_religion","sd_cat","sd_gender","sd_disable","sd_birthplace","sd_category","sd_dob","sd_income","sd_blood",
+    "sd_religion","sd_cat","sd_gender","sd_disable","sd_vichar","sd_exsol","sd_birthplace","sd_category","sd_dob","sd_income","sd_blood",
     "sd_stream","sd_seat","sd_mobile"];
   var keyMap = {sd_gr:"gr",sd_pen:"pen",sd_apaar:"apaar",sd_admit:"admit",sd_std_in:"stdIn",sd_std:"std",sd_div:"div",
     sd_surname:"surname",sd_name:"name",sd_father:"father",sd_surnameen:"surnameEn",sd_nameen:"nameEn",sd_fatheren:"fatherEn",
     sd_fatherfull:"fatherFull",sd_fatherocc:"fatherOcc",sd_mother:"mother",sd_motherfull:"motherFull",sd_motherocc:"motherOcc",
-    sd_religion:"religion",sd_cat:"cat",sd_gender:"gender",sd_disable:"disable",sd_birthplace:"birthplace",
+    sd_religion:"religion",sd_cat:"cat",sd_gender:"gender",sd_disable:"disable",sd_vichar:"vichar",sd_exsol:"exSoldier",sd_birthplace:"birthplace",
     sd_category:"category",sd_dob:"dob",sd_income:"income",sd_blood:"blood",sd_stream:"stream",sd_seat:"seat",sd_mobile:"mobile"};
   function loadStudent(s){
     fields.forEach(function(id){ var el=$(id); if (el) el.value = s[keyMap[id]] || ""; });
@@ -3754,7 +3758,7 @@ function grInfoWire(){
       surnameEn:val("sd_surnameen"),nameEn:val("sd_nameen"),fatherEn:val("sd_fatheren"),
       fatherFull:val("sd_fatherfull"),fatherOcc:val("sd_fatherocc"),
       mother:val("sd_mother"),motherFull:val("sd_motherfull"),motherOcc:val("sd_motherocc"),
-      religion:val("sd_religion"),cat:val("sd_cat"),gender:val("sd_gender"),disable:val("sd_disable"),
+      religion:val("sd_religion"),cat:val("sd_cat"),gender:val("sd_gender"),disable:val("sd_disable"),vichar:val("sd_vichar"),exSoldier:val("sd_exsol"),
       birthplace:val("sd_birthplace"),category:val("sd_category"),dob:val("sd_dob"),
       income:val("sd_income"),blood:val("sd_blood"),stream:val("sd_stream"),seat:val("sd_seat"),
       mobile:val("sd_mobile")};
@@ -4368,29 +4372,124 @@ WIRE["student:promote"] = function(){
 };
 
 /* ---------- સંખ્યા પત્રક ---------- */
-VIEWS["student:count"] = function(){
-  var stds = stdList();
-  var rows = stds.map(function(std){
-    var kids = S.students.filter(function(s){return String(s.std)===std;});
-    return {std:std, boys:kids.filter(function(s){return s.gender==="કુમાર";}).length,
-      girls:kids.filter(function(s){return s.gender==="કન્યા";}).length, total:kids.length};
+function guDig_(v){ return String(v).replace(/[0-9]/g, function(d){ return "૦૧૨૩૪૫૬૭૮૯".charAt(Number(d)); }); }
+var GU_MONTHS = ["જાન્યુઆરી","ફેબ્રુઆરી","માર્ચ","એપ્રિલ","મે","જૂન","જુલાઈ","ઓગસ્ટ","સપ્ટેમ્બર","ઓક્ટોબર","નવેમ્બર","ડિસેમ્બર"];
+function cntCaste_(s){
+  var c = String(s.cat || "").trim();
+  if (c === "અનુ.જાતિ") return "sc";
+  if (c === "અનુ.જનજાતિ") return "st";
+  if (c === "સા.શૈ.પ.વ.") return "obc";
+  if (c === "બિન અનામત" || c === "આ.ન.વ.") return "gen";
+  var k = String(s.category || "").toUpperCase();
+  return k === "SC" ? "sc" : k === "ST" ? "st" : k === "OBC" ? "obc" : "gen";
+}
+var CNT_MINORITY = ["મુસ્લિમ","ખ્રિસ્તી","શીખ","જૈન","બૌદ્ધ"];
+function cntData_(){
+  var keys = ["sc","st","obc","vich","exs","dis","gen","min"];
+  function blank(){ var o = {b:0, g:0}; keys.forEach(function(k){ o[k] = [0,0]; }); return o; }
+  function addTo(o, s){
+    var gi = s.gender === "કુમાર" ? 0 : s.gender === "કન્યા" ? 1 : -1;
+    if (gi < 0) return;
+    if (gi === 0) o.b++; else o.g++;
+    o[cntCaste_(s)][gi]++;
+    if (s.vichar === "Yes") o.vich[gi]++;
+    if (s.exSoldier === "Yes") o.exs[gi]++;
+    if (s.disable === "Yes") o.dis[gi]++;
+    if (CNT_MINORITY.indexOf(s.religion) > -1) o.min[gi]++;
+  }
+  var stds = stdList(), divs = divList(), rows = [], tot = blank();
+  var kids = S.students.filter(function(x){ return !x.relieveDate; });
+  var order = {};
+  stds.forEach(function(x, i){ order["s"+x] = i; });
+  var seen = {};
+  kids.forEach(function(x){ var k = String(x.std) + "|" + String(x.div || ""); if (!seen[k]) seen[k] = {std:String(x.std), div:String(x.div || "")}; });
+  Object.keys(seen).map(function(k){ return seen[k]; }).sort(function(p, q){
+    var a1 = order["s"+p.std], b1 = order["s"+q.std];
+    a1 = a1 == null ? 999 : a1; b1 = b1 == null ? 999 : b1;
+    if (a1 !== b1) return a1 - b1;
+    if (a1 === 999 && p.std !== q.std) return guCmp_(p.std, q.std);
+    var da = divs.indexOf(p.div), db = divs.indexOf(q.div);
+    da = da < 0 ? 999 : da; db = db < 0 ? 999 : db;
+    return da - db || guCmp_(p.div, q.div);
+  }).forEach(function(g){
+    var r = blank(); r.std = g.std; r.div = g.div;
+    kids.forEach(function(x){ if (String(x.std) === g.std && String(x.div || "") === g.div) addTo(r, x); });
+    r.t = r.b + r.g; rows.push(r);
+    tot.b += r.b; tot.g += r.g;
+    keys.forEach(function(k){ tot[k][0] += r[k][0]; tot[k][1] += r[k][1]; });
   });
-  var tb=0,tg=0,tt=0; rows.forEach(function(r){tb+=r.boys;tg+=r.girls;tt+=r.total;});
-  var cats = {};
-  S.students.forEach(function(s){ var c = s.category || s.cat || "—"; cats[c] = (cats[c]||0)+1; });
-  var catRows = Object.keys(cats);
-  return '<div class="card"><h3>વિદ્યાર્થીઓની સંખ્યા દર્શાવતું પત્રક</h3><div id="cnt_body">'
-    + (rows.length ? '<div class="tw"><table><thead><tr><th>ધોરણ</th><th class="num">કુમાર</th><th class="num">કન્યા</th><th class="num">કુલ</th></tr></thead><tbody>'
-      + rows.map(function(r){ return '<tr><td>'+esc(r.std)+'</td><td class="num">'+r.boys+'</td><td class="num">'+r.girls+'</td><td class="num">'+r.total+'</td></tr>'; }).join("")
-      + '<tr><td><b>કુલ</b></td><td class="num"><b>'+tb+'</b></td><td class="num"><b>'+tg+'</b></td><td class="num"><b>'+tt+'</b></td></tr>'
-      + '</tbody></table></div>' : '<div class="empty">પહેલાં શાળા › ધોરણની એન્ટ્રીમાં ધોરણ ઉમેરો.</div>')
-    + (catRows.length ? '<h3 style="margin-top:18px">વિભાગ મુજબ (કેટેગરી)</h3><div class="tw"><table><thead><tr><th>કેટેગરી</th><th class="num">સંખ્યા</th></tr></thead><tbody>'
-      + catRows.map(function(c){ return '<tr><td>'+esc(c)+'</td><td class="num">'+cats[c]+'</td></tr>'; }).join("") + '</tbody></table></div>' : "")
-    + '</div>'
-    + '<div style="margin-top:12px"><button class="btn sec" id="cnt_print">છાપો</button></div></div>';
+  tot.t = tot.b + tot.g;
+  return {rows: rows, tot: tot};
+}
+function cntHTML_(fmt, opt){
+  var d = cntData_(), k = S.school || {};
+  var nums = d.rows.map(function(r){ return parseInt(r.std, 10); }).filter(function(n){ return !isNaN(n); });
+  var rng = nums.length ? (Math.min.apply(null, nums) === Math.max.apply(null, nums) ? "ધોરણ " + guDig_(nums[0]) : "ધોરણ " + guDig_(Math.min.apply(null, nums)) + " થી " + guDig_(Math.max.apply(null, nums))) : "ધોરણ";
+  var mp = String(opt.month || "").split("-"), mtxt = mp.length === 2 ? GU_MONTHS[Number(mp[1]) - 1] + "-" + guDig_(mp[0]) : "";
+  var dp = String(opt.date || "").split("-"), dtxt = dp.length === 3 ? guDig_(dp[2] + "-" + dp[1] + "-" + dp[0]) : "";
+  var place = k.city || k.village || "";
+  var sname = String(k.name || "").trim();
+  var head = sname + (place && sname.indexOf(place) < 0 ? " , " + place : "");
+  var navy = "#0a1a8a", red = "#c00000";
+  var cols = fmt === 1
+    ? [["sc","અનુ. જાતિ<br>(S.C.)"],["st","અનુ. જન<br>જાતિ (S.T.)"],["obc","સા.શૈ. જાતિ<br>(O.B.C.)"],["vich","વિચ.<br>જાતિ"],["exs","માજી<br>સૈનિક"],["dis","શા.<br>અપંગ"],["gen","સામાન્ય<br>વર્ગ"],["min","લઘુમતી"]]
+    : [["sc","S.C."],["st","S.T."],["obc","OBC"],["gen","General"]];
+  var zero = fmt === 1 ? "-" : "૦";
+  var fs = fmt === 1 ? "11.5px" : "13px";
+  var cell = 'border:1px solid #000;padding:' + (fmt === 1 ? '5px 2px' : '7px 3px') + ';text-align:center;';
+  var hcell = cell + 'color:' + navy + ';font-weight:700;';
+  function n(v, isTot){ return v ? guDig_(v) : (isTot ? "૦" : zero); }
+  var h = '<div style="' + (fmt === 1 ? 'border:1.5px solid #000;padding:6px 4px;' : '') + 'text-align:center;color:' + red + ';font-size:' + (fmt === 1 ? '26px' : '24px') + ';font-weight:700;line-height:1.3">' + esc(head) + '</div>'
+    + '<div style="text-align:center;color:' + navy + ';font-size:14px;font-weight:700;margin:10px 0 12px">' + esc(place) + '</div>'
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:8px;gap:12px">'
+    + '<div style="color:' + (fmt === 1 ? navy : red) + ';font-weight:700;font-size:' + (fmt === 1 ? '16px' : '15px') + '">' + esc(rng) + ' ના વિદ્યાર્થીઓની સંખ્યા દર્શાવતુ પત્રક માહે: ' + esc(mtxt) + '</div>'
+    + '<div style="color:' + navy + ';font-weight:700;font-size:16px;white-space:nowrap">તારીખ : ' + esc(dtxt) + '</div></div>';
+  h += '<table style="border-collapse:collapse;width:100%;font-size:' + fs + ';table-layout:auto"><thead>'
+    + '<tr><th rowspan="2" style="' + hcell + '">ધોરણ</th><th rowspan="2" style="' + hcell + '">વર્ગ</th>'
+    + '<th colspan="3" style="' + hcell + '">કુલ સંખ્યા</th>'
+    + cols.map(function(c){ return '<th colspan="2" style="' + hcell + '">' + c[1] + '</th>'; }).join("")
+    + '<th rowspan="2" style="' + hcell + 'min-width:' + (fmt === 1 ? '70px' : '90px') + '">વર્ગ શિક્ષકની<br>સહી</th></tr>'
+    + '<tr>' + ["કુમાર","કન્યા","કુલ"].map(function(x){ return '<th style="' + hcell + 'font-weight:400">' + x + '</th>'; }).join("")
+    + cols.map(function(){ return '<th style="' + hcell + 'font-weight:400">કુમાર</th><th style="' + hcell + 'font-weight:400">કન્યા</th>'; }).join("")
+    + '</tr></thead><tbody>'
+    + d.rows.map(function(r){
+        return '<tr style="height:' + (fmt === 1 ? '32px' : '38px') + '"><td style="' + cell + '">' + esc(guDig_(r.std)) + '</td><td style="' + cell + '">' + esc(r.div || "-") + '</td>'
+          + '<td style="' + cell + '">' + n(r.b) + '</td><td style="' + cell + '">' + n(r.g) + '</td><td style="' + cell + '">' + n(r.t) + '</td>'
+          + cols.map(function(c){ return '<td style="' + cell + '">' + n(r[c[0]][0]) + '</td><td style="' + cell + '">' + n(r[c[0]][1]) + '</td>'; }).join("")
+          + '<td style="' + cell + '"></td></tr>';
+      }).join("")
+    + '<tr style="height:30px"><td colspan="2" style="border:none"></td>'
+    + '<td style="' + cell + 'border-bottom:2px solid ' + red + ';font-weight:700">' + n(d.tot.b, 1) + '</td><td style="' + cell + 'border-bottom:2px solid ' + red + ';font-weight:700">' + n(d.tot.g, 1) + '</td><td style="' + cell + 'border-bottom:2px solid ' + red + ';font-weight:700">' + n(d.tot.t, 1) + '</td>'
+    + cols.map(function(c){ return '<td style="' + cell + 'border-bottom:2px solid ' + red + ';font-weight:700">' + n(d.tot[c[0]][0], 1) + '</td><td style="' + cell + 'border-bottom:2px solid ' + red + ';font-weight:700">' + n(d.tot[c[0]][1], 1) + '</td>'; }).join("")
+    + '<td style="border:none"></td></tr></tbody></table>';
+  return h;
+}
+VIEWS["student:count"] = function(){
+  var nowD = today();
+  return '<div class="card"><h3>વિદ્યાર્થીઓની સંખ્યા દર્શાવતું પત્રક</h3><div class="grid">'
+    + fld("cnt_month","માહે", nowD.slice(0,7), "month")
+    + fld("cnt_date","તારીખ", nowD, "date")
+    + sel("cnt_fmt","પૂર્વાવલોકન", ["વિગતવાર (ફોર્મેટ ૧)","સંક્ષિપ્ત (ફોર્મેટ ૨)"], "વિગતવાર (ફોર્મેટ ૧)")
+    + sel("cnt_orient","કાગળ (A4)", ["આડો (Landscape)","ઊભો (Portrait)"], "આડો (Landscape)")
+    + '</div><p class="hint">વિદ્યાર્થીની માહિતીમાં ભરેલ જાતિ, જ્ઞાતિ, ધર્મ, વિકલાંગ, વિચરતી જાતિ અને માજી સૈનિક પ્રમાણે સંખ્યા ગણાય છે (છોડી ગયેલ વિદ્યાર્થી બાદ). લઘુમતી = મુસ્લિમ, ખ્રિસ્તી, શીખ, જૈન, બૌદ્ધ ધર્મ.</p>'
+    + '<div class="row" style="gap:10px;flex-wrap:wrap;margin:10px 0"><button class="btn" id="cnt_print1">છાપો — વિગતવાર (ફોર્મેટ ૧)</button><button class="btn" id="cnt_print2">છાપો — સંક્ષિપ્ત (ફોર્મેટ ૨)</button></div>'
+    + '<div class="tw" id="cnt_body" style="background:#fff;color:#000;padding:12px"></div></div>';
 };
 WIRE["student:count"] = function(){
-  $("cnt_print").onclick = function(){ printPage("વિદ્યાર્થીઓની સંખ્યા દર્શાવતું પત્રક", $("cnt_body").innerHTML); };
+  function opt(){ return {month: val("cnt_month"), date: val("cnt_date")}; }
+  function fmtNo(){ return val("cnt_fmt").indexOf("૨") > -1 ? 2 : 1; }
+  function draw(){
+    if (!S.students.length){ $("cnt_body").innerHTML = '<div class="empty">હજુ કોઈ વિદ્યાર્થી નથી.</div>'; return; }
+    $("cnt_body").innerHTML = cntHTML_(fmtNo(), opt());
+  }
+  function pr(f){
+    if (!S.students.length) return toast("હજુ કોઈ વિદ્યાર્થી નથી");
+    printPage("વિદ્યાર્થીઓની સંખ્યા દર્શાવતું પત્રક", cntHTML_(f, opt()), {landscape: val("cnt_orient").indexOf("Landscape") > -1});
+  }
+  ["cnt_month","cnt_date","cnt_fmt"].forEach(function(id){ $(id).onchange = draw; });
+  $("cnt_print1").onclick = function(){ pr(1); };
+  $("cnt_print2").onclick = function(){ pr(2); };
+  draw();
 };
 
 /* ---------- ફી એન્ટ્રી (વર્ગ મુજબ) ---------- */
