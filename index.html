@@ -4190,24 +4190,59 @@ WIRE["student:autodiv"] = function(){
   };
 };
 var AR_GENDER = ["મિશ્ર (કુમાર-કન્યા ભેગા, ક્રમ પ્રમાણે)","પહેલા કન્યા, પછી કુમાર","પહેલા કુમાર, પછી કન્યા"];
-VIEWS["student:autoroll"] = function(){
-  return '<div class="card"><h3>ઓટોમેટીક રોલ નંબર બનાવવા</h3><div class="grid">'
-    + sel("ar_std","ધોરણ",stdList(),"")
-    + '<div><label class="f" for="ar_div">વર્ગ</label><select id="ar_div">'+opts(divList(),"")+'<option value="__none__">(વર્ગ નક્કી નથી)</option></select></div>'
-    + sel("ar_order","ઓર્ડરિંગ ક્રમ",["જી.આર.નં.","અટક","નામ","પિતાનું નામ"],"નામ")
-    + sel("ar_gender","કુમાર / કન્યા ક્રમ",AR_GENDER,AR_GENDER[0])
-    + '</div><p class="hint">"મિશ્ર" = બધા વિદ્યાર્થી એક જ યાદીમાં પસંદ કરેલા ક્રમ પ્રમાણે. "પહેલા કન્યા, પછી કુમાર" = પહેલા બધી કન્યાઓને (પસંદ કરેલા ક્રમ પ્રમાણે) 1,2,3… અને ત્યાર પછી કુમારોને આગળના નંબર.</p>'
-    + '<div style="margin-top:10px"><button class="btn" id="ar_run">રોલ નંબર બનાવો</button></div></div>'
-    + '<div class="card" id="ar_body"></div>';
-};
-function autoRollList_(std, div, order, gmode){
+var AR_LANG = ["અંગ્રેજી A-B-C-D પ્રમાણે","ગુજરાતી પ્રમાણે"];
+/* ગુજરાતી → અંગ્રેજી અક્ષરો (અંદાજિત) — જ્યારે વિદ્યાર્થીનું અંગ્રેજી નામ ભરેલું ન હોય ત્યારે A-B-C-D ક્રમ માટે */
+var GU_LAT = (function(){
+  var m = {}, add = function(chars, lat){ chars.split(" ").forEach(function(c){ m[c] = lat; }); };
+  add("અ","a"); add("આ","aa"); add("ઇ ઈ","i"); add("ઉ ઊ","u"); add("ઋ","ru"); add("એ ઍ","e"); add("ઐ","ai"); add("ઓ ઑ","o"); add("ઔ","au");
+  return m;
+})();
+var GU_MATRA = {"ા":"a","િ":"i","ી":"i","ુ":"u","ૂ":"u","ૃ":"ru","ે":"e","ૈ":"ai","ો":"o","ૌ":"au","ૅ":"e","ૉ":"o"};
+var GU_CONS = {"ક":"k","ખ":"kh","ગ":"g","ઘ":"gh","ઙ":"n","ચ":"ch","છ":"chh","જ":"j","ઝ":"jh","ઞ":"n","ટ":"t","ઠ":"th","ડ":"d","ઢ":"dh","ણ":"n","ત":"t","થ":"th","દ":"d","ધ":"dh","ન":"n","પ":"p","ફ":"f","બ":"b","ભ":"bh","મ":"m","ય":"y","ર":"r","લ":"l","ળ":"l","વ":"v","શ":"sh","ષ":"sh","સ":"s","હ":"h"};
+function guLat_(str){
+  str = String(str == null ? "" : str);
+  var out = "", i, c, n;
+  for (i = 0; i < str.length; i++){
+    c = str.charAt(i); n = str.charAt(i+1);
+    if (GU_CONS[c]){
+      out += GU_CONS[c];
+      if (n === "્"){ i++; }
+      else if (GU_MATRA[n]){ out += GU_MATRA[n]; i++; }
+      else {
+        var after = str.charAt(i+1);
+        var wordEnd = !after || !/[઀-૿]/.test(after) || after === "ં" || after === "ઃ" || after === "ઁ";
+        if (!wordEnd) out += "a";
+      }
+    } else if (GU_LAT[c]) out += GU_LAT[c];
+    else if (c === "ં" || c === "ઁ") out += "n";
+    else if (c === "ઃ") out += "h";
+    else if (c === "્" || GU_MATRA[c]) { /* ઉપર સંભાળ્યું */ }
+    else out += c;
+  }
+  return out.toLowerCase();
+}
+function arKey_(s, field, lang){
+  var enField = field === "name" ? "nameEn" : field === "surname" ? "surnameEn" : field === "father" ? "fatherEn" : "";
+  if (lang === AR_LANG[0]){
+    var e = enField && String(s[enField] || "").trim();
+    return (e ? e.toLowerCase() : guLat_(s[field]));
+  }
+  return String(s[field] == null ? "" : s[field]);
+}
+function arCmpStr_(a, b, lang){ return lang === AR_LANG[0] ? (a < b ? -1 : a > b ? 1 : 0) : guCmp_(a, b); }
+function autoRollList_(std, div, order, gmode, lang){
   var key = order==="જી.આર.નં." ? "gr" : order==="અટક" ? "surname" : order==="પિતાનું નામ" ? "father" : "name";
+  var chain = key === "gr" ? ["name"] : key === "surname" ? ["surname","name","father"] : key === "father" ? ["father","name","surname"] : ["name","surname","father"];
   function cmp(a, b){
     if (key === "gr"){
       var d = (Number(a.gr) || 0) - (Number(b.gr) || 0);
       return d || String(a.gr).localeCompare(String(b.gr), undefined, {numeric:true});
     }
-    return guCmp_(a[key], b[key]) || guCmp_(a.name, b.name);
+    for (var i = 0; i < chain.length; i++){
+      var r = arCmpStr_(arKey_(a, chain[i], lang), arKey_(b, chain[i], lang), lang);
+      if (r) return r;
+    }
+    return 0;
   }
   var kids = activeKids_(std, div);
   if (gmode === AR_GENDER[1] || gmode === AR_GENDER[2]){
@@ -4219,23 +4254,68 @@ function autoRollList_(std, div, order, gmode){
   }
   return kids.sort(cmp);
 }
+VIEWS["student:autoroll"] = function(){
+  return '<div class="card"><h3>ઓટોમેટીક રોલ નંબર બનાવવા</h3><div class="grid">'
+    + sel("ar_std","ધોરણ",stdList(),"")
+    + '<div><label class="f" for="ar_div">વર્ગ</label><select id="ar_div">'+opts(divList(),"")+'<option value="__none__">(વર્ગ નક્કી નથી)</option></select></div>'
+    + sel("ar_order","ઓર્ડરિંગ ક્રમ",["જી.આર.નં.","અટક","નામ","પિતાનું નામ"],"નામ")
+    + sel("ar_lang","નામ ગોઠવવાની રીત",AR_LANG,AR_LANG[0])
+    + sel("ar_gender","કુમાર / કન્યા ક્રમ",AR_GENDER,AR_GENDER[0])
+    + '</div><p class="hint">"અંગ્રેજી A-B-C-D" માં વિદ્યાર્થીના <b>અંગ્રેજી નામ</b> (નવો પ્રવેશમાં ભરેલું) પ્રમાણે ગોઠવાય છે; અંગ્રેજી નામ ખાલી હોય તો ગુજરાતી નામ પરથી અંદાજે અંગ્રેજી અક્ષરો લેવાય છે. "યાદી બનાવો" દબાવ્યા પછી નીચે યાદીમાં ▲ ▼ બટનથી કે નવો રોલ નંબર લખીને કોઈને પણ આગળ-પાછળ કરી શકો છો; છેલ્લે "રોલ નંબર સાચવો" દબાવો.</p>'
+    + '<div style="margin-top:10px"><button class="btn" id="ar_run">યાદી બનાવો</button></div></div>'
+    + '<div class="card" id="ar_body"></div>';
+};
 WIRE["student:autoroll"] = function(){
-  $("ar_run").onclick = async function(){
-    var std=val("ar_std"), div=val("ar_div"), order=val("ar_order"), gmode=val("ar_gender");
-    var kids = autoRollList_(std, div, order, gmode);
-    if (!kids.length) return toast("આ ધોરણ/વર્ગમાં કોઈ વિદ્યાર્થી નથી");
-    var done = busyBtn_("ar_run", "રોલ નંબર બની રહ્યા છે…");
+  var LIST = [], CTX = null;
+  function fullName(s){ return [s.surname, s.name, s.father].filter(Boolean).join(" "); }
+  function enName(s){ var e = [s.surnameEn, s.nameEn, s.fatherEn].filter(Boolean).join(" "); return e; }
+  function move(from, to){
+    to = Math.max(0, Math.min(LIST.length - 1, to));
+    if (from === to) return;
+    var it = LIST.splice(from, 1)[0]; LIST.splice(to, 0, it); paint(to);
+  }
+  function paint(focusIx){
+    var missing = LIST.filter(function(s){ return !String(s.nameEn || "").trim(); }).length;
+    $("ar_body").innerHTML = '<h3>યાદી — ધોરણ '+esc(CTX.std)+(CTX.div === "__none__" ? "" : " / "+esc(CTX.div))+' ('+LIST.length+' વિદ્યાર્થી)</h3>'
+      + (CTX.lang === AR_LANG[0] && missing ? '<p class="hint" style="color:var(--bad)">'+missing+' વિદ્યાર્થીનું અંગ્રેજી નામ ખાલી છે — તેમનો ક્રમ ગુજરાતી નામ પરથી અંદાજે ગોઠવાયો છે (બરાબર ન લાગે તો ▲ ▼ થી સુધારો).</p>' : '')
+      + '<div class="tw"><table><thead><tr><th class="num">નવો રોલ</th><th>ગોઠવો</th><th class="num">જી.આર.</th><th>નામ</th><th>English</th><th>જાતિ</th><th class="num">હાલનો રોલ</th></tr></thead><tbody>'
+      + LIST.map(function(s, i){
+          return '<tr data-ix="'+i+'"'+(i === focusIx ? ' style="background:var(--accent-soft,#fff8d6)"' : '')+'>'
+            + '<td class="num"><input type="number" min="1" max="'+LIST.length+'" value="'+(i+1)+'" data-pos="'+i+'" style="width:64px"></td>'
+            + '<td style="white-space:nowrap"><button class="btn sec" data-up="'+i+'" style="padding:2px 9px"'+(i===0?' disabled':'')+'>▲</button> <button class="btn sec" data-dn="'+i+'" style="padding:2px 9px"'+(i===LIST.length-1?' disabled':'')+'>▼</button></td>'
+            + '<td class="num">'+esc(s.gr)+'</td><td>'+esc(fullName(s))+'</td><td>'+esc(enName(s) || "—")+'</td><td>'+esc(s.gender||"")+'</td><td class="num">'+esc(s.roll||"")+'</td></tr>';
+        }).join("")
+      + '</tbody></table></div><div class="row" style="margin-top:12px;gap:10px;flex-wrap:wrap"><button class="btn" id="ar_save">રોલ નંબર સાચવો</button>'
+      + '<button class="btn sec" id="ar_redo">ફરી ઓટોમેટીક ગોઠવો</button></div>';
+    Array.prototype.forEach.call($("ar_body").querySelectorAll("[data-up]"), function(b){ b.onclick = function(){ var i = Number(b.dataset.up); move(i, i-1); }; });
+    Array.prototype.forEach.call($("ar_body").querySelectorAll("[data-dn]"), function(b){ b.onclick = function(){ var i = Number(b.dataset.dn); move(i, i+1); }; });
+    Array.prototype.forEach.call($("ar_body").querySelectorAll("input[data-pos]"), function(inp){
+      inp.onchange = function(){ var to = parseInt(inp.value, 10); if (!to){ paint(); return; } move(Number(inp.dataset.pos), to - 1); };
+    });
+    $("ar_redo").onclick = build;
+    $("ar_save").onclick = save;
+    if (focusIx != null){ var tr = $("ar_body").querySelector('tr[data-ix="'+focusIx+'"]'); if (tr && tr.scrollIntoView) tr.scrollIntoView({block:"nearest"}); }
+  }
+  function build(){
+    CTX = {std:val("ar_std"), div:val("ar_div"), order:val("ar_order"), gmode:val("ar_gender"), lang:val("ar_lang")};
+    LIST = autoRollList_(CTX.std, CTX.div, CTX.order, CTX.gmode, CTX.lang);
+    if (!LIST.length){ $("ar_body").innerHTML = ""; return toast("આ ધોરણ/વર્ગમાં કોઈ વિદ્યાર્થી નથી"); }
+    paint();
+  }
+  async function save(){
+    var kids = LIST.slice(), done = busyBtn_("ar_save", "રોલ નંબર બની રહ્યા છે…"), ctx = CTX;
     try{
       await putMany("students", kids.map(function(k, i){ return Object.assign({}, k, {roll:i+1}); }),
         function(d, t){ done("રોલ નંબર બની રહ્યા છે… " + d + "/" + t); });
     } finally { done(); }
-    toast("રોલ નંબર બની ગયા — " + kids.length + " વિદ્યાર્થી");
+    toast("રોલ નંબર સચવાયા — " + kids.length + " વિદ્યાર્થી");
     render();
-    if ($("ar_std")){ $("ar_std").value = std; $("ar_div").value = div; $("ar_order").value = order; $("ar_gender").value = gmode; }
-    if ($("ar_body")) $("ar_body").innerHTML = '<h3>પરિણામ — ધોરણ '+esc(std)+(div === "__none__" ? "" : " / "+esc(div))+'</h3><div class="tw"><table><thead><tr><th class="num">રોલ નં.</th><th class="num">જી.આર.</th><th>નામ</th><th>જાતિ</th></tr></thead><tbody>'
-      + kids.map(function(s, i){ return '<tr><td class="num">'+(i+1)+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+(s.surname ? " "+esc(s.surname) : "")+'</td><td>'+esc(s.gender||"")+'</td></tr>'; }).join("")
+    if ($("ar_std")){ $("ar_std").value = ctx.std; $("ar_div").value = ctx.div; $("ar_order").value = ctx.order; $("ar_gender").value = ctx.gmode; $("ar_lang").value = ctx.lang; }
+    if ($("ar_body")) $("ar_body").innerHTML = '<h3>સચવાયેલા રોલ નંબર — ધોરણ '+esc(ctx.std)+(ctx.div === "__none__" ? "" : " / "+esc(ctx.div))+'</h3><div class="tw"><table><thead><tr><th class="num">રોલ નં.</th><th class="num">જી.આર.</th><th>નામ</th><th>English</th><th>જાતિ</th></tr></thead><tbody>'
+      + kids.map(function(s, i){ return '<tr><td class="num">'+(i+1)+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(fullName(s))+'</td><td>'+esc(enName(s) || "—")+'</td><td>'+esc(s.gender||"")+'</td></tr>'; }).join("")
       + '</tbody></table></div>';
-  };
+  }
+  $("ar_run").onclick = build;
 };
 
 /* ---------- પાછળના વર્ષના વિદ્યાર્થીઓને ઉપલા ધોરણમાં ચઢાવવા ---------- */
