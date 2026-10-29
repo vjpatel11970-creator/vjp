@@ -1306,7 +1306,7 @@ VIEWS["shala:subjects"] = function(){
     + '</div><div style="margin-top:8px">'+chk("sj_prac","Show Marks (11 Sci. Practical Only)",false)+'</div>'
     + '<div class="row" style="margin-top:14px;gap:10px;flex-wrap:wrap"><button class="btn" id="sj_add">સેવ</button>'
     + '<button class="btn sec" id="sj_quick">＋ સામાન્ય વિષયો ઉમેરો (ધો. 9-10)</button></div>'
-    + '<p class="hint" style="margin-bottom:0">"સામાન્ય વિષયો" = ફરજિયાત: ગુજરાતી, અંગ્રેજી, ગણિત, વિજ્ઞાન અને ટેકનોલોજી, સામાજિક વિજ્ઞાન; વૈકલ્પિક: સંસ્કૃત, હિન્દી, કમ્પ્યુટર, શારીરિક શિક્ષણ, ચિત્ર. જે પહેલેથી હોય તે ફરી ઉમેરાતા નથી, પછી જરૂર મુજબ કાઢી શકાય.</p></div>'
+    + '<p class="hint" style="margin-bottom:0">"સામાન્ય વિષયો" = ફરજિયાત: ગુજરાતી, અંગ્રેજી, ગણિત, વિજ્ઞાન અને ટેકનોલોજી, સામાજિક વિજ્ઞાન; વૈકલ્પિક: સંસ્કૃત, હિન્દી, કમ્પ્યુટર, શારીરિક શિક્ષણ. જે પહેલેથી હોય તે ફરી ઉમેરાતા નથી, પછી જરૂર મુજબ કાઢી શકાય.</p></div>'
     + '<div class="card"><h3>વિષયોની યાદી</h3>'
     + (items.length
       ? '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th>વિષયનું નામ</th><th>વિષયનું નામ (English)</th><th>પ્રકાર</th><th>વિષય લેતા શિક્ષકો</th><th></th></tr></thead><tbody>'
@@ -1363,7 +1363,7 @@ WIRE["shala:subjects"] = function(){
     var base = [["ગુજરાતી","Gujarati","core"],["અંગ્રેજી","English","core"],["ગણિત","Mathematics","core"],
       ["વિજ્ઞાન અને ટેકનોલોજી","Science & Technology","core"],["સામાજિક વિજ્ઞાન","Social Science","core"],
       ["સંસ્કૃત","Sanskrit","elective"],["હિન્દી","Hindi","elective"],["કમ્પ્યુટર","Computer","elective"],
-      ["શારીરિક શિક્ષણ","Physical Education","elective"],["ચિત્ર","Drawing","elective"]];
+      ["શારીરિક શિક્ષણ","Physical Education","elective"]];
     var n = 0;
     base.forEach(function(b){
       if (!items.some(function(x){ return x.gu === b[0]; })){ items.push({gu:b[0], en:b[1], practical:false, kind:b[2]}); n++; }
@@ -3490,10 +3490,10 @@ WIRE["student:list"] = function(){
       return okq && (!fs || String(s.std)===fs) && (!fd || String(s.div)===fd) && (!fg || s.gender===fg);
     });
     $("stbody").innerHTML = rows.length
-      ? '<div class="tw"><table><thead><tr><th class="num">જી.આર.</th><th>નામ</th><th>ધોરણ/વર્ગ</th>'
+      ? '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>નામ</th><th>ધોરણ/વર્ગ</th>'
         + '<th>જાતિ</th><th>જ્ઞાતિ</th><th>જન્મ તારીખ</th><th>વાલીનો મોબાઇલ</th><th></th></tr></thead><tbody>'
-        + rows.map(function(s){
-            return '<tr><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td>'
+        + rows.map(function(s, ix){
+            return '<tr><td class="num">'+(ix+1)+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td>'
               + '<td>'+esc(s.std)+' / '+esc(s.div)+'</td><td>'+esc(s.gender)+'</td>'
               + '<td><span class="chip">'+esc(s.cat||"—")+'</span></td><td class="num">'+esc(dmy(s.dob)||"—")+'</td>'
               + '<td class="num">'+esc(s.mobile||"—")+'</td>'
@@ -4141,49 +4141,100 @@ WIRE["student:gr"] = function(){
 };
 
 /* ---------- ઓટોમેટીક વર્ગ / રોલ નંબર ---------- */
+function guCmp_(a, b){ return String(a == null ? "" : a).localeCompare(String(b == null ? "" : b), "gu"); }
+function activeKids_(std, div){
+  return S.students.filter(function(s){
+    if (String(s.std) !== std || s.relieveDate) return false;
+    if (div === "__none__") return !s.div;
+    return !div || String(s.div) === div;
+  });
+}
+function busyBtn_(id, text){
+  var b = $(id); if (!b) return function(){};
+  var old = b.textContent; b.disabled = true; b.textContent = text;
+  return function(t){ if (t !== undefined) b.textContent = t; else { b.disabled = false; b.textContent = old; } };
+}
 VIEWS["student:autodiv"] = function(){
   return '<div class="card"><h3>ઓટોમેટીક વર્ગ (વિભાગ) બનાવવા</h3><div class="grid">'
     + sel("ad_std","ધોરણ",stdList(),"")
-    + '</div><p class="hint">ધોરણ પસંદ કરીને બટન દબાવો — તે ધોરણના બધા વિદ્યાર્થીઓને ઉપલબ્ધ વર્ગોમાં (નામ પ્રમાણે ક્રમમાં) સરખા ભાગે વહેંચી દેશે.</p>'
+    + '</div><p class="hint">ધોરણ પસંદ કરીને બટન દબાવો — તે ધોરણના બધા વિદ્યાર્થીઓને ઉપલબ્ધ વર્ગોમાં (નામ પ્રમાણે ક્રમમાં, વારાફરતી) સરખા ભાગે વહેંચી દેશે. વર્ગો: <b>'+esc(divList().join(", ") || "—")+'</b></p>'
     + '<div style="margin-top:10px"><button class="btn" id="ad_run">વર્ગ વહેંચો</button></div></div>'
     + '<div class="card" id="ad_body"></div>';
 };
+function autoDivReport_(std){
+  var divs = divList(), kids = activeKids_(std, "");
+  var h = '<h3>ધોરણ '+esc(std)+' — વર્ગ વહેંચણીનું પરિણામ ('+kids.length+' વિદ્યાર્થી)</h3><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(220px,1fr))">';
+  divs.concat(["__none__"]).forEach(function(d){
+    var g = activeKids_(std, d).sort(function(a, b){ return guCmp_(a.name, b.name); });
+    if (d === "__none__" && !g.length) return;
+    h += '<div class="card" style="margin:0"><b>'+(d === "__none__" ? "વર્ગ નક્કી નથી" : "વર્ગ "+esc(d))+'</b> <span class="chip">'+g.length+'</span>'
+      + '<div style="font-size:13px;margin-top:6px">'+g.map(function(s){ return esc(s.name); }).join("<br>")+'</div></div>';
+  });
+  return h + '</div>';
+}
 WIRE["student:autodiv"] = function(){
   $("ad_run").onclick = async function(){
     var std = val("ad_std"); if (!std) return toast("ધોરણ પસંદ કરો");
     var divs = divList(); if (!divs.length) return toast("પહેલાં શાળા › સીસ્ટમ સેટિંગમાં વર્ગ ઉમેરો");
-    var kids = S.students.filter(function(s){return String(s.std)===std;}).slice().sort(function(a,b){return String(a.name).localeCompare(String(b.name));});
-    for (var i=0;i<kids.length;i++){ await put("students", Object.assign({}, kids[i], {div:divs[i % divs.length]})); }
-    $("ad_body").innerHTML = '<h3>પરિણામ</h3><p class="hint">ધોરણ '+esc(std)+' ના '+kids.length+' વિદ્યાર્થીઓને '+divs.length+' વર્ગોમાં વહેંચવામાં આવ્યા.</p>';
-    toast("વર્ગ વહેંચણી પૂર્ણ"); render();
+    var kids = activeKids_(std, "").sort(function(a, b){ return guCmp_(a.name, b.name); });
+    if (!kids.length) return toast("ધોરણ " + std + " માં કોઈ વિદ્યાર્થી નથી");
+    var done = busyBtn_("ad_run", "વહેંચી રહ્યા છીએ…");
+    try{
+      await putMany("students", kids.map(function(k, i){ return Object.assign({}, k, {div:divs[i % divs.length]}); }),
+        function(d, t){ done("વહેંચી રહ્યા છીએ… " + d + "/" + t); });
+    } finally { done(); }
+    toast("વર્ગ વહેંચણી પૂર્ણ — " + kids.length + " વિદ્યાર્થી, " + divs.length + " વર્ગ");
+    render();
+    if ($("ad_std")) $("ad_std").value = std;
+    if ($("ad_body")) $("ad_body").innerHTML = autoDivReport_(std);
   };
 };
+var AR_GENDER = ["મિશ્ર (કુમાર-કન્યા ભેગા, ક્રમ પ્રમાણે)","પહેલા કન્યા, પછી કુમાર","પહેલા કુમાર, પછી કન્યા"];
 VIEWS["student:autoroll"] = function(){
   return '<div class="card"><h3>ઓટોમેટીક રોલ નંબર બનાવવા</h3><div class="grid">'
     + sel("ar_std","ધોરણ",stdList(),"")
-    + sel("ar_div","વર્ગ",divList(),"")
+    + '<div><label class="f" for="ar_div">વર્ગ</label><select id="ar_div">'+opts(divList(),"")+'<option value="__none__">(વર્ગ નક્કી નથી)</option></select></div>'
     + sel("ar_order","ઓર્ડરિંગ ક્રમ",["જી.આર.નં.","અટક","નામ","પિતાનું નામ"],"નામ")
-    + sel("ar_gender","જાતિ",["બધા","કુમાર","કન્યા"],"બધા")
-    + '</div><div style="margin-top:10px"><button class="btn" id="ar_run">રોલ નંબર બનાવો</button></div></div>'
+    + sel("ar_gender","કુમાર / કન્યા ક્રમ",AR_GENDER,AR_GENDER[0])
+    + '</div><p class="hint">"મિશ્ર" = બધા વિદ્યાર્થી એક જ યાદીમાં પસંદ કરેલા ક્રમ પ્રમાણે. "પહેલા કન્યા, પછી કુમાર" = પહેલા બધી કન્યાઓને (પસંદ કરેલા ક્રમ પ્રમાણે) 1,2,3… અને ત્યાર પછી કુમારોને આગળના નંબર.</p>'
+    + '<div style="margin-top:10px"><button class="btn" id="ar_run">રોલ નંબર બનાવો</button></div></div>'
     + '<div class="card" id="ar_body"></div>';
 };
+function autoRollList_(std, div, order, gmode){
+  var key = order==="જી.આર.નં." ? "gr" : order==="અટક" ? "surname" : order==="પિતાનું નામ" ? "father" : "name";
+  function cmp(a, b){
+    if (key === "gr"){
+      var d = (Number(a.gr) || 0) - (Number(b.gr) || 0);
+      return d || String(a.gr).localeCompare(String(b.gr), undefined, {numeric:true});
+    }
+    return guCmp_(a[key], b[key]) || guCmp_(a.name, b.name);
+  }
+  var kids = activeKids_(std, div);
+  if (gmode === AR_GENDER[1] || gmode === AR_GENDER[2]){
+    var first = gmode === AR_GENDER[1] ? "કન્યા" : "કુમાર", second = first === "કન્યા" ? "કુમાર" : "કન્યા";
+    var A = kids.filter(function(s){ return s.gender === first; }).sort(cmp);
+    var B = kids.filter(function(s){ return s.gender === second; }).sort(cmp);
+    var C = kids.filter(function(s){ return s.gender !== first && s.gender !== second; }).sort(cmp);
+    return A.concat(B, C);
+  }
+  return kids.sort(cmp);
+}
 WIRE["student:autoroll"] = function(){
   $("ar_run").onclick = async function(){
-    var std=val("ar_std"), div=val("ar_div"), order=val("ar_order"), gender=val("ar_gender");
-    var key = order==="જી.આર.નં." ? "gr" : order==="અટક" ? "surname" : order==="પિતાનું નામ" ? "father" : "name";
-    var kids = S.students.filter(function(s){
-      return String(s.std)===std && String(s.div)===div && (gender==="બધા" || s.gender===gender);
-    }).slice().sort(function(a,b){
-      var av = key==="gr" ? (Number(a[key])||0) : String(a[key]||"");
-      var bv = key==="gr" ? (Number(b[key])||0) : String(b[key]||"");
-      return av<bv ? -1 : av>bv ? 1 : 0;
-    });
+    var std=val("ar_std"), div=val("ar_div"), order=val("ar_order"), gmode=val("ar_gender");
+    var kids = autoRollList_(std, div, order, gmode);
     if (!kids.length) return toast("આ ધોરણ/વર્ગમાં કોઈ વિદ્યાર્થી નથી");
-    for (var i=0;i<kids.length;i++){ await put("students", Object.assign({}, kids[i], {roll:i+1})); }
-    $("ar_body").innerHTML = '<div class="tw"><table><thead><tr><th class="num">રોલ નં.</th><th class="num">જી.આર.</th><th>નામ</th></tr></thead><tbody>'
-      + kids.map(function(s,i){ return '<tr><td class="num">'+(i+1)+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td></tr>'; }).join("")
+    var done = busyBtn_("ar_run", "રોલ નંબર બની રહ્યા છે…");
+    try{
+      await putMany("students", kids.map(function(k, i){ return Object.assign({}, k, {roll:i+1}); }),
+        function(d, t){ done("રોલ નંબર બની રહ્યા છે… " + d + "/" + t); });
+    } finally { done(); }
+    toast("રોલ નંબર બની ગયા — " + kids.length + " વિદ્યાર્થી");
+    render();
+    if ($("ar_std")){ $("ar_std").value = std; $("ar_div").value = div; $("ar_order").value = order; $("ar_gender").value = gmode; }
+    if ($("ar_body")) $("ar_body").innerHTML = '<h3>પરિણામ — ધોરણ '+esc(std)+(div === "__none__" ? "" : " / "+esc(div))+'</h3><div class="tw"><table><thead><tr><th class="num">રોલ નં.</th><th class="num">જી.આર.</th><th>નામ</th><th>જાતિ</th></tr></thead><tbody>'
+      + kids.map(function(s, i){ return '<tr><td class="num">'+(i+1)+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+(s.surname ? " "+esc(s.surname) : "")+'</td><td>'+esc(s.gender||"")+'</td></tr>'; }).join("")
       + '</tbody></table></div>';
-    toast("રોલ નંબર બની ગયા"); render();
   };
 };
 
@@ -6686,21 +6737,23 @@ async function payViaRazorpay(){
 }
 /* ---------- વિદ્યાર્થી › વૈકલ્પિક વિષયની પસંદગી ---------- */
 var SUBSEL = {std:"", div:""};
+var SUBSEL_HIDE = ["ચિત્ર"];
+function subselElectives_(){ return electiveList().filter(function(n){ return SUBSEL_HIDE.indexOf(n) < 0; }); }
 VIEWS["student:subsel"] = function(){
-  var electives = electiveList();
+  var electives = subselElectives_();
   if (!subList().length) return emptyCard("પહેલા વિષયો ઉમેરો.","શાળા › વિષયની એન્ટ્રી");
   if (!electives.length) return emptyCard("કોઈ વૈકલ્પિક વિષય નથી — બધા વિષયો ફરજિયાત છે.","શાળા › વિષયની એન્ટ્રી (વિષયનો પ્રકાર 'વૈકલ્પિક' કરો)");
-  var std = SUBSEL.std || stdList()[0] || "";
-  return '<div class="card"><h3>વૈકલ્પિક વિષયની પસંદગી</h3>'
+  var std = "10";
+  return '<div class="card"><h3>વૈકલ્પિક વિષયની પસંદગી (ધોરણ 10)</h3>'
     + '<p class="hint" style="margin:0 0 10px">ફરજિયાત વિષયો (' + esc(coreList().join(", ") || "—") + ') બધા વિદ્યાર્થી માટે આપોઆપ છે. અહીં દરેક વિદ્યાર્થી પોતાના વૈકલ્પિક વિષયો પસંદ કરે તે ટિક કરો.</p>'
     + '<div class="row" style="gap:10px;flex-wrap:wrap;align-items:end">'
-    + '<div><label class="f">ધોરણ</label><select id="ss_std">'+opts(stdList(), std)+'</select></div>'
+    + '<div><label class="f">ધોરણ</label><select id="ss_std"><option value="10" selected>10</option></select></div>'
     + '<div><label class="f">વર્ગ</label><select id="ss_div"><option value="">બધા</option>'+opts(divList(), SUBSEL.div)+'</select></div></div>'
     + '<div id="ss_info" class="hint"></div><div id="ss_body" style="margin-top:12px"></div></div>';
 };
 WIRE["student:subsel"] = function(){
   if (!$("ss_std")) return;
-  var electives = electiveList();
+  var electives = subselElectives_();
   function maxElect(std){
     var lim = stdSubjectLimit(std);
     return lim ? Math.max(0, lim - coreList().length) : 0; /* 0 = મર્યાદા નહીં */
@@ -6755,7 +6808,8 @@ WIRE["student:subsel"] = function(){
         upd.push({s:s, chosen:chosen});
       });
       if (bad.length) return toast("વધુ વિષય પસંદ થયા (મહત્તમ "+mx+"): " + bad.slice(0,3).join(", ") + (bad.length>3?" …":""));
-      for (var i=0;i<upd.length;i++) await put("students", Object.assign({}, upd[i].s, {electives: upd[i].chosen}));
+      var sb = $("ss_save"); if (sb){ sb.disabled = true; sb.textContent = "સાચવી રહ્યા છીએ…"; }
+      await putMany("students", upd.map(function(u){ return Object.assign({}, u.s, {electives: u.chosen}); }), function(d, t){ if (sb) sb.textContent = "સાચવી રહ્યા છીએ… " + d + "/" + t; });
       toast(upd.length + " વિદ્યાર્થીની પસંદગી સચવાઈ"); draw();
     };
   }
