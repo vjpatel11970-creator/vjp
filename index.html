@@ -787,6 +787,7 @@ async function initStore(){
         S.settings = Object.assign(S.settings, res.data.settings || {});
         S.apiSettings = Object.assign(S.apiSettings, res.data.apiSettings || {});
         COLLS.forEach(function(c){ S[c] = res.data[c] || []; });
+        sortStudents_();
         lsWrite(); /* keep an offline mirror */
         note("રેકોર્ડ Google Sheet પર સાચવાય છે — બીજા ઉપકરણ પરથી પણ જોઈ શકાશે.");
         syncChip(true, "☁ Google Sheet જોડાયેલ", "ડેટા Google Sheet પર સચવાય છે — દરેક કોમ્પ્યુટર/ફોનમાં દેખાશે.");
@@ -805,6 +806,7 @@ async function initStore(){
     S.settings = Object.assign(S.settings, local.settings || {});
     S.apiSettings = Object.assign(S.apiSettings, local.apiSettings || {});
     COLLS.forEach(function(c){ S[c] = local[c] || []; });
+    sortStudents_();
   }
 }
 
@@ -890,6 +892,49 @@ function ensureXLSX_(){
   });
 }
 /* ઘણા રેકોર્ડ એકસાથે સેવ (ઝડપી). નવી Code.gs માં "putMany" હોય તો 100-100 ના ગુચ્છમાં, નહિતર એક-એક કરીને */
+/* વિદ્યાર્થીઓની યાદી બધે રોલ નંબર પ્રમાણે: ધોરણ → વર્ગ → રોલ નં. (રોલ વગરના છેલ્લે, નામ પ્રમાણે) */
+function sortStudents_(){
+  try{
+    var so = {}, dv = {};
+    stdList().forEach(function(x, i){ so["s"+x] = i; });
+    divList().forEach(function(x, i){ dv["d"+x] = i; });
+    function rk(o, key, v){ var r = o[key + v]; return r == null ? 9999 : r; }
+    S.students.sort(function(a, b){
+      var d = rk(so, "s", String(a.std)) - rk(so, "s", String(b.std));
+      if (d) return d;
+      if (String(a.std) !== String(b.std)) return String(a.std).localeCompare(String(b.std), undefined, {numeric:true});
+      d = rk(dv, "d", String(a.div || "")) - rk(dv, "d", String(b.div || ""));
+      if (d) return d;
+      if (String(a.div || "") !== String(b.div || "")) return String(a.div || "").localeCompare(String(b.div || ""), "gu");
+      var ra = parseInt(a.roll, 10), rb = parseInt(b.roll, 10);
+      var ha = !isNaN(ra), hb = !isNaN(rb);
+      if (ha && hb && ra !== rb) return ra - rb;
+      if (ha !== hb) return ha ? -1 : 1;
+      var c = String(a.name || "").localeCompare(String(b.name || ""), "gu");
+      return c || (Number(a.gr) || 0) - (Number(b.gr) || 0);
+    });
+  }catch(e){}
+}
+/* બીજા ઉપકરણ/ટીચર એપથી ઉમેરાયેલ રેકોર્ડ Google Sheet માંથી ફરી લાવવા */
+async function refreshColl_(colls){
+  if (!GAS_READY) return false;
+  colls = [].concat(colls);
+  var data = null;
+  try{
+    var all = await gasGet({action:"getAll"});
+    if (all && all.ok) data = all.data;
+  }catch(e){}
+  if (!data) return false;
+  colls.forEach(function(c){
+    var server = data[c] || [], seen = {};
+    server.forEach(function(o){ seen[o.id] = 1; });
+    var localOnly = (S[c] || []).filter(function(o){ return !seen[o.id]; });
+    S[c] = server.concat(localOnly);
+  });
+  if (colls.indexOf("students") > -1) sortStudents_();
+  lsWrite();
+  return true;
+}
 async function putMany(coll, objs, onProgress){
   objs.forEach(function(obj){
     if (!obj.id) obj.id = uid();
@@ -897,6 +942,7 @@ async function putMany(coll, objs, onProgress){
     for (var i=0;i<arr.length;i++){ if (arr[i].id === obj.id){ arr[i] = obj; found = true; break; } }
     if (!found) arr.push(obj);
   });
+  if (coll === "students") sortStudents_();
   lsWrite();
   if (!GAS_READY) return {ok:true, remote:false};
   var useBatch = true, failed = 0;
@@ -923,6 +969,7 @@ async function put(coll, obj){
   var arr = S[coll], found = false;
   for (var i=0;i<arr.length;i++){ if (arr[i].id === obj.id){ arr[i] = obj; found = true; break; } }
   if (!found) arr.push(obj);
+  if (coll === "students") sortStudents_();
   lsWrite();
   if (GAS_READY){
     try{
@@ -1126,6 +1173,18 @@ function render(){
     try{ w(); }
     catch(err){ console.error("WIRE[\"" + cur.m + ":" + cur.t + "\"] ભૂલ:", err); }
   }
+  autoRefresh_();
+}
+/* ટીચર એપથી ભરાયેલ હાજરી/પોસ્ટ એડમિન સ્ક્રીન પર આપોઆપ દેખાય તે માટે (ખોલતી વખતે, ૧૫ સેકન્ડે એક વાર) */
+var REFRESH_MAP = {"student:att":["attendance"], "reports:avgatt":["attendance"], "reports:attmatrix":["attendance"],
+  "portal:assign":["assignments"], "portal:material":["materials"], "portal:notice":["notices"]};
+var LAST_REFRESH = {};
+function autoRefresh_(){
+  var k = cur.m + ":" + cur.t, cs = REFRESH_MAP[k];
+  if (!cs || !GAS_READY || k === "student:att") return; /* હાજરી ટૅબ પોતે લાવે છે */
+  var now = Date.now(); if (LAST_REFRESH[k] && now - LAST_REFRESH[k] < 15000) return;
+  LAST_REFRESH[k] = now;
+  refreshColl_(cs).then(function(ok){ if (ok && cur.m + ":" + cur.t === k) render(); });
 }
 var VIEWS = {}, WIRE = {};
 
@@ -3952,7 +4011,9 @@ VIEWS["student:att"] = function(){
     + '<div><label class="f">ધોરણ</label><select id="at_std">'+opts(stdList(),"")+'</select></div>'
     + '<div><label class="f">વર્ગ</label><select id="at_div">'+opts(divList(),"")+'</select></div>'
     + '<div><button class="btn sec" id="at_all">બધા હાજર</button></div>'
-    + '</div><div id="at_body"></div></div>';
+    + '<div><button class="btn sec" id="at_refresh">🔄 નવી હાજરી લાવો</button></div>'
+    + '</div><div id="at_status" class="hint" style="margin:8px 0"></div><div id="at_body"></div></div>'
+    + '<div class="card" id="at_hist"></div>';
 };
 WIRE["student:att"] = function(){
   function key(){ return val("at_date") + "_" + val("at_std") + "_" + val("at_div"); }
@@ -3960,7 +4021,21 @@ WIRE["student:att"] = function(){
   function draw(){
     var kids = S.students.filter(function(s){ return String(s.std)===val("at_std") && String(s.div)===val("at_div"); });
     if (!kids.length){ $("at_body").innerHTML = '<div class="empty">આ ધોરણ/વર્ગમાં કોઈ વિદ્યાર્થી નથી.</div>'; return; }
-    var r = rec() || {marks:{}};
+    var r0 = rec(), r = r0 || {marks:{}};
+    $("at_status").innerHTML = r0
+      ? '<span class="chip g">✔ આ દિવસની હાજરી સચવાયેલ છે</span>' + (r0.by ? ' ભરનાર: <b>'+esc(r0.by)+'</b> (ટીચર એપ)' : ' (એડમિન દ્વારા)') + ' — ફેરફાર કરી ફરી સાચવી શકો.'
+      : '<span class="chip r">હજુ આ દિવસની હાજરી ભરાઈ નથી</span> નીચે બધા હાજર તરીકે બતાવ્યા છે — જરૂર મુજબ ગેરહાજર કરીને સાચવો.';
+    var hist = S.attendance.filter(function(a){ return String(a.std) === val("at_std") && String(a.div || "") === val("at_div"); })
+      .slice().sort(function(a, b){ return String(b.date).localeCompare(String(a.date)); }).slice(0, 15);
+    $("at_hist").innerHTML = '<h3>આ વર્ગની તાજેતરની હાજરી</h3>' + (hist.length
+      ? '<div class="tw"><table><thead><tr><th>તારીખ</th><th class="num">હાજર</th><th class="num">ગેરહાજર</th><th>ભરનાર</th><th></th></tr></thead><tbody>'
+        + hist.map(function(a){
+            var ks = Object.keys(a.marks || {}), ab = ks.filter(function(k){ return a.marks[k] === false; }).length;
+            return '<tr><td>'+esc(dmy(a.date))+'</td><td class="num">'+(ks.length-ab)+'</td><td class="num">'+ab+'</td><td>'+esc(a.by || "એડમિન")+'</td>'
+              + '<td><button class="btn sm sec" data-hd="'+esc(a.date)+'">ખોલો</button></td></tr>';
+          }).join("") + '</tbody></table></div>'
+      : '<div class="empty">આ વર્ગની હજુ કોઈ હાજરી નોંધાઈ નથી.</div>');
+    Array.prototype.forEach.call($("at_hist").querySelectorAll("[data-hd]"), function(b){ b.onclick = function(){ $("at_date").value = b.dataset.hd; draw(); }; });
     $("at_body").innerHTML = '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>નામ</th><th>હાજર</th></tr></thead><tbody>'
       + kids.map(function(s, _ix){
           var on = r.marks[s.id] !== false;
@@ -3977,8 +4052,8 @@ WIRE["student:att"] = function(){
       Array.prototype.forEach.call($("at_body").querySelectorAll("input[type=checkbox]"), function(c){
         marks[c.dataset.k] = c.checked;
       });
-      await put("attendance",{id:key(),date:val("at_date"),std:val("at_std"),div:val("at_div"),marks:marks});
-      toast("હાજરી સાચવાઈ");
+      await put("attendance",{id:key(),date:val("at_date"),std:val("at_std"),div:val("at_div"),marks:marks,by:(rec() && rec().by) || undefined});
+      toast("હાજરી સાચવાઈ"); draw();
     };
   }
   function count(){
@@ -3987,6 +4062,16 @@ WIRE["student:att"] = function(){
     if ($("at_cnt")) $("at_cnt").textContent = "હાજર " + p + " / " + boxes.length + " · ગેરહાજર " + (boxes.length - p);
   }
   $("at_date").onchange = draw; $("at_std").onchange = draw; $("at_div").onchange = draw;
+  async function fresh(manual){
+    if ($("at_refresh")) $("at_refresh").disabled = true;
+    var ok = await refreshColl_("attendance");
+    if ($("at_refresh")) $("at_refresh").disabled = false;
+    if (!$("at_body")) return; /* બીજી સ્ક્રીન ખુલી ગઈ */
+    if (ok) draw();
+    if (manual) toast(ok ? "નવી હાજરી લાવ્યા" : (GAS_READY ? "Google Sheet સાથે જોડાણ ન થયું" : "Google Sheet જોડાયેલ નથી"));
+  }
+  $("at_refresh").onclick = function(){ fresh(true); };
+  fresh(false);
   $("at_all").onclick = function(){
     Array.prototype.forEach.call($("at_body").querySelectorAll("input[type=checkbox]"), function(c){ c.checked = true; });
     count();
