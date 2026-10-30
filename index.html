@@ -970,9 +970,55 @@ function isCompulsory(name){
 }
 function electiveList(){ return subList().filter(function(n){ return !isCompulsory(n); }); }
 function coreList(){ return subList().filter(isCompulsory); }
+/* ---- ધોરણ મુજબ વિષયના નિયમો ----
+   ધોરણ 9 : બધા વિષયો ફરજિયાત (ગુજરાતી, હિન્દી, અંગ્રેજી, સંસ્કૃત, ગણિત, વિ.અને ટે., સા.વિ., શા.શિ., કમ્પ્યુટર, ચિત્ર)
+            પ્રથમ/દ્વિતીય પરીક્ષામાં 7 વિષય (શા.શિ., કમ્પ્યુટર, ચિત્ર વગર), વાર્ષિક પરીક્ષામાં 10 વિષય
+   ધોરણ 10: ફરજિયાત = ગુજરાતી, અંગ્રેજી, ગણિત, વિ.અને ટે., સા.વિ.; હિન્દી/સંસ્કૃતમાંથી એક; શા.શિ./કમ્પ્યુટરમાંથી એક; ચિત્ર નથી */
+var STD10_OPTIONAL = ["હિન્દી","સંસ્કૃત","શારીરિક શિક્ષણ","કમ્પ્યુટર"];
+var STD9_ANNUAL_ONLY = ["શારીરિક શિક્ષણ","કમ્પ્યુટર","ચિત્ર"];
+function subCanon_(n){
+  return String(n||"").replace(/\s+/g," ").trim().replace(/કોમ્પ્યુટર|કૉમ્પ્યુટર|કોમ્પ્યૂટર/g,"કમ્પ્યુટર").replace(/^સંકૃત$/,"સંસ્કૃત").replace(/શારીરિકશિક્ષણ/,"શારીરિક શિક્ષણ");
+}
+function subjOffered_(std, name){ return !(String(std) === "10" && subCanon_(name) === "ચિત્ર"); }
+function subjCompulsoryFor_(std, name){
+  std = String(std);
+  if (std === "9") return true;
+  if (std === "10"){
+    if (STD10_OPTIONAL.indexOf(subCanon_(name)) > -1) return false;
+    if (!subjOffered_(std, name)) return false;
+  }
+  return isCompulsory(name);
+}
+function examIsAnnual_(ex){ return /વાર્ષિક|annual|final/i.test(String((ex && ex.name) || "")); }
+/* પરીક્ષાના માળખામાં વધુમાં વધુ વિષયો (0 = મર્યાદા નહીં) */
+function examSubjectLimit_(ex){
+  if (!ex || (ex.kind || "મુખ્ય પરીક્ષા") !== "મુખ્ય પરીક્ષા") return 0;
+  var std = String(ex.std);
+  if (std === "10") return 0;                                /* ધો. 10: દરેક વિદ્યાર્થી 7 જ લે છે — વિકલ્પોને લીધે માળખામાં વધુ દેખાય */
+  if (std === "9" && !examIsAnnual_(ex)){
+    var t = (S.settings.subjectLimitsTerm || {})[std];
+    return Number(t) > 0 ? Number(t) : 7;
+  }
+  return stdSubjectLimit(std);
+}
+/* માળખાના ડિફોલ્ટ વિષયો */
+function examDefaultSubjects_(ex){
+  var std = String(ex.std), all = subList().filter(function(n){ return subjOffered_(std, n); });
+  var lim = examSubjectLimit_(ex);
+  var names;
+  if (std === "9" && !examIsAnnual_(ex)){
+    names = all.filter(function(n){ return STD9_ANNUAL_ONLY.indexOf(subCanon_(n)) < 0; });
+  } else if (std === "9" || std === "10"){
+    names = all;
+  } else {
+    names = all.filter(function(n){ return isCompulsory(n); }).concat(all.filter(function(n){ return !isCompulsory(n); }));
+  }
+  return lim ? names.slice(0, lim) : names;
+}
 /* વિદ્યાર્થી આ વિષય લે છે? ફરજિયાત વિષય બધા લે; વૈકલ્પિક ફક્ત પસંદ કરેલા (પસંદગી કરી ન હોય તો બધા ગણાય) */
 function takesSubject(stu, name){
-  if (isCompulsory(name)) return true;
+  if (stu && !subjOffered_(stu.std, name)) return false;
+  if (stu ? subjCompulsoryFor_(stu.std, name) : isCompulsory(name)) return true;
   if (!stu || !Array.isArray(stu.electives)) return true;
   return stu.electives.indexOf(name) > -1;
 }
@@ -1141,9 +1187,9 @@ VIEWS["shala:dash"] = function(){
     + '</div>'
 
     + '<div class="card"><h3>🆕 તાજેતરના પ્રવેશ</h3>'
-    + (recentAdmits.length ? '<div class="tw"><table><thead><tr><th class="num">જી.આર.</th><th>નામ</th><th>ધોરણ/વર્ગ</th><th class="num">પ્રવેશ તારીખ</th></tr></thead><tbody>'
-      + recentAdmits.map(function(s){
-          return '<tr><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.std)+'/'+esc(s.div)+'</td><td class="num">'+esc(dmy(s.admit))+'</td></tr>';
+    + (recentAdmits.length ? '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>નામ</th><th>ધોરણ/વર્ગ</th><th class="num">પ્રવેશ તારીખ</th></tr></thead><tbody>'
+      + recentAdmits.map(function(s, _ix){
+          return '<tr><td class="num">'+(_ix+1)+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.std)+'/'+esc(s.div)+'</td><td class="num">'+esc(dmy(s.admit))+'</td></tr>';
         }).join("") + '</tbody></table></div>'
       : '<div class="empty">હજુ કોઈ પ્રવેશ નોંધાયો નથી.</div>') + '</div>';
 };
@@ -1306,7 +1352,7 @@ VIEWS["shala:subjects"] = function(){
     + '</div><div style="margin-top:8px">'+chk("sj_prac","Show Marks (11 Sci. Practical Only)",false)+'</div>'
     + '<div class="row" style="margin-top:14px;gap:10px;flex-wrap:wrap"><button class="btn" id="sj_add">સેવ</button>'
     + '<button class="btn sec" id="sj_quick">＋ સામાન્ય વિષયો ઉમેરો (ધો. 9-10)</button></div>'
-    + '<p class="hint" style="margin-bottom:0">"સામાન્ય વિષયો" = ફરજિયાત: ગુજરાતી, અંગ્રેજી, ગણિત, વિજ્ઞાન અને ટેકનોલોજી, સામાજિક વિજ્ઞાન; વૈકલ્પિક: સંસ્કૃત, હિન્દી, કમ્પ્યુટર, શારીરિક શિક્ષણ. જે પહેલેથી હોય તે ફરી ઉમેરાતા નથી, પછી જરૂર મુજબ કાઢી શકાય.</p></div>'
+    + '<p class="hint" style="margin-bottom:0">"સામાન્ય વિષયો" = ગુજરાતી, હિન્દી, અંગ્રેજી, સંસ્કૃત, ગણિત, વિજ્ઞાન અને ટેકનોલોજી, સામાજિક વિજ્ઞાન, શારીરિક શિક્ષણ, કમ્પ્યુટર, ચિત્ર. <b>ધોરણ 9</b>માં આ બધા 10 વિષયો ફરજિયાત છે (પ્રથમ/દ્વિતીય પરીક્ષામાં 7 વિષય, વાર્ષિકમાં 10). <b>ધોરણ 10</b>માં ગુજરાતી, અંગ્રેજી, ગણિત, વિ.અને ટે., સા.વિ. ફરજિયાત; હિન્દી/સંસ્કૃતમાંથી એક અને શા.શિ./કમ્પ્યુટરમાંથી એક પસંદ કરવાનો; ચિત્ર નથી. જે પહેલેથી હોય તે ફરી ઉમેરાતા નથી, પછી જરૂર મુજબ કાઢી શકાય.</p></div>'
     + '<div class="card"><h3>વિષયોની યાદી</h3>'
     + (items.length
       ? '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th>વિષયનું નામ</th><th>વિષયનું નામ (English)</th><th>પ્રકાર</th><th>વિષય લેતા શિક્ષકો</th><th></th></tr></thead><tbody>'
@@ -1322,10 +1368,10 @@ VIEWS["shala:subjects"] = function(){
           }).join("") + '</tbody></table></div>'
       : '<div class="empty">હજુ કોઈ વિષય નથી. ઉપરથી ઉમેરો — માળખા અને ગુણની એન્ટ્રીમાં ફક્ત અહીં ઉમેરેલા વિષયો જ દેખાશે.</div>') + '</div>'
     + '<div class="card"><h3>ધોરણ મુજબ મુખ્ય પરીક્ષાના મહત્તમ વિષયો</h3>'
-    + '<p class="hint" style="margin:0 0 10px">મુખ્ય પરીક્ષા (વાર્ષિક) માળખામાં આનાથી વધુ વિષયો ઉમેરી શકાશે નહીં. ખાલી/0 = મર્યાદા નહીં. ધો. 9 માટે 10 અને ધો. 10 માટે 7 પહેલેથી ગોઠવેલ છે.</p>'
+    + '<p class="hint" style="margin:0 0 10px">મુખ્ય પરીક્ષા (વાર્ષિક) માળખામાં આનાથી વધુ વિષયો ઉમેરી શકાશે નહીં. ખાલી/0 = મર્યાદા નહીં. ધો. 9 માટે 10 અને ધો. 10 માટે 7 પહેલેથી ગોઠવેલ છે. ધો. 9 ની પ્રથમ/દ્વિતીય પરીક્ષા માટે નીચે અલગ મર્યાદા (7) છે; પરીક્ષાના નામમાં "વાર્ષિક" હોય તો તે વાર્ષિક ગણાય. ધો. 10 માં દરેક વિદ્યાર્થી 7 વિષય લે છે (વિકલ્પોને લીધે માળખામાં 9 વિષય દેખાય).</p>'
     + '<div class="grid">' + stds.map(function(g){
         return fld("sj_lim_"+g, "ધોરણ "+g+" — મહત્તમ વિષયો", stdSubjectLimit(g) || "", "number");
-      }).join("") + '</div>'
+      }).join("") + fld("sj_limterm9", "ધોરણ 9 — પ્રથમ/દ્વિતીય પરીક્ષાના મહત્તમ વિષયો", ((S.settings.subjectLimitsTerm || {})["9"]) || 7, "number") + '</div>'
     + '<div style="margin-top:14px"><button class="btn" id="sj_limsave">મર્યાદા સાચવો</button></div></div>';
 };
 WIRE["shala:subjects"] = function(){
@@ -1360,10 +1406,9 @@ WIRE["shala:subjects"] = function(){
   });
   $("sj_quick").onclick = async function(){
     var items = (S.settings.subjectsList || []).slice();
-    var base = [["ગુજરાતી","Gujarati","core"],["અંગ્રેજી","English","core"],["ગણિત","Mathematics","core"],
-      ["વિજ્ઞાન અને ટેકનોલોજી","Science & Technology","core"],["સામાજિક વિજ્ઞાન","Social Science","core"],
-      ["સંસ્કૃત","Sanskrit","elective"],["હિન્દી","Hindi","elective"],["કમ્પ્યુટર","Computer","elective"],
-      ["શારીરિક શિક્ષણ","Physical Education","elective"]];
+    var base = [["ગુજરાતી","Gujarati","core"],["હિન્દી","Hindi","elective"],["અંગ્રેજી","English","core"],["સંસ્કૃત","Sanskrit","elective"],
+      ["ગણિત","Mathematics","core"],["વિજ્ઞાન અને ટેકનોલોજી","Science & Technology","core"],["સામાજિક વિજ્ઞાન","Social Science","core"],
+      ["શારીરિક શિક્ષણ","Physical Education","elective"],["કમ્પ્યુટર","Computer","elective"],["ચિત્ર","Drawing","elective"]];
     var n = 0;
     base.forEach(function(b){
       if (!items.some(function(x){ return x.gu === b[0]; })){ items.push({gu:b[0], en:b[1], practical:false, kind:b[2]}); n++; }
@@ -1394,6 +1439,7 @@ WIRE["shala:subjects"] = function(){
     var lim = {};
     stdList().forEach(function(g){ var v = Number(val("sj_lim_"+g)); lim[String(g)] = v > 0 ? v : 0; });
     S.settings.subjectLimits = lim;
+    var t9 = Number(val("sj_limterm9")); S.settings.subjectLimitsTerm = {"9": t9 > 0 ? t9 : 7};
     await saveMeta(); toast("મર્યાદા સચવાઈ");
   };
 };
@@ -3915,10 +3961,10 @@ WIRE["student:att"] = function(){
     var kids = S.students.filter(function(s){ return String(s.std)===val("at_std") && String(s.div)===val("at_div"); });
     if (!kids.length){ $("at_body").innerHTML = '<div class="empty">આ ધોરણ/વર્ગમાં કોઈ વિદ્યાર્થી નથી.</div>'; return; }
     var r = rec() || {marks:{}};
-    $("at_body").innerHTML = '<div class="tw"><table><thead><tr><th class="num">જી.આર.</th><th>નામ</th><th>હાજર</th></tr></thead><tbody>'
-      + kids.map(function(s){
+    $("at_body").innerHTML = '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>નામ</th><th>હાજર</th></tr></thead><tbody>'
+      + kids.map(function(s, _ix){
           var on = r.marks[s.id] !== false;
-          return '<tr><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td>'
+          return '<tr><td class="num">'+(_ix+1)+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td>'
             + '<td><input type="checkbox" data-k="'+s.id+'" '+(on?"checked":"")+' style="width:20px;height:20px"></td></tr>';
         }).join("")
       + '</tbody></table></div>'
@@ -4097,8 +4143,8 @@ WIRE["student:lcvarg"] = function(){
     var std=val("lv_std"), div=val("lv_div");
     var kids = S.students.filter(function(s){return String(s.std)===std && String(s.div)===div;});
     $("lv_body").innerHTML = !kids.length ? '<div class="empty">આ ધોરણ/વર્ગમાં કોઈ વિદ્યાર્થી નથી.</div>'
-      : '<div class="tw"><table><thead><tr><th></th><th class="num">જી.આર.</th><th>નામ</th></tr></thead><tbody>'
-        + kids.map(function(s){ return '<tr><td><input type="checkbox" class="lv_chk" data-k="'+s.id+'" style="width:18px;height:18px"></td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td></tr>'; }).join("")
+      : '<div class="tw"><table><thead><tr><th></th><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>નામ</th></tr></thead><tbody>'
+        + kids.map(function(s, _ix){ return '<tr><td><input type="checkbox" class="lv_chk" data-k="'+s.id+'" style="width:18px;height:18px"></td><td class="num">'+(_ix+1)+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td></tr>'; }).join("")
         + '</tbody></table></div>'
         + '<div style="margin-top:12px"><button class="btn" id="lv_run">પસંદ કરેલાના એલ.સી. કાઢો</button></div>';
     var b = $("lv_run");
@@ -4348,8 +4394,8 @@ WIRE["student:promote"] = function(){
     var std=val("pr_std"), div=val("pr_div");
     var kids = S.students.filter(function(s){return String(s.std)===std && (!div||String(s.div)===div) && !s.relieveDate;});
     $("pr_body").innerHTML = !kids.length ? '<div class="empty">આ ધોરણ/વર્ગમાં કોઈ વિદ્યાર્થી નથી.</div>'
-      : '<div class="tw"><table><thead><tr><th></th><th class="num">જી.આર.</th><th>નામ</th><th>વર્ગ</th></tr></thead><tbody>'
-        + kids.map(function(s){ return '<tr><td><input type="checkbox" class="pr_chk" data-k="'+s.id+'" style="width:18px;height:18px"></td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.div)+'</td></tr>'; }).join("")
+      : '<div class="tw"><table><thead><tr><th></th><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>નામ</th><th>વર્ગ</th></tr></thead><tbody>'
+        + kids.map(function(s, _ix){ return '<tr><td><input type="checkbox" class="pr_chk" data-k="'+s.id+'" style="width:18px;height:18px"></td><td class="num">'+(_ix+1)+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.div)+'</td></tr>'; }).join("")
         + '</tbody></table></div>'
         + '<div style="margin-top:12px"><button class="btn" id="pr_run">પસંદ કરેલાને ચઢાવો</button></div>';
     $("pr_all").onchange = function(){
@@ -4506,8 +4552,8 @@ WIRE["student:feeclass"] = function(){
     var std = val("fc_std");
     var kids = S.students.filter(function(s){return String(s.std)===std;});
     if (!kids.length){ $("fc_body").innerHTML='<div class="empty">આ ધોરણમાં કોઈ વિદ્યાર્થી નથી.</div>'; return; }
-    $("fc_body").innerHTML = '<div class="tw"><table><thead><tr><th></th><th class="num">જી.આર.</th><th>નામ</th></tr></thead><tbody>'
-      + kids.map(function(s){ return '<tr><td><input type="checkbox" class="fc_chk" data-k="'+s.id+'" checked style="width:18px;height:18px"></td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td></tr>'; }).join("")
+    $("fc_body").innerHTML = '<div class="tw"><table><thead><tr><th></th><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>નામ</th></tr></thead><tbody>'
+      + kids.map(function(s, _ix){ return '<tr><td><input type="checkbox" class="fc_chk" data-k="'+s.id+'" checked style="width:18px;height:18px"></td><td class="num">'+(_ix+1)+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td></tr>'; }).join("")
       + '</tbody></table></div>'
       + '<div style="margin-top:12px"><button class="btn" id="fc_save">પસંદ કરેલાની ફી નોંધો</button></div>';
     $("fc_save").onclick = async function(){
@@ -4569,10 +4615,10 @@ WIRE["student:sschsc"] = function(){
     if (!ex) return;
     var kids = S.students.filter(function(s){return String(s.std)===String(ex.std);});
     $("bh_body").innerHTML = !kids.length ? '<div class="empty">વિદ્યાર્થી નથી.</div>'
-      : '<div class="tw"><table><thead><tr><th class="num">જી.આર.</th><th class="num">બેઠક નં.</th><th>નામ</th><th class="num">ટકા</th><th>પરિણામ</th></tr></thead><tbody>'
-        + kids.map(function(s){
+      : '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th class="num">બેઠક નં.</th><th>નામ</th><th class="num">ટકા</th><th>પરિણામ</th></tr></thead><tbody>'
+        + kids.map(function(s, _ix){
             var c = examCalc(ex, s.id);
-            return '<tr><td class="num">'+esc(s.gr)+'</td><td class="num">'+esc(s.seat||"—")+'</td><td>'+esc(s.name)+'</td>'
+            return '<tr><td class="num">'+(_ix+1)+'</td><td class="num">'+esc(s.gr)+'</td><td class="num">'+esc(s.seat||"—")+'</td><td>'+esc(s.name)+'</td>'
               + '<td class="num">'+(c.max?c.pct.toFixed(1):"—")+'</td>'
               + '<td>'+(c.max ? '<span class="chip '+(c.pct>=33?"g":"r")+'">'+(c.pct>=33?"પાસ":"નાપાસ")+'</span>' : "—")+'</td></tr>';
           }).join("") + '</tbody></table></div>';
@@ -4586,9 +4632,9 @@ VIEWS["student:prevyear"] = function(){
   var left = S.lcs.map(function(l){ return {l:l, s:S.students.find(function(x){return x.id===l.stuId;})}; }).filter(function(r){return r.s;});
   if (!left.length) return emptyCard("હજુ કોઈ વિદ્યાર્થીનું એલ.સી. ઇસ્યુ થયેલ નથી.","વિદ્યાર્થી › લીવીંગ સર્ટી ઇસ્યુ કરવું");
   return '<div class="card"><h3>પાછળના વર્ષના (છોડી ગયેલ) વિદ્યાર્થીની માહિતી</h3><div class="tw"><table><thead><tr>'
-    + '<th class="num">જી.આર.</th><th>નામ</th><th>પિતાનું નામ</th><th>છેલ્લું ધોરણ</th><th>એલ.સી. તારીખ</th><th class="num">એલ.સી. નં.</th></tr></thead><tbody>'
-    + left.slice().reverse().map(function(r){
-        return '<tr><td class="num">'+esc(r.s.gr)+'</td><td>'+esc(r.s.name)+'</td><td>'+esc(r.s.father)+'</td>'
+    + '<th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>નામ</th><th>પિતાનું નામ</th><th>છેલ્લું ધોરણ</th><th>એલ.સી. તારીખ</th><th class="num">એલ.સી. નં.</th></tr></thead><tbody>'
+    + left.slice().reverse().map(function(r, _ix){
+        return '<tr><td class="num">'+(_ix+1)+'</td><td class="num">'+esc(r.s.gr)+'</td><td>'+esc(r.s.name)+'</td><td>'+esc(r.s.father)+'</td>'
           + '<td>'+esc(r.l.studying||r.s.std)+'</td><td class="num">'+esc(r.l.date)+'</td><td class="num">'+esc(r.l.no)+'</td></tr>';
       }).join("") + '</tbody></table></div></div>';
 };
@@ -4736,12 +4782,10 @@ function structureView(kind, title){
 function structureWire(){
   var working = null, workingFor = "";
   function curEx(){ return S.exams.find(function(e){ return e.id === val("st_exam"); }); }
-  function limitFor(ex){ return ((ex.kind || "મુખ્ય પરીક્ષા") === "મુખ્ય પરીક્ષા") ? stdSubjectLimit(ex.std) : 0; }
+  function limitFor(ex){ return examSubjectLimit_(ex); }
   function defaults(ex){
-    var tot = Number(ex.total) || 100, lim = limitFor(ex);
-    var names = coreList().concat(electiveList());      /* ફરજિયાત પહેલા, પછી વૈકલ્પિક */
-    if (lim) names = names.slice(0, lim);
-    return names.map(function(n){ return {name:n, max:tot, pass:Math.ceil(tot*0.33)}; });
+    var tot = Number(ex.total) || 100;
+    return examDefaultSubjects_(ex).map(function(n){ return {name:n, max:tot, pass:Math.ceil(tot*0.33)}; });
   }
   function load(ex){
     var src = (ex.subjects && ex.subjects.length) ? ex.subjects : defaults(ex);
@@ -4764,11 +4808,11 @@ function structureWire(){
     var have = working.map(function(w){ return w.name; });
     var lim = limitFor(ex);
     var full = lim && working.length >= lim;
-    var spare = full ? [] : subList().filter(function(n){ return have.indexOf(n) < 0; });
+    var spare = full ? [] : subList().filter(function(n){ return have.indexOf(n) < 0 && subjOffered_(ex.std, n); });
     var tot = Number(ex.total) || 100;
     $("st_body").innerHTML = '<div class="tw"><table><thead><tr><th>વિષય</th><th class="num">પૂર્ણ ગુણ</th><th class="num">પાસ ગુણ</th><th></th></tr></thead><tbody>'
       + (working.length ? working.map(function(w,i){
-          return '<tr><td>'+esc(w.name)+' <span class="chip">'+(isCompulsory(w.name)?"ફરજિયાત":"વૈકલ્પિક")+'</span></td>'
+          return '<tr><td>'+esc(w.name)+' <span class="chip">'+(subjCompulsoryFor_(ex.std, w.name)?"ફરજિયાત":"વૈકલ્પિક")+'</span></td>'
             + '<td><input type="number" min="0" data-smax="'+i+'" value="'+w.max+'" style="width:90px"></td>'
             + '<td><input type="number" min="0" data-spass="'+i+'" value="'+w.pass+'" style="width:90px"></td>'
             + '<td><button class="btn sm sec" data-rmsub="'+i+'">✕ વિષય કાઢો</button></td></tr>';
@@ -4778,7 +4822,7 @@ function structureWire(){
       + (spare.length
           ? '<div><label class="f">વિષય ઉમેરો</label><select id="st_newsub">'+spare.map(function(n){ return '<option>'+esc(n)+'</option>'; }).join("")+'</select></div>'
             + '<div><button class="btn sec" id="st_addsub">＋ વિષય ઉમેરો</button></div>'
-          : '<span class="hint" style="margin:0">'+(full ? 'ધોરણ '+esc(ex.std)+' ની મર્યાદા '+lim+' વિષયો પૂરી થઈ — વધુ ઉમેરવા પહેલા કોઈ વિષય કાઢો.' : 'બધા વિષયો ઉમેરાઈ ગયા છે (નવો વિષય શાળા › વિષયની એન્ટ્રી માં ઉમેરો).')+'</span>')
+          : '<span class="hint" style="margin:0">'+(full ? 'ધોરણ '+esc(ex.std)+' ('+esc(ex.name)+') ની મર્યાદા '+lim+' વિષયો પૂરી થઈ — વધુ ઉમેરવા પહેલા કોઈ વિષય કાઢો.' : 'બધા વિષયો ઉમેરાઈ ગયા છે (નવો વિષય શાળા › વિષયની એન્ટ્રી માં ઉમેરો).')+'</span>')
       + '<span class="chip '+((lim && working.length > lim) ? 'r' : 'g')+'" style="margin-left:auto">વિષયો: '+working.length+(lim ? ' / '+lim : '')+'</span>'
       + '</div>'
       + '<p class="hint">વિષય ઉમેર્યા/કાઢ્યા પછી <b>"માળખું સાચવો"</b> દબાવવું જરૂરી છે. કાઢેલા વિષયના ભરેલા ગુણ સાચવતી વખતે ભૂંસાશે (પહેલા પુષ્ટિ પૂછાશે). નવો ઉમેરેલો વિષય ગુણની એન્ટ્રીમાં દેખાશે.</p>'
@@ -4885,17 +4929,17 @@ function marksKindWire(){
     $("mk_sub").innerHTML = opts(exSubs, exSubs.indexOf(prevSub) > -1 ? prevSub : "");
     var sub = val("mk_sub");
     var kids = allKids.filter(function(s){ return takesSubject(s, sub); });
-    var notSet = isCompulsory(sub) ? 0 : kids.filter(function(s){ return !Array.isArray(s.electives); }).length;
+    var notSet = subjCompulsoryFor_(ex.std, sub) ? 0 : kids.filter(function(s){ return !Array.isArray(s.electives); }).length;
     var subCfg = (ex.subjects||[]).find(function(x){return x.name===sub;});
     var maxM = subCfg ? subCfg.max : (ex.total||100);
     var m = (ex.marks && ex.marks[sub]) || {};
     var tpOn = subHasTP_(sub), tpm = (ex.marksTP && ex.marksTP[sub]) || {};
-    $("mk_body").innerHTML = (isCompulsory(sub) ? '' : '<p class="hint" style="margin:6px 0">વૈકલ્પિક વિષય — ફક્ત આ વિષય પસંદ કરનાર '+kids.length+' વિદ્યાર્થી (કુલ '+allKids.length+' માંથી).'
+    $("mk_body").innerHTML = (subjCompulsoryFor_(ex.std, sub) ? '' : '<p class="hint" style="margin:6px 0">વૈકલ્પિક વિષય — ફક્ત આ વિષય પસંદ કરનાર '+kids.length+' વિદ્યાર્થી (કુલ '+allKids.length+' માંથી).'
         + (notSet ? ' <b>'+notSet+' વિદ્યાર્થીની પસંદગી હજુ નોંધાઈ નથી</b> (વિદ્યાર્થી › વૈકલ્પિક વિષયની પસંદગી).' : '') + '</p>')
-      + '<div class="tw"><table><thead><tr><th class="num">જી.આર.</th><th>નામ</th>'
+      + '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>નામ</th>'
       + (tpOn ? '<th class="num">થીયરી</th><th class="num">પ્રેક્ટીકલ</th><th class="num">કુલ (મહત્તમ '+maxM+')</th>' : '<th class="num">ગુણ (કુલ '+maxM+')</th>')
       + '<th class="num">કુલ (અત્યાર સુધી)</th><th class="num">ટકા</th></tr></thead><tbody>'
-      + kids.map(function(s){
+      + kids.map(function(s, _ix){
           var c = examCalc(ex, s.id);
           var inputs;
           if (tpOn){
@@ -4906,7 +4950,7 @@ function marksKindWire(){
           } else {
             inputs = '<td><input type="number" min="0" max="'+maxM+'" data-k="'+s.id+'" value="'+(m[s.id]!=null?esc(m[s.id]):"")+'" style="width:90px"></td>';
           }
-          return '<tr><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td>' + inputs
+          return '<tr><td class="num">'+(_ix+1)+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td>' + inputs
             + '<td class="num">'+c.got+' / '+c.max+'</td><td class="num">'+c.pct.toFixed(1)+'%</td></tr>';
         }).join("") + '</tbody></table></div>'
       + '<div style="margin-top:12px" class="row">'
@@ -5854,10 +5898,10 @@ VIEWS["reports:grreg"] = function(){
 };
 WIRE["reports:grreg"] = function(){
   var rows = S.students.slice().sort(function(a,b){return (Number(a.gr)||0)-(Number(b.gr)||0);});
-  $("gg_body").innerHTML = '<div class="tw"><table><thead><tr><th class="num">જી.આર.</th><th>નામ</th><th>પિતાનું નામ</th>'
+  $("gg_body").innerHTML = '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>નામ</th><th>પિતાનું નામ</th>'
     + '<th>ધોરણ/વર્ગ</th><th class="num">પ્રવેશ તારીખ</th></tr></thead><tbody>'
-    + rows.map(function(s){
-        return '<tr><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.father)+'</td>'
+    + rows.map(function(s, _ix){
+        return '<tr><td class="num">'+(_ix+1)+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.father)+'</td>'
           + '<td>'+esc(s.std)+' / '+esc(s.div)+'</td><td class="num">'+esc(dmy(s.admit)||"—")+'</td></tr>';
       }).join("") + '</tbody></table></div>';
   $("gg_print").onclick = function(){ printPage("જી.આર. રજીસ્ટર", $("gg_body").innerHTML); };
@@ -5978,12 +6022,12 @@ WIRE["reports:genreg"] = function(){
     var left = {}; S.lcs.forEach(function(l){ left[l.stuId] = l; });
     $("gn_body").innerHTML = '<div style="text-align:center;font-weight:700;font-size:16px;color:#1a2f6b">'+esc(k.name||"શાળાનું નામ")+'</div>'
       + '<div style="text-align:center;font-weight:700;color:#c00;margin:4px 0 8px">જનરલ રજીસ્ટરની માહિતી</div>'
-      + '<div class="tw"><table style="font-size:11.5px"><thead><tr><th class="num">જી.આર.</th><th>વિદ્યાર્થીનું પુરું નામ</th><th>ધર્મ</th><th>જ્ઞાતિ</th>'
+      + '<div class="tw"><table style="font-size:11.5px"><thead><tr><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>વિદ્યાર્થીનું પુરું નામ</th><th>ધર્મ</th><th>જ્ઞાતિ</th>'
       + '<th>જન્મ સ્થળ</th><th>જન્મ તારીખ</th><th>પ્રવેશ તારીખ</th><th>ધોરણ</th><th>શાળા છોડ્યા તારીખ</th><th>એલ.સી. નં.</th></tr></thead><tbody>'
-      + kids.map(function(s){
+      + kids.map(function(s, _ix){
           var l = left[s.id];
           var full = [s.surname, s.name, s.father].filter(Boolean).join(" ") || s.name;
-          return '<tr><td class="num">'+esc(s.gr)+'</td><td>'+esc(full)+'</td><td>'+esc(s.religion||"—")+'</td><td>'+esc(s.caste||s.cat||"—")+'</td>'
+          return '<tr><td class="num">'+(_ix+1)+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(full)+'</td><td>'+esc(s.religion||"—")+'</td><td>'+esc(s.caste||s.cat||"—")+'</td>'
             + '<td>'+esc(s.birthplace||"—")+'</td><td class="num">'+esc(dmy(s.dob)||"—")+'</td><td class="num">'+esc(dmy(s.admit)||"—")+'</td>'
             + '<td>'+esc(s.stdIn||s.std)+'</td><td class="num">'+esc(l?l.date:"")+'</td><td class="num">'+esc(l?l.no:"")+'</td></tr>';
         }).join("") + '</tbody></table></div>';
@@ -6106,12 +6150,12 @@ WIRE["reports:bday"] = function(){
       + '<div style="border:1px solid #111;padding:8px;text-align:center;font-size:19px;font-weight:700;color:#1a2f6b;box-shadow:3px 3px 0 #bbb">'+esc(k.name||"શાળાનું નામ")+'</div>'
       + '<div style="border:2px solid #111;margin:10px 0;text-align:center;padding:6px;font-size:30px;font-weight:700;font-style:italic;font-family:Georgia,serif;color:#d00">Wish you Happy Birthday</div>'
       + '<table style="width:100%;border-collapse:collapse;font-size:13px" border="1"><thead><tr>'
-      + '<th style="padding:6px">જી.આર. નંબર</th><th>વિદ્યાર્થીનું નામ</th><th>ગામ</th><th>ધોરણ</th><th>રોલ નં.</th></tr></thead><tbody>'
-      + (kids.length ? kids.map(function(s){
-          return '<tr><td style="padding:6px;text-align:center">'+esc(s.gr)+'</td><td style="padding:6px">'+esc(s.name)+'</td>'
+      + '<th style="padding:6px">ક્રમ</th><th style="padding:6px">જી.આર. નંબર</th><th>વિદ્યાર્થીનું નામ</th><th>ગામ</th><th>ધોરણ</th><th>રોલ નં.</th></tr></thead><tbody>'
+      + (kids.length ? kids.map(function(s, _ix){
+          return '<tr><td style="padding:6px;text-align:center">'+(_ix+1)+'</td><td style="padding:6px;text-align:center">'+esc(s.gr)+'</td><td style="padding:6px">'+esc(s.name)+'</td>'
             + '<td style="padding:6px">'+esc(s.village||"")+'</td><td style="padding:6px;text-align:center">'+esc(s.std)+' '+esc(s.div||"")+'</td>'
             + '<td style="padding:6px;text-align:center">'+esc(s.roll||"")+'</td></tr>';
-        }).join("") : '<tr><td colspan="5" style="padding:10px;text-align:center">આ તારીખે કોઈનો જન્મદિવસ નથી.</td></tr>')
+        }).join("") : '<tr><td colspan="6" style="padding:10px;text-align:center">આ તારીખે કોઈનો જન્મદિવસ નથી.</td></tr>')
       + '</tbody></table>'
       + '<p style="margin-top:14px;color:#1a2f9b;font-size:14px;line-height:1.9;text-indent:40px"><b style="color:#d00">'+esc(dd)+'</b> ના જન્મદિવસે તમને હાર્દિક શુભકામનાઓ તથા હાર્દિક અભિનંદન, જ્ઞાનરૂપી સત્યજ તમારું આયખું બનો, અને વિવેકરૂપી અમૃત તમારા શ્વાસની સુગંધ એવી અમારી હૃદયપૂર્વકની આપને શુભેચ્છાઓ છે.</p>'
       + '<div style="text-align:right;color:#1a2f9b;font-weight:700;margin-top:10px">આચાર્ય શ્રી</div></div>';
@@ -6199,10 +6243,10 @@ WIRE["reports:avgatt"] = function(){
       var present = days.filter(function(d){ return d.marks[s.id] !== false; }).length;
       return {s:s, present:present, total:days.length, pct: days.length ? (present/days.length*100) : 0};
     }).sort(function(a,b){return b.pct-a.pct;});
-    $("av_body").innerHTML = '<div class="tw"><table><thead><tr><th class="num">જી.આર.</th><th>નામ</th>'
+    $("av_body").innerHTML = '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>નામ</th>'
       + '<th class="num">હાજર દિવસ</th><th class="num">કુલ દિવસ</th><th class="num">સરાસરી %</th></tr></thead><tbody>'
-      + rows.map(function(r){
-          return '<tr><td class="num">'+esc(r.s.gr)+'</td><td>'+esc(r.s.name)+'</td>'
+      + rows.map(function(r, _ix){
+          return '<tr><td class="num">'+(_ix+1)+'</td><td class="num">'+esc(r.s.gr)+'</td><td>'+esc(r.s.name)+'</td>'
             + '<td class="num">'+r.present+'</td><td class="num">'+r.total+'</td><td class="num">'+r.pct.toFixed(1)+'%</td></tr>';
         }).join("") + '</tbody></table></div>';
   };
@@ -6425,9 +6469,9 @@ WIRE["reports:newadm"] = function(){
     var rows = S.students.filter(function(s){return s.admit && s.admit>=from && s.admit<=to;})
       .slice().sort(function(a,b){return (a.admit||"").localeCompare(b.admit||"");});
     $("na_body").innerHTML = !rows.length ? '<div class="empty">આ ગાળામાં કોઈ નવો પ્રવેશ નોંધાયેલ નથી.</div>'
-      : '<div class="tw"><table><thead><tr><th class="num">જી.આર.</th><th>નામ</th><th>ધોરણ/વર્ગ</th><th class="num">પ્રવેશ તારીખ</th></tr></thead><tbody>'
-        + rows.map(function(s){
-            return '<tr><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.std)+'/'+esc(s.div)+'</td><td class="num">'+esc(dmy(s.admit))+'</td></tr>';
+      : '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>નામ</th><th>ધોરણ/વર્ગ</th><th class="num">પ્રવેશ તારીખ</th></tr></thead><tbody>'
+        + rows.map(function(s, _ix){
+            return '<tr><td class="num">'+(_ix+1)+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.std)+'/'+esc(s.div)+'</td><td class="num">'+esc(dmy(s.admit))+'</td></tr>';
           }).join("") + '</tbody></table></div>';
   };
   $("na_print").onclick = function(){ printPage("નવા દાખલ થયેલ વિદ્યાર્થીઓનો રીપોર્ટ", $("na_body").innerHTML); };
@@ -6468,9 +6512,9 @@ WIRE["reports:datewise"] = function(){
     var rows = S.students.filter(function(s){return s[field] && s[field]>=from && s[field]<=to;})
       .slice().sort(function(a,b){return (a[field]||"").localeCompare(b[field]||"");});
     $("dw_body").innerHTML = !rows.length ? '<div class="empty">આ ગાળામાં કોઈ વિદ્યાર્થી મળ્યો નહીં.</div>'
-      : '<div class="tw"><table><thead><tr><th class="num">જી.આર.</th><th>નામ</th><th>ધોરણ/વર્ગ</th><th class="num">'+esc(val("dw_field"))+'</th></tr></thead><tbody>'
-        + rows.map(function(s){
-            return '<tr><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.std)+'/'+esc(s.div)+'</td><td class="num">'+esc(s[field])+'</td></tr>';
+      : '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>નામ</th><th>ધોરણ/વર્ગ</th><th class="num">'+esc(val("dw_field"))+'</th></tr></thead><tbody>'
+        + rows.map(function(s, _ix){
+            return '<tr><td class="num">'+(_ix+1)+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td><td>'+esc(s.std)+'/'+esc(s.div)+'</td><td class="num">'+esc(s[field])+'</td></tr>';
           }).join("") + '</tbody></table></div>';
   };
   $("dw_print").onclick = function(){ printPage("વિદ્યાર્થીની માહિતી (તારીખ વાઈઝ)", $("dw_body").innerHTML); };
@@ -6972,10 +7016,10 @@ async function payViaRazorpay(){
 /* ---------- વિદ્યાર્થી › વૈકલ્પિક વિષયની પસંદગી ---------- */
 var SUBSEL = {std:"", div:""};
 var SUBSEL_HIDE = ["ચિત્ર"];
-function subselElectives_(){ return electiveList().filter(function(n){ return SUBSEL_HIDE.indexOf(n) < 0; }); }
+function subselElectives_(){ return subList().filter(function(n){ return subjOffered_("10", n) && !subjCompulsoryFor_("10", n); }); }
+function subselCore_(){ return subList().filter(function(n){ return subjOffered_("10", n) && subjCompulsoryFor_("10", n); }); }
 /* જૂથ: દરેક જૂથમાંથી વિદ્યાર્થી ફક્ત એક જ વિષય પસંદ કરે */
 var ELECTIVE_GROUPS = [["હિન્દી","સંસ્કૃત"],["શારીરિક શિક્ષણ","કમ્પ્યુટર"]];
-function subCanon_(n){ return String(n||"").replace(/\s+/g," ").trim().replace(/કોમ્પ્યુટર|કૉમ્પ્યુટર|કોમ્પ્યૂટર/g,"કમ્પ્યુટર"); }
 function subIsPE_(n){ return subCanon_(n) === "શારીરિક શિક્ષણ"; }
 function subIsComp_(n){ return subCanon_(n) === "કમ્પ્યુટર"; }
 /* ગુણ એન્ટ્રીમાં થીયરી + પ્રેક્ટીકલ + કુલ વાળા વિષયો */
@@ -7002,7 +7046,7 @@ VIEWS["student:subsel"] = function(){
   if (!electives.length) return emptyCard("કોઈ વૈકલ્પિક વિષય નથી — બધા વિષયો ફરજિયાત છે.","શાળા › વિષયની એન્ટ્રી (વિષયનો પ્રકાર 'વૈકલ્પિક' કરો)");
   var std = "10";
   return '<div class="card"><h3>વૈકલ્પિક વિષયની પસંદગી (ધોરણ 10)</h3>'
-    + '<p class="hint" style="margin:0 0 10px">ફરજિયાત વિષયો (' + esc(coreList().join(", ") || "—") + ') બધા વિદ્યાર્થી માટે આપોઆપ છે. અહીં દરેક વિદ્યાર્થીનો વૈકલ્પિક વિષય પસંદ કરો — હિન્દી/સંસ્કૃતમાંથી એક અને શારીરિક શિક્ષણ/કમ્પ્યુટરમાંથી એક.</p>'
+    + '<p class="hint" style="margin:0 0 10px">ફરજિયાત વિષયો (' + esc(subselCore_().join(", ") || "—") + ') બધા વિદ્યાર્થી માટે આપોઆપ છે. અહીં દરેક વિદ્યાર્થીનો વૈકલ્પિક વિષય પસંદ કરો — હિન્દી/સંસ્કૃતમાંથી એક અને શારીરિક શિક્ષણ/કમ્પ્યુટરમાંથી એક.</p>'
     + '<div class="row" style="gap:10px;flex-wrap:wrap;align-items:end">'
     + '<div><label class="f">ધોરણ</label><select id="ss_std"><option value="10" selected>10</option></select></div>'
     + '<div><label class="f">વર્ગ</label><select id="ss_div"><option value="">બધા</option>'+opts(divList(), SUBSEL.div)+'</select></div></div>'
@@ -7013,7 +7057,7 @@ WIRE["student:subsel"] = function(){
   var electives = subselElectives_();
   function maxElect(std){
     var lim = stdSubjectLimit(std);
-    return lim ? Math.max(0, lim - coreList().length) : 0; /* 0 = મર્યાદા નહીં */
+    return lim ? Math.max(0, lim - subselCore_().length) : 0; /* 0 = મર્યાદા નહીં */
   }
   function draw(){
     if (!$("ss_std") || !$("ss_info")) return; /* સેવ દરમિયાન બીજી સ્ક્રીન ખુલી ગઈ હોય */
@@ -7026,19 +7070,19 @@ WIRE["student:subsel"] = function(){
     var mainEx = S.exams.find(function(e){ return String(e.std) === SUBSEL.std && (e.kind || "મુખ્ય પરીક્ષા") === "મુખ્ય પરીક્ષા" && e.subjects && e.subjects.length; });
     var inStruct = mainEx ? mainEx.subjects.map(function(x){ return x.name; }) : null;
     $("ss_info").textContent = lim
-      ? ("ધોરણ "+SUBSEL.std+": કુલ "+lim+" વિષયો = "+coreList().length+" ફરજિયાત + વધુમાં વધુ "+mx+" વૈકલ્પિક.")
+      ? ("ધોરણ "+SUBSEL.std+": કુલ "+lim+" વિષયો = "+subselCore_().length+" ફરજિયાત + વધુમાં વધુ "+mx+" વૈકલ્પિક.")
       : ("ધોરણ "+SUBSEL.std+": વિષયોની મર્યાદા નથી.");
     if (!kids.length){ $("ss_body").innerHTML = '<div class="empty">આ ધોરણ/વર્ગમાં કોઈ વિદ્યાર્થી નથી.</div>'; return; }
     var sp = electiveSplit_(electives), groups = sp.groups, rest = sp.rest;
-    $("ss_body").innerHTML = '<div class="tw"><table><thead><tr><th class="num">રોલ</th><th class="num">જી.આર.</th><th>નામ</th>'
+    $("ss_body").innerHTML = '<div class="tw"><table><thead><tr><th class="num">રોલ</th><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>નામ</th>'
       + groups.map(function(g){ return '<th>'+esc(g.label)+'<div style="font-weight:400;font-size:11px">(એક પસંદ કરો)</div></th>'; }).join("")
       + rest.map(function(e){
           var miss = inStruct && inStruct.indexOf(e) < 0;
           return '<th class="num"'+(miss?' title="આ વિષય મુખ્ય પરીક્ષાના માળખામાં નથી" style="opacity:.6"':'')+'>'+esc(e)+(miss?' ⚠':'')+'</th>';
         }).join("") + '<th class="num">પસંદ</th></tr></thead><tbody>'
-      + kids.map(function(s){
+      + kids.map(function(s, _ix){
           var has = Array.isArray(s.electives);
-          return '<tr data-stu="'+s.id+'"><td class="num">'+esc(s.roll||"")+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+(has?'':' <span class="chip">બાકી</span>')+'</td>'
+          return '<tr data-stu="'+s.id+'"><td class="num">'+esc(s.roll||"")+'</td><td class="num">'+(_ix+1)+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+(has?'':' <span class="chip">બાકી</span>')+'</td>'
             + groups.map(function(g, gi){
                 var cur = has ? g.items.find(function(n){ return s.electives.indexOf(n) > -1; }) : "";
                 var miss = inStruct && g.items.some(function(n){ return inStruct.indexOf(n) < 0; });
