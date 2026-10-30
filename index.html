@@ -4780,7 +4780,7 @@ VIEWS["exam:result"] = function(){
 WIRE["exam:result"] = function(){
   function draw(){
     var ex = S.exams.find(function(e){ return e.id === val("rs_exam"); });
-    if (ex) $("rs_body").innerHTML = regMainHTML(ex);
+    if (ex) $("rs_body").innerHTML = resReportHTML_(ex, "પરિણામ પત્રક", false);
   }
   $("rs_exam").onchange = draw;
   $("rs_print").onclick = function(){ printPage("પરિણામ પત્રક", $("rs_body").innerHTML); };
@@ -4945,6 +4945,7 @@ function structureWire(){
       if (tpAll) drop_.forEach(function(k){ delete tpAll[k]; });
       var upd_ = Object.assign({}, ex, {subjects: working.map(function(w){ return {name:w.name, max:w.max, pass:w.pass}; }), marks: marks});
       if (tpAll) upd_.marksTP = tpAll;
+      if (ex.absent){ var abAll = Object.assign({}, ex.absent); Object.keys(abAll).forEach(function(k){ if (keep.indexOf(k) < 0) delete abAll[k]; }); upd_.absent = abAll; }
       await put("exams", upd_);
       toast("માળખું સચવાયું"); working = null; render();
     };
@@ -5000,9 +5001,105 @@ function examCalc(ex, studentId){
     if (!takesSubject(stu, c.name)) return;
     var v = ex.marks && ex.marks[c.name] && ex.marks[c.name][studentId];
     if (v!=null){ got+=Number(v); max+=Number(c.max)||0; }
+    else if (examAbsent_(ex, c.name, studentId)){ max+=Number(c.max)||0; } /* ગેરહાજર = 0 ગુણ, કુલ ગુણમાં ગણાય */
   });
   return {got:got,max:max,pct:max?(got/max*100):0};
 }
+/* ---- ગેરહાજર (Absent) અને પરિણામની કેન્દ્રીય ગણતરી ---- */
+function examAbsent_(ex, sub, id){ return !!(ex && ex.absent && ex.absent[sub] && ex.absent[sub][id]); }
+function examSubjects_(ex){
+  return subList().filter(function(sb){ return (ex.marks && ex.marks[sb]) || (ex.absent && ex.absent[sb]); });
+}
+function examStuResult_(ex, st, subs){
+  subs = subs || examSubjects_(ex);
+  var got = 0, max = 0, full = 0, allPass = true, any = false, rows = [];
+  subs.forEach(function(sub){
+    if (!takesSubject(st, sub)) return;
+    var smax = subjectMax(ex, sub), spass = subjectPass(ex, sub);
+    var v = ex.marks && ex.marks[sub] ? ex.marks[sub][st.id] : null;
+    full += smax;
+    if (examAbsent_(ex, sub, st.id)){
+      any = true; max += smax; allPass = false;
+      rows.push({name:sub, max:smax, pass:spass, got:null, absent:true, grade:"AB"});
+    } else if (v != null){
+      any = true; got += Number(v); max += smax;
+      if (Number(v) < spass) allPass = false;
+      rows.push({name:sub, max:smax, pass:spass, got:Number(v), absent:false, grade: smax ? grade(Number(v)/smax*100) : "—"});
+    } else {
+      allPass = false;
+      rows.push({name:sub, max:smax, pass:spass, got:null, absent:false, grade:"—"});
+    }
+  });
+  var pct = max ? got/max*100 : 0;
+  return {s:st, rows:rows, got:got, max:max, full:full, pct:pct, any:any, grade:grade(pct),
+          result: (any && allPass && pct >= 33) ? "પાસ" : "નાપાસ", rank:null};
+}
+/* પરીક્ષાનું પરિણામ — રોલ નંબર ક્રમમાં, રેન્ક સાથે (સમાન ટકાને સમાન રેન્ક) */
+function examResults_(ex){
+  var subs = examSubjects_(ex);
+  var res = S.students.filter(function(st){ return String(st.std) === String(ex.std); })
+    .map(function(st){ return examStuResult_(ex, st, subs); });
+  var ranked = res.filter(function(r){ return r.any && r.max > 0; });
+  ranked.forEach(function(r){ r.rank = 1 + ranked.filter(function(o){ return o.pct > r.pct + 1e-9; }).length; });
+  return {subs:subs, rows:res, ranked:ranked};
+}
+var RT_TD = 'border:1px solid #000;padding:4px 5px;text-align:center;';
+function resHeadHTML_(ex, title, extra){
+  var k = S.school || {};
+  var addr = [k.village, k.city, k.taluka ? "તા. "+k.taluka : "", k.district ? "જિ. "+k.district : ""].filter(Boolean).join(", ");
+  var kids = S.students.filter(function(st){ return String(st.std) === String(ex.std); });
+  var subs = examSubjects_(ex), full = 0;
+  kids.forEach(function(st){ var f = examStuResult_(ex, st, subs).full; if (f > full) full = f; });
+  var cell = 'padding:3px 8px;text-align:left;font-size:13px;';
+  return '<div style="border:1.5px solid #000;text-align:center;padding:6px 8px">'
+    + '<div style="font-size:22px;font-weight:700;color:#b00000;line-height:1.3">'+esc(k.name || "શાળાનું નામ")+'</div>'
+    + (addr ? '<div style="font-size:12.5px">'+esc(addr)+'</div>' : '') + '</div>'
+    + '<div style="text-align:center;font-weight:700;font-size:16px;margin:8px 0 6px;color:#0a1a8a">'+esc(title)+'</div>'
+    + '<table style="width:100%;border-collapse:collapse;margin-bottom:8px"><tr>'
+    + '<td style="'+cell+'">ધોરણ: <b>'+esc(ex.std)+'</b></td>'
+    + '<td style="'+cell+'">શૈક્ષણિક વર્ષ: <b>'+esc(S.settings.year || "—")+'</b></td>'
+    + '<td style="'+cell+'">પરીક્ષા: <b>'+esc(ex.name)+'</b></td>'
+    + '<td style="'+cell+'">કુલ ગુણ: <b>'+esc(full || "—")+'</b></td>'
+    + '<td style="'+cell+'">પરીક્ષા તારીખ: <b>'+esc(dmy(ex.date) || "—")+'</b></td>'
+    + '<td style="'+cell+'">વિદ્યાર્થી: <b>'+kids.length+'</b></td>'
+    + (extra || '') + '</tr></table>';
+}
+function resFootHTML_(ranked){
+  var p = ranked.filter(function(r){ return r.result === "પાસ"; }).length;
+  return '<div style="margin-top:8px;font-size:12.5px">પાસ: <b>'+p+'</b> &nbsp; નાપાસ: <b>'+(ranked.length - p)+'</b> &nbsp; પરિણામ: <b>'+(ranked.length ? (p/ranked.length*100).toFixed(1) : "0.0")+'%</b></div>'
+    + '<div style="display:flex;justify-content:space-between;margin-top:34px;font-size:13px;font-weight:700"><span>વર્ગ શિક્ષક</span><span>આચાર્યશ્રી</span></div>';
+}
+function resTable_(ex, withSubjects){
+  var R = examResults_(ex);
+  if (!R.subs.length || !R.rows.length || !R.ranked.length) return {html:'<div class="empty">આ પરીક્ષાના ગુણ હજુ ભરાયા નથી.</div>', R:R, empty:true};
+  var th = RT_TD + 'background:#eef1f8;font-weight:700;font-size:12px;';
+  var h = '<table style="border-collapse:collapse;width:100%;font-size:12.5px;table-layout:auto"><thead><tr>'
+    + '<th style="'+th+'">ક્રમ</th><th style="'+th+'">રોલ નં.</th><th style="'+th+'">જી.આર.</th><th style="'+th+'text-align:left">નામ</th>'
+    + (withSubjects ? R.subs.map(function(sb){ return '<th style="'+th+'">'+esc(sb)+'<br><span style="font-weight:400">('+subjectMax(ex, sb)+')</span></th>'; }).join("") : '')
+    + '<th style="'+th+'">કુલ ગુણ</th><th style="'+th+'">ટકા</th><th style="'+th+'">ગ્રેડ</th><th style="'+th+'">પરિણામ</th><th style="'+th+'">રેન્ક</th></tr></thead><tbody>'
+    + R.rows.map(function(r, i){
+        var nm = [r.s.surname, r.s.name].filter(Boolean).join(" ");
+        return '<tr><td style="'+RT_TD+'">'+(i+1)+'</td><td style="'+RT_TD+'">'+esc(r.s.roll || "")+'</td><td style="'+RT_TD+'">'+esc(r.s.gr)+'</td><td style="'+RT_TD+'text-align:left">'+esc(nm)+'</td>'
+          + (withSubjects ? R.subs.map(function(sb){
+              if (!takesSubject(r.s, sb)) return '<td style="'+RT_TD+'">·</td>';
+              var row = r.rows.find(function(x){ return x.name === sb; });
+              var t = !row ? "—" : row.absent ? "AB" : row.got == null ? "—" : row.got;
+              var bad = row && !row.absent && row.got != null && row.got < row.pass;
+              return '<td style="'+RT_TD+(row && row.absent ? 'color:#b91c1c;font-weight:700;' : bad ? 'color:#b91c1c;' : '')+'">'+esc(t)+'</td>';
+            }).join("") : '')
+          + '<td style="'+RT_TD+'">'+(r.any ? r.got+' / '+r.max : "—")+'</td><td style="'+RT_TD+'">'+(r.any ? r.pct.toFixed(1)+'%' : "—")+'</td>'
+          + '<td style="'+RT_TD+'">'+(r.any ? r.grade : "—")+'</td>'
+          + '<td style="'+RT_TD+(r.any && r.result === "નાપાસ" ? 'color:#b91c1c;font-weight:700;' : '')+'">'+(r.any ? r.result : "—")+'</td>'
+          + '<td style="'+RT_TD+'font-weight:700">'+(r.rank || "—")+'</td></tr>';
+      }).join("") + '</tbody></table>';
+  return {html:h, R:R, empty:false};
+}
+function resReportHTML_(ex, title, withSubjects){
+  var t = resTable_(ex, withSubjects);
+  if (t.empty) return t.html;
+  return '<div style="background:#fff;color:#000;padding:10px;overflow-x:auto">' + resHeadHTML_(ex, title) + t.html + resFootHTML_(t.R.ranked) + '</div>';
+}
+function resPrintOpts_(ex){ return {landscape: examSubjects_(ex).length > 5}; }
 function marksKindWire(){
   function draw(){
     var ex = S.exams.find(function(e){ return e.id === val("mk_exam"); });
@@ -5019,13 +5116,16 @@ function marksKindWire(){
     var maxM = subCfg ? subCfg.max : (ex.total||100);
     var m = (ex.marks && ex.marks[sub]) || {};
     var tpOn = subHasTP_(sub), tpm = (ex.marksTP && ex.marksTP[sub]) || {};
+    var absM = (ex.absent && ex.absent[sub]) || {};
     $("mk_body").innerHTML = (subjCompulsoryFor_(ex.std, sub) ? '' : '<p class="hint" style="margin:6px 0">વૈકલ્પિક વિષય — ફક્ત આ વિષય પસંદ કરનાર '+kids.length+' વિદ્યાર્થી (કુલ '+allKids.length+' માંથી).'
         + (notSet ? ' <b>'+notSet+' વિદ્યાર્થીની પસંદગી હજુ નોંધાઈ નથી</b> (વિદ્યાર્થી › વૈકલ્પિક વિષયની પસંદગી).' : '') + '</p>')
       + '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>નામ</th>'
       + (tpOn ? '<th class="num">થીયરી</th><th class="num">પ્રેક્ટીકલ</th><th class="num">કુલ (મહત્તમ '+maxM+')</th>' : '<th class="num">ગુણ (કુલ '+maxM+')</th>')
+      + '<th class="num" title="ગેરહાજર વિદ્યાર્થી માટે ટિક કરો">ગેરહાજર (AB)</th>'
       + '<th class="num">કુલ (અત્યાર સુધી)</th><th class="num">ટકા</th></tr></thead><tbody>'
       + kids.map(function(s, _ix){
           var c = examCalc(ex, s.id);
+          var isAb = !!absM[s.id];
           var inputs;
           if (tpOn){
             var tp = tpm[s.id] || {}, legacy = (m[s.id] != null && !tpm[s.id]);
@@ -5035,7 +5135,9 @@ function marksKindWire(){
           } else {
             inputs = '<td><input type="number" min="0" max="'+maxM+'" data-k="'+s.id+'" value="'+(m[s.id]!=null?esc(m[s.id]):"")+'" style="width:90px"></td>';
           }
-          return '<tr><td class="num">'+(_ix+1)+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td>' + inputs
+          if (isAb) inputs = inputs.replace(/<input /g, '<input disabled ');
+          return '<tr data-row="'+s.id+'"'+(isAb ? ' style="background:rgba(185,28,28,.08)"' : '')+'><td class="num">'+(_ix+1)+'</td><td class="num">'+esc(s.gr)+'</td><td>'+esc(s.name)+'</td>' + inputs
+            + '<td class="num"><input type="checkbox" data-ab="'+s.id+'"'+(isAb ? ' checked' : '')+' style="width:20px;height:20px"></td>'
             + '<td class="num">'+c.got+' / '+c.max+'</td><td class="num">'+c.pct.toFixed(1)+'%</td></tr>';
         }).join("") + '</tbody></table></div>'
       + '<div style="margin-top:12px" class="row">'
@@ -5043,6 +5145,16 @@ function marksKindWire(){
       + '<button class="btn sec" id="mk_reset">વિદ્યાર્થી રીસેટ કરવા</button>'
       + '<button class="btn sec" id="mk_xls">Excel</button>'
       + '</div>';
+    /* ગેરહાજર ટિક → ગુણ ખાનાં બંધ અને ખાલી */
+    Array.prototype.forEach.call($("mk_body").querySelectorAll("input[data-ab]"), function(cb){
+      cb.onchange = function(){
+        var tr = cb.closest("tr");
+        Array.prototype.forEach.call(tr.querySelectorAll("input:not([data-ab])"), function(i){
+          i.disabled = cb.checked; if (cb.checked) i.value = "";
+        });
+        tr.style.background = cb.checked ? "rgba(185,28,28,.08)" : "";
+      };
+    });
     /* થીયરી + પ્રેક્ટીકલ = કુલ (આપોઆપ) */
     function tpSum(id){
       var t = $("mk_body").querySelector('input[data-t="'+id+'"]'), p = $("mk_body").querySelector('input[data-p="'+id+'"]'), k = $("mk_body").querySelector('input[data-k="'+id+'"]');
@@ -5057,8 +5169,10 @@ function marksKindWire(){
       i.oninput = function(){ tpSum(i.dataset.t || i.dataset.p); };
     });
     $("mk_save").onclick = async function(){
-      var obj = {}, tpo = {}, over = [];
+      var obj = {}, tpo = {}, over = [], abo = {};
+      Array.prototype.forEach.call($("mk_body").querySelectorAll("input[data-ab]:checked"), function(cb){ abo[cb.dataset.ab] = true; });
       if (tpOn) kids.forEach(function(s){
+        if (abo[s.id]) return;
         var t = $("mk_body").querySelector('input[data-t="'+s.id+'"]'), p = $("mk_body").querySelector('input[data-p="'+s.id+'"]'), k = $("mk_body").querySelector('input[data-k="'+s.id+'"]');
         if (!t || !p || !k) return;
         if (t.value !== "" || p.value !== ""){
@@ -5070,13 +5184,16 @@ function marksKindWire(){
           obj[s.id] = Number(k.value);
         }
       });
-      else Array.prototype.forEach.call($("mk_body").querySelectorAll("input"), function(i){
+      else Array.prototype.forEach.call($("mk_body").querySelectorAll("input[data-k]"), function(i){
+        if (abo[i.dataset.k]) return;
         if (i.value !== "") obj[i.dataset.k] = Number(i.value);
       });
       if (over.length) return toast("થીયરી + પ્રેક્ટીકલ મહત્તમ " + maxM + " થી વધુ છે: " + over.slice(0,3).join(", ") + (over.length > 3 ? " …" : ""));
       var copy = Object.assign({}, ex);
       copy.marks = Object.assign({}, ex.marks || {});
       copy.marks[sub] = obj;
+      copy.absent = Object.assign({}, ex.absent || {});
+      if (Object.keys(abo).length) copy.absent[sub] = abo; else delete copy.absent[sub];
       if (tpOn){ copy.marksTP = Object.assign({}, ex.marksTP || {}); copy.marksTP[sub] = tpo; }
       await put("exams", copy);
       toast(sub + " ના ગુણ સાચવાયા"); draw();
@@ -5087,6 +5204,7 @@ function marksKindWire(){
       copy.marks = Object.assign({}, ex.marks || {});
       copy.marks[sub] = {};
       if (copy.marksTP){ copy.marksTP = Object.assign({}, copy.marksTP); delete copy.marksTP[sub]; }
+      if (copy.absent){ copy.absent = Object.assign({}, copy.absent); delete copy.absent[sub]; }
       await put("exams", copy);
       toast("ગુણ સાફ કરાયા"); draw();
     };
@@ -5097,6 +5215,7 @@ function marksKindWire(){
         var row = {"જી.આર.":s.gr, "નામ":s.name};
         if (tpOn){ var tq = tpm[s.id] || {}; row["થીયરી"] = tq.t != null ? tq.t : ""; row["પ્રેક્ટીકલ"] = tq.p != null ? tq.p : ""; row["કુલ ગુણ"] = (m[s.id]!=null?m[s.id]:""); }
         else row["ગુણ"] = (m[s.id]!=null?m[s.id]:"");
+        row["ગેરહાજર"] = absM[s.id] ? "AB" : "";
         row["કુલ"] = c.got+"/"+c.max; row["ટકા"] = c.pct.toFixed(1);
         return row;
       });
@@ -5130,32 +5249,7 @@ function examSelectHTML(id, filterFn){
   var exams = filterFn ? S.exams.filter(filterFn) : S.exams;
   return '<select id="'+id+'">' + exams.map(function(e){ return '<option value="'+e.id+'">'+esc(e.name)+' — ધોરણ '+esc(e.std)+'</option>'; }).join("") + '</select>';
 }
-function regMainHTML(ex){
-  var subs = subList().filter(function(s){ return ex.marks && ex.marks[s]; });
-  var kids = S.students.filter(function(s){ return String(s.std) === String(ex.std); });
-  if (!subs.length || !kids.length) return '<div class="empty">આ પરીક્ષાના ગુણ હજુ ભરાયા નથી.</div>';
-  var rows = kids.map(function(s){
-    var got=0, max=0, allPass=true;
-    subs.forEach(function(sub){
-      if (!takesSubject(s, sub)) return;
-      var v = ex.marks[sub][s.id];
-      if (v!=null){ got+=Number(v); max+=subjectMax(ex,sub); if (Number(v) < subjectPass(ex,sub)) allPass=false; }
-      else allPass=false;
-    });
-    var pct = max ? (got/max*100) : 0;
-    return {s:s, got:got, max:max, pct:pct, result: allPass && pct>=33 ? "પાસ" : "નાપાસ"};
-  }).sort(function(a,b){ return b.pct - a.pct; });
-  return '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>નામ</th>'
-    + subs.map(function(x){ return '<th class="num">'+esc(x)+'</th>'; }).join("")
-    + '<th class="num">કુલ</th><th class="num">ટકા</th><th>ગ્રેડ</th><th>પરિણામ</th></tr></thead><tbody>'
-    + rows.map(function(r,i){
-        return '<tr><td class="num">'+(i+1)+'</td><td class="num">'+esc(r.s.gr)+'</td><td>'+esc(r.s.name)+'</td>'
-          + subs.map(function(sub){ var v = ex.marks[sub][r.s.id]; return '<td class="num">'+(!takesSubject(r.s, sub) ? "·" : (v!=null?v:"—"))+'</td>'; }).join("")
-          + '<td class="num">'+r.got+' / '+r.max+'</td><td class="num">'+r.pct.toFixed(1)+'%</td>'
-          + '<td><span class="chip '+(r.pct>=33?"g":"r")+'">'+grade(r.pct)+'</span></td>'
-          + '<td><span class="chip '+(r.result==="પાસ"?"g":"r")+'">'+r.result+'</span></td></tr>';
-      }).join("") + '</tbody></table></div>';
-}
+function regMainHTML(ex){ return resReportHTML_(ex, "પરિણામ પત્રક રજીસ્ટર", true); }
 VIEWS["exam:register"] = function(){
   var items = [["annual","વાર્ષિક પરિણામ પત્રક રજીસ્ટર"],["regmain","પરિણામ પત્રક રજીસ્ટર"],["sheet","પરિણામ પત્રક"],
     ["passfail","વિષય મુજબ પાસ-નાપાસ સમરી"],["merit","ગુણ પ્રમાણે વિદ્યાર્થીઓની માહિતી"],["board","બોર્ડના પત્રકો"]];
@@ -5181,7 +5275,7 @@ VIEWS["exam:register"] = function(){
     body = '<div class="card"><h3>ગુણ પ્રમાણે વિદ્યાર્થીઓની માહિતી</h3><div class="grid">'
       + '<div><label class="f">પરીક્ષા</label>'+examSelectHTML("mr_exam")+'</div>'
       + '</div><div id="mr_body" style="margin-top:12px"></div>'
-      + '<div style="margin-top:12px"><button class="btn sec" id="mr_exit">બહાર</button></div></div>';
+      + '<div style="margin-top:12px"><button class="btn sec" id="mr_print">છાપો</button> <button class="btn sec" id="mr_exit">બહાર</button></div></div>';
   } else { // annual
     body = '<div class="card"><h3>વાર્ષિક પરિણામ પત્રક રજીસ્ટર</h3>'
       + '<div class="grid"><div><label class="f">ધોરણ</label><select id="an_std">'+opts(stdList(),"")+'</select></div></div>'
@@ -5201,25 +5295,12 @@ WIRE["exam:register"] = function(){
   if (SUB.register==="regmain" || SUB.register==="board"){
     function draw(){ var ex = S.exams.find(function(e){return e.id===val("rg_exam");}); if (ex) $("rg_body").innerHTML = regMainHTML(ex); }
     $("rg_exam").onchange = draw; draw();
-    $("rg_print").onclick = function(){ printPage("પરિણામ પત્રક રજીસ્ટર", $("rg_body").innerHTML); };
+    $("rg_print").onclick = function(){ var ex = S.exams.find(function(e){return e.id===val("rg_exam");}); printPage("પરિણામ પત્રક રજીસ્ટર", $("rg_body").innerHTML, resPrintOpts_(ex || {})); };
   } else if (SUB.register==="sheet"){
     function draw(){
       var ex = S.exams.find(function(e){return e.id===val("sh_exam");});
       if (!ex) return;
-      var subs = subList().filter(function(s){return ex.marks && ex.marks[s];});
-      var kids = S.students.filter(function(s){return String(s.std)===String(ex.std);});
-      var rows = kids.map(function(s){
-        var c = examCalc(ex, s.id);
-        return {s:s, c:c};
-      }).sort(function(a,b){return b.c.pct - a.c.pct;});
-      $("sh_body").innerHTML = !subs.length || !rows.length ? '<div class="empty">ગુણ ભરાયા નથી.</div>'
-        : '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>નામ</th>'
-          + '<th class="num">કુલ</th><th class="num">ટકા</th><th>ગ્રેડ</th></tr></thead><tbody>'
-          + rows.map(function(r,i){
-              return '<tr><td class="num">'+(i+1)+'</td><td class="num">'+esc(r.s.gr)+'</td><td>'+esc(r.s.name)+'</td>'
-                + '<td class="num">'+r.c.got+' / '+r.c.max+'</td><td class="num">'+r.c.pct.toFixed(1)+'%</td>'
-                + '<td><span class="chip '+(r.c.pct>=33?"g":"r")+'">'+grade(r.c.pct)+'</span></td></tr>';
-            }).join("") + '</tbody></table></div>';
+      $("sh_body").innerHTML = resReportHTML_(ex, "પરિણામ પત્રક", false);
     }
     $("sh_exam").onchange = draw; draw();
     $("sh_print").onclick = function(){ printPage("પરિણામ પત્રક", $("sh_body").innerHTML); };
@@ -5248,19 +5329,23 @@ WIRE["exam:register"] = function(){
     function draw(){
       var ex = S.exams.find(function(e){return e.id===val("mr_exam");});
       if (!ex) return;
-      var kids = S.students.filter(function(s){return String(s.std)===String(ex.std);});
-      var rows = kids.map(function(s){ return {s:s, c:examCalc(ex,s.id)}; })
-        .filter(function(r){return r.c.max>0;}).sort(function(a,b){return b.c.pct-a.c.pct;});
+      var R = examResults_(ex);
+      var rows = R.ranked.slice().sort(function(a,b){ return b.pct - a.pct; });
+      var th = RT_TD + 'background:#eef1f8;font-weight:700;font-size:12px;';
       $("mr_body").innerHTML = !rows.length ? '<div class="empty">ગુણ ભરાયા નથી.</div>'
-        : '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>નામ</th>'
-          + '<th class="num">કુલ</th><th class="num">ટકા</th><th class="num">મોબાઇલ</th></tr></thead><tbody>'
+        : '<div style="background:#fff;color:#000;padding:10px;overflow-x:auto">' + resHeadHTML_(ex, "ગુણ પ્રમાણે વિદ્યાર્થીઓની માહિતી (મેરીટ યાદી)")
+          + '<table style="border-collapse:collapse;width:100%;font-size:12.5px"><thead><tr>'
+          + '<th style="'+th+'">રેન્ક</th><th style="'+th+'">ક્રમ</th><th style="'+th+'">રોલ નં.</th><th style="'+th+'">જી.આર.</th><th style="'+th+'text-align:left">નામ</th>'
+          + '<th style="'+th+'">કુલ ગુણ</th><th style="'+th+'">ટકા</th><th style="'+th+'">ગ્રેડ</th><th style="'+th+'">મોબાઇલ</th></tr></thead><tbody>'
           + rows.map(function(r,i){
-              return '<tr><td class="num">'+(i+1)+'</td><td class="num">'+esc(r.s.gr)+'</td><td>'+esc(r.s.name)+'</td>'
-                + '<td class="num">'+r.c.got+' / '+r.c.max+'</td><td class="num">'+r.c.pct.toFixed(1)+'%</td>'
-                + '<td class="num">'+esc(r.s.mobile||r.s.father_mobile||"—")+'</td></tr>';
+              return '<tr><td style="'+RT_TD+'font-weight:700">'+r.rank+'</td><td style="'+RT_TD+'">'+(i+1)+'</td><td style="'+RT_TD+'">'+esc(r.s.roll||"")+'</td><td style="'+RT_TD+'">'+esc(r.s.gr)+'</td>'
+                + '<td style="'+RT_TD+'text-align:left">'+esc([r.s.surname, r.s.name].filter(Boolean).join(" "))+'</td>'
+                + '<td style="'+RT_TD+'">'+r.got+' / '+r.max+'</td><td style="'+RT_TD+'">'+r.pct.toFixed(1)+'%</td><td style="'+RT_TD+'">'+r.grade+'</td>'
+                + '<td style="'+RT_TD+'">'+esc(r.s.mobile||r.s.father_mobile||"—")+'</td></tr>';
             }).join("") + '</tbody></table></div>';
     }
     $("mr_exam").onchange = draw; draw();
+    $("mr_print").onclick = function(){ printPage("ગુણ પ્રમાણે વિદ્યાર્થીઓની માહિતી", $("mr_body").innerHTML); };
   } else { // annual
     function fillExList(){
       var std = val("an_std");
@@ -5281,15 +5366,23 @@ WIRE["exam:register"] = function(){
         exams.forEach(function(ex){ var c = examCalc(ex, s.id); got+=c.got; max+=c.max; });
         var pct = max?(got/max*100):0;
         return {s:s, got:got, max:max, pct:pct};
-      }).filter(function(r){return r.max>0;}).sort(function(a,b){return b.pct-a.pct;});
-      $("an_body").innerHTML = '<h3>વાર્ષિક પરિણામ — ધોરણ '+esc(std)+'</h3>'
-        + (rows.length ? '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>નામ</th>'
-          + '<th class="num">કુલ</th><th class="num">ટકા</th><th>ગ્રેડ</th></tr></thead><tbody>'
+      }).filter(function(r){return r.max>0;});
+      rows.forEach(function(r){ r.rank = 1 + rows.filter(function(o){ return o.pct > r.pct + 1e-9; }).length; });
+      var th = RT_TD + 'background:#eef1f8;font-weight:700;font-size:12px;';
+      var kk = S.school || {};
+      $("an_body").innerHTML = rows.length
+        ? '<div style="background:#fff;color:#000;padding:10px;overflow-x:auto"><div style="border:1.5px solid #000;text-align:center;padding:6px"><div style="font-size:22px;font-weight:700;color:#b00000">'+esc(kk.name||"શાળાનું નામ")+'</div>'
+          + '<div style="font-size:12.5px">'+esc([kk.village, kk.taluka ? "તા. "+kk.taluka : "", kk.district ? "જિ. "+kk.district : ""].filter(Boolean).join(", "))+'</div></div>'
+          + '<div style="text-align:center;font-weight:700;font-size:16px;margin:8px 0;color:#0a1a8a">વાર્ષિક પરિણામ પત્રક રજીસ્ટર</div>'
+          + '<div style="font-size:13px;margin-bottom:8px">ધોરણ: <b>'+esc(std)+'</b> &nbsp; શૈક્ષણિક વર્ષ: <b>'+esc(S.settings.year||"—")+'</b> &nbsp; પરીક્ષાઓ: <b>'+esc(exams.map(function(e){return e.name;}).join(" + "))+'</b></div>'
+          + '<table style="border-collapse:collapse;width:100%;font-size:12.5px"><thead><tr><th style="'+th+'">ક્રમ</th><th style="'+th+'">રોલ નં.</th><th style="'+th+'">જી.આર.</th><th style="'+th+'text-align:left">નામ</th>'
+          + '<th style="'+th+'">કુલ ગુણ</th><th style="'+th+'">ટકા</th><th style="'+th+'">ગ્રેડ</th><th style="'+th+'">રેન્ક</th></tr></thead><tbody>'
           + rows.map(function(r,i){
-              return '<tr><td class="num">'+(i+1)+'</td><td class="num">'+esc(r.s.gr)+'</td><td>'+esc(r.s.name)+'</td>'
-                + '<td class="num">'+r.got+' / '+r.max+'</td><td class="num">'+r.pct.toFixed(1)+'%</td>'
-                + '<td><span class="chip '+(r.pct>=33?"g":"r")+'">'+grade(r.pct)+'</span></td></tr>';
-            }).join("") + '</tbody></table></div>' : '<div class="empty">ગુણ ભરાયા નથી.</div>');
+              return '<tr><td style="'+RT_TD+'">'+(i+1)+'</td><td style="'+RT_TD+'">'+esc(r.s.roll||"")+'</td><td style="'+RT_TD+'">'+esc(r.s.gr)+'</td><td style="'+RT_TD+'text-align:left">'+esc([r.s.surname, r.s.name].filter(Boolean).join(" "))+'</td>'
+                + '<td style="'+RT_TD+'">'+r.got+' / '+r.max+'</td><td style="'+RT_TD+'">'+r.pct.toFixed(1)+'%</td><td style="'+RT_TD+'">'+grade(r.pct)+'</td><td style="'+RT_TD+'font-weight:700">'+r.rank+'</td></tr>';
+            }).join("") + '</tbody></table></div><div style="margin-top:10px"><button class="btn sec" id="an_print">છાપો</button></div>'
+        : '<div class="empty">ગુણ ભરાયા નથી.</div>';
+      if ($("an_print")) $("an_print").onclick = function(){ printPage("વાર્ષિક પરિણામ પત્રક રજીસ્ટર", $("an_body").querySelector("div").outerHTML); };
     };
   }
 };
@@ -5316,44 +5409,41 @@ VIEWS["exam:marksheet"] = function(){
     + '</div><div class="card"><h3>પૂર્વાવલોકન</h3><div id="ms_paper"></div></div>';
 };
 function marksheetHTML(ex, s){
-  var k = S.school;
-  var subs = subList().filter(function(sub){ return ex.marks && ex.marks[sub] && takesSubject(s, sub); });
-  var got = 0, max = 0;
-  var rows = subs.map(function(sub){
-    var v = ex.marks[sub][s.id];
-    if (v != null){ got += Number(v); max += ex.total; }
-    return [sub, v!=null?v:"—", ex.total, v!=null?grade(v/ex.total*100):"—"];
-  });
-  var pct = max ? (got/max*100) : 0;
+  var k = S.school || {};
+  var R = examResults_(ex);
+  var r = R.rows.find(function(x){ return x.s.id === s.id; }) || examStuResult_(ex, s, R.subs);
+  var addr = [k.village, k.city, k.taluka ? "તા. "+k.taluka : "", k.district ? "જિ. "+k.district : ""].filter(Boolean).join(", ");
+  var th = 'border:1px solid #333;padding:5px 8px;background:#eee;text-align:center';
+  var td = 'border:1px solid #333;padding:5px 8px;text-align:center';
+  var pass = r.result === "પાસ";
   return '<div id="paper" style="background:#fff;color:#111;padding:26px 30px;border:1px solid var(--line);'
     + 'border-radius:8px;font-size:13.5px;line-height:1.6">'
     + '<div style="text-align:center;border-bottom:2.5px solid #111;padding-bottom:10px">'
-      + '<div style="font-size:12px">'+esc(k.board||"")+'</div>'
       + '<div style="font-size:21px;font-weight:700;margin:3px 0">'+esc(k.name||"શાળાનું નામ")+'</div>'
+      + (addr ? '<div style="font-size:12.5px">'+esc(addr)+'</div>' : '')
+      + '<div style="font-size:12.5px;margin-top:2px">શૈક્ષણિક વર્ષ: <b>'+esc(S.settings.year||"—")+'</b></div>'
       + '<div style="font-size:16px;font-weight:700;margin-top:8px;text-decoration:underline">ગુણ પત્રક — '+esc(ex.name)+'</div>'
     + '</div>'
     + '<table style="width:100%;margin:14px 0;font-size:13px"><tr>'
-      + '<td>વિદ્યાર્થીનું નામ: <b>'+esc(s.name)+'</b></td>'
+      + '<td>વિદ્યાર્થીનું નામ: <b>'+esc([s.surname, s.name].filter(Boolean).join(" "))+'</b></td>'
       + '<td>જી.આર. નં.: <b>'+esc(s.gr)+'</b></td></tr><tr>'
       + '<td>ધોરણ / વર્ગ: <b>'+esc(s.std)+' / '+esc(s.div)+'</b></td>'
-      + '<td>પરીક્ષા તારીખ: <b>'+esc(ex.date)+'</b></td></tr></table>'
+      + '<td>રોલ નં.: <b>'+esc(s.roll||"—")+'</b></td></tr><tr>'
+      + '<td>પરીક્ષા તારીખ: <b>'+esc(dmy(ex.date)||"—")+'</b></td><td></td></tr></table>'
     + '<table style="border-collapse:collapse;width:100%;font-size:13px">'
-      + '<tr><th style="border:1px solid #999;padding:5px 8px;background:#eee">વિષય</th>'
-      + '<th style="border:1px solid #999;padding:5px 8px;background:#eee">મેળવેલ ગુણ</th>'
-      + '<th style="border:1px solid #999;padding:5px 8px;background:#eee">કુલ ગુણ</th>'
-      + '<th style="border:1px solid #999;padding:5px 8px;background:#eee">ગ્રેડ</th></tr>'
-      + rows.map(function(r){
-          return '<tr>' + r.map(function(c){ return '<td style="border:1px solid #999;padding:5px 8px;text-align:center">'+esc(c)+'</td>'; }).join("") + '</tr>';
+      + '<tr><th style="'+th+'">ક્રમ</th><th style="'+th+';text-align:left">વિષય</th><th style="'+th+'">કુલ ગુણ</th><th style="'+th+'">મેળવેલ ગુણ</th><th style="'+th+'">ગ્રેડ</th></tr>'
+      + r.rows.map(function(x, i){
+          return '<tr><td style="'+td+'">'+(i+1)+'</td><td style="'+td+';text-align:left">'+esc(x.name)+'</td><td style="'+td+'">'+esc(x.max)+'</td>'
+            + '<td style="'+td+'">'+(x.absent ? "ગેરહાજર" : x.got==null ? "—" : esc(x.got))+'</td><td style="'+td+'">'+esc(x.grade)+'</td></tr>';
         }).join("")
-      + '<tr style="font-weight:700"><td style="border:1px solid #999;padding:5px 8px">કુલ</td>'
-      + '<td style="border:1px solid #999;padding:5px 8px;text-align:center">'+got+'</td>'
-      + '<td style="border:1px solid #999;padding:5px 8px;text-align:center">'+max+'</td>'
-      + '<td style="border:1px solid #999;padding:5px 8px;text-align:center">'+grade(pct)+'</td></tr>'
+      + '<tr style="font-weight:700"><td style="'+td+'"></td><td style="'+td+';text-align:left">કુલ</td>'
+      + '<td style="'+td+'">'+r.max+'</td><td style="'+td+'">'+r.got+'</td><td style="'+td+'">'+(r.any ? r.grade : "—")+'</td></tr>'
     + '</table>'
-    + '<p style="margin-top:10px;font-size:13px">ટકાવારી: <b>'+pct.toFixed(1)+'%</b> &nbsp;&nbsp; પરિણામ: <b>'+(pct>=33?"ઉત્તીર્ણ":"અનુત્તીર્ણ")+'</b></p>'
+    + '<p style="margin-top:10px;font-size:13px">ટકાવારી: <b>'+(r.any ? r.pct.toFixed(1)+'%' : "—")+'</b> &nbsp;&nbsp; પરિણામ: <b style="color:'+(pass?'#166534':'#b91c1c')+'">'+(r.any ? (pass ? "ઉત્તીર્ણ" : "અનુત્તીર્ણ") : "—")+'</b>'
+    + (r.rank ? ' &nbsp;&nbsp; રેન્ક: <b>'+r.rank+' / '+R.ranked.length+'</b>' : '')+'</p>'
     + '<div style="margin-top:40px;display:flex;justify-content:space-between;font-size:13px">'
       + '<div style="font-weight:700">વર્ગ શિક્ષક</div>'
-      + '<div style="text-align:left;font-weight:700">'+esc(k.principal||"આચાર્યશ્રી")+'<div style="font-weight:400">આચાર્યશ્રી</div></div>'
+      + '<div style="text-align:left;font-weight:700">'+(k.principal ? esc(k.principal)+'<div style="font-weight:400">આચાર્યશ્રી</div>' : 'આચાર્યશ્રી')+'</div>'
     + '</div></div>';
 }
 WIRE["exam:marksheet"] = function(){
@@ -5398,26 +5488,18 @@ function normDobClient_(s){
 /* પરીક્ષા માટે દરેક વિદ્યાર્થીનું તૈયાર ગુણપત્રક (snapshot) બનાવે. ગણતરી પરિણામ પત્રક રજીસ્ટર
    (regMainHTML) જેવી જ છે, એટલે ઓફિસમાં દેખાતા અને ઓનલાઇન દેખાતા આંકડા એકસરખા રહે. */
 function buildResultSnapshots_(ex, withRank){
-  var subs = subList().filter(function(s){ return ex.marks && ex.marks[s]; });
   var kids = S.students.filter(function(s){ return String(s.std) === String(ex.std); });
   var k = S.school || {};
   var addr = [k.village, k.taluka ? "તા. "+k.taluka : "", k.district ? "જિ. "+k.district : ""].filter(Boolean).join(", ");
   var recs = [], noMarks = [], noDob = [];
   var stamp = new Date().toISOString();
   kids.forEach(function(s){
-    var mySubs = subs.filter(function(sub){ return takesSubject(s, sub); });
-    var any = mySubs.some(function(sub){ return ex.marks[sub][s.id] != null; });
-    if (!any){ noMarks.push(s); return; }
+    var rr = examStuResult_(ex, s, examSubjects_(ex));
+    if (!rr.any){ noMarks.push(s); return; }
     var dob = normDobClient_(s.dob);
     if (!dob){ noDob.push(s); return; }
-    var got = 0, max = 0, allPass = true;
-    var rows = mySubs.map(function(sub){
-      var v = ex.marks[sub][s.id], smax = subjectMax(ex, sub), spass = subjectPass(ex, sub);
-      if (v == null){ allPass = false; return {name:sub, max:smax, pass:spass, got:null, grade:"—"}; }
-      got += Number(v); max += smax;
-      if (Number(v) < spass) allPass = false;
-      return {name:sub, max:smax, pass:spass, got:Number(v), grade: smax ? grade(Number(v)/smax*100) : "—"};
-    });
+    var got = rr.got, max = rr.max, allPass = rr.result === "પાસ";
+    var rows = rr.rows.map(function(x){ return {name:x.name, max:x.max, pass:x.pass, got:x.got, grade:x.grade}; });
     var pct = max ? got/max*100 : 0;
     recs.push({
       id: ex.id + "_" + s.gr, examId: ex.id, examName: ex.name, examDate: ex.date || "",
