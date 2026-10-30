@@ -7578,7 +7578,6 @@ function ptHome(d){
     + ptStat("તાજેતરનું પરિણામ", rs ? (esc(rs.result) + " · " + esc(rs.grade)) : "—", rs ? esc(rs.examName)+" · "+rs.pct+"%" : "હજુ પ્રકાશિત નથી", rs && rs.result === "ઉત્તીર્ણ" ? "good" : "")
     + ptStat("આગામી પરીક્ષા", ex ? esc(ex.subject) : "—", ex ? ptD(ex.date)+(ex.time?" · "+esc(ex.time):"") : "કોઈ નથી", "accent")
     + ptStat("બાકી સોંપણી", String(asg.length), asg.length ? "સોંપણી ટેબ જુઓ" : "કોઈ બાકી નથી", asg.length ? "bad" : "good")
-    + ptStat("આગામી રજા", ho ? esc(ho.name) : "—", ho ? ptD(ho.date)+((ho.to && ho.to !== ho.date) ? " – "+ptD(ho.to) : "") : "કોઈ નથી", "")
     + '</div>';
   var ms = (d.messages || []).slice(0, 2);
   if (ms.length) h += ptCard('<h3 style="margin-top:0">💬 શિક્ષકનો સંદેશ</h3>' + ms.map(function(m){
@@ -7668,17 +7667,6 @@ function ptNotices(d){
   }).join("") : '<div class="hint">કોઈ સૂચના નથી.</div>');
   return h;
 }
-function ptHolidays(d){
-  var all = (d.holidays || []).slice().sort(function(a,b){ return String(a.date).localeCompare(String(b.date)); });
-  if (!all.length) return ptEmpty("હજુ રજાઓ નોંધાઈ નથી.");
-  var t = ptToday();
-  return ptCard('<h3 style="margin-top:0">🎉 વાર્ષિક રજાઓ</h3><div class="tw"><table style="min-width:0"><thead><tr><th style="text-align:left">તારીખ</th><th style="text-align:left">રજા</th></tr></thead><tbody>'
-    + all.map(function(h){
-        var past = (h.to || h.date) < t;
-        return '<tr style="'+(past?'opacity:.55':'')+'"><td style="text-align:left">'+ptD(h.date)+((h.to && h.to !== h.date) ? ' – '+ptD(h.to) : '')+'</td><td style="text-align:left">'+esc(h.name)+'</td></tr>';
-      }).join("") + '</tbody></table></div>');
-}
-
 function ptMessages(d){
   var all = d.messages || [];
   if (!all.length) return ptEmpty("શિક્ષક તરફથી હજુ કોઈ સંદેશ નથી.");
@@ -7689,8 +7677,8 @@ function ptMessages(d){
 }
 function paintPortal(){
   var d = PORTAL, s = d.student || {};
-  var tabs = [["home","🏠 હોમ"],["res","📊 પરિણામ"],["att","🗓 હાજરી"],["asg","📝 સોંપણી"],["mat","📚 અભ્યાસ"],["msg","💬 સંદેશ"],["ntc","🔔 સૂચના"],["hol","🎉 રજાઓ"]];
-  var body = {home:ptHome, res:ptResults, att:ptAttendance, asg:ptAssignments, mat:ptMaterials, msg:ptMessages, ntc:ptNotices, hol:ptHolidays}[PTAB](d);
+  var tabs = [["home","🏠 હોમ"],["res","📊 પરિણામ"],["att","🗓 હાજરી"],["asg","📝 સોંપણી"],["mat","📚 અભ્યાસ"],["msg","💬 સંદેશ"],["ntc","🔔 સૂચના"]];
+  var body = {home:ptHome, res:ptResults, att:ptAttendance, asg:ptAssignments, mat:ptMaterials, msg:ptMessages, ntc:ptNotices}[PTAB](d);
   $("rs_out").innerHTML =
     '<div class="card noprint" style="margin-bottom:10px"><div class="row" style="justify-content:space-between;align-items:center;gap:10px">'
     + '<div><div style="font-size:12.5px;color:var(--muted)">'+esc((d.school && d.school.name) || "")+'</div>'
@@ -8130,7 +8118,7 @@ function teGrid(rows, mineOnly){
   return h + '</tbody></table></div>';
 }
 function teMore(){
-  var seg = '<div class="te-seg">' + [["tt","🗓 ટાઇમટેબલ"],["cl","🏫 વર્ગ માહિતી"],["me","👤 પ્રોફાઇલ"]].map(function(x){
+  var seg = '<div class="te-seg">' + [["tt","🗓 ટાઇમટેબલ"],["cl","🏫 વર્ગ માહિતી"],["ho","🎉 રજાઓ"],["me","👤 પ્રોફાઇલ"]].map(function(x){
     return '<button class="btn sm '+(TE.more === x[0] ? "" : "sec")+'" data-more="'+x[0]+'">'+x[1]+'</button>'; }).join("") + '</div>';
   var d = TE.d, me = teNk(d.me.tname), cls = teCls(), c = teCur();
   if (TE.more === "tt"){
@@ -8151,6 +8139,23 @@ function teMore(){
       });
     }
     return h;
+  }
+  if (TE.more === "ho"){
+    var hl = (d.holidays || []).slice().sort(function(a, b){ return String(a.date).localeCompare(String(b.date)); });
+    var tdy = ptToday();
+    var nxt = hl.filter(function(x){ return (x.to || x.date) >= tdy; })[0];
+    function cnt(x){ var a = new Date(x.date), b = new Date(x.to || x.date); return Math.round((b - a) / 86400000) + 1; }
+    var tot = hl.reduce(function(a, x){ return a + cnt(x); }, 0);
+    return seg + '<div class="card"><h3 style="margin-top:0">🎉 વાર્ષિક રજાઓ</h3>'
+      + (nxt ? '<div class="chip g" style="margin-bottom:8px">આગામી રજા: '+esc(nxt.name)+' · '+esc(ptD(nxt.date))+((nxt.to && nxt.to !== nxt.date) ? ' – '+esc(ptD(nxt.to)) : '')+'</div>' : '')
+      + (hl.length ? '<div class="tw"><table style="min-width:0"><thead><tr><th>તારીખ</th><th>વાર</th><th>રજા</th><th class="num">દિવસ</th></tr></thead><tbody>'
+          + hl.map(function(x){
+              var past = (x.to || x.date) < tdy, isNow = x.date <= tdy && (x.to || x.date) >= tdy;
+              return '<tr style="'+(past ? 'opacity:.55' : isNow ? 'font-weight:700' : '')+'"><td>'+esc(ptD(x.date))+((x.to && x.to !== x.date) ? ' – '+esc(ptD(x.to)) : '')+'</td>'
+                + '<td>'+esc(teDayOf(x.date))+'</td><td>'+esc(x.name)+(isNow ? ' <span class="chip r">આજે</span>' : '')+'</td><td class="num">'+cnt(x)+'</td></tr>';
+            }).join("") + '</tbody></table></div><p class="hint" style="margin:8px 0 0">કુલ રજાના દિવસ: <b>'+tot+'</b></p>'
+        : '<div class="empty">હજુ રજાઓ નોંધાઈ નથી.</div>')
+      + '<p class="hint" style="margin:8px 0 0">રજાઓ આચાર્ય/એડમિન (શાળા › વાર્ષિક રજાઓ) દ્વારા નોંધાય છે; અહીં ફક્ત જોઈ શકાય છે.</p></div>';
   }
   if (TE.more === "cl"){
     if (!c) return seg + teNoClass();
