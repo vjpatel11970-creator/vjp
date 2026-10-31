@@ -5044,7 +5044,7 @@ function mainStructByStdView(){
       }).join("") + '</tbody></table></div></div>';
 }
 /* ========== આંતરિક ગુણના માળખાની એન્ટ્રી ========== */
-var INT_TYPES = ["સામાયિક કસોટી","નોટબુક સબમિશન","પ્રોજેક્ટ કાર્ય","પ્રાયોગિક કાર્ય","મેદાનકાર્ય","ચિત્રપોથી","અન્ય પ્રવૃત્તિ"];
+var INT_TYPES = ["સામાયિક કસોટી 1","સામાયિક કસોટી 2","નોટબુક સબમિશન","પ્રોજેક્ટ કાર્ય","પ્રાયોગિક કાર્ય","મેદાનકાર્ય","ચિત્રપોથી","અન્ય પ્રવૃત્તિ"];
 var INT_STD = {std:"9"};
 var GU_NUM = ["(૧)","(૨)","(૩)","(૪)"];
 function internalStructView(){
@@ -5288,6 +5288,23 @@ function resReportHTML_(ex, title, withSubjects){
   return '<div style="background:#fff;color:#000;padding:10px;overflow-x:auto">' + resHeadHTML_(ex, title) + t.html + resFootHTML_(t.R.ranked) + '</div>';
 }
 function resPrintOpts_(ex){ return {landscape: examSubjects_(ex).length > 5}; }
+/* ---------- સામાયિક કસોટી 1/2 → આંતરિક ગુણ (100 માંથી ઘટક ગુણ) ---------- */
+function periodicNo_(name){
+  var m = /સામાયિક\s*કસોટી\s*([12૧૨])/.exec(String(name || ""));
+  return m ? ((m[1] === "1" || m[1] === "૧") ? 1 : 2) : 0;
+}
+function periodicExamFor_(std, n){
+  var list = S.exams.filter(function(e){ return e.kind === "સામાયિક કસોટી" && String(e.std) === String(std); });
+  var hit = list.filter(function(e){ var d = /[12૧૨]/.exec(String(e.name || "")); return d && ((d[0] === "1" || d[0] === "૧") ? 1 : 2) === n; })[0];
+  return hit || list[n - 1] || null;
+}
+function periodicConv_(pex, sub, sid, compMarks){
+  if (!pex || !pex.marks || !pex.marks[sub]) return null;
+  var raw = pex.marks[sub][sid];
+  if (raw == null || raw === "") return null;
+  var mx = Number(subjectMax(pex, sub)) || 100;
+  return Math.round(Number(raw) / mx * Number(compMarks) * 2) / 2;
+}
 function marksKindWire(){
   function draw(){
     var ex = S.exams.find(function(e){ return e.id === val("mk_exam"); });
@@ -5306,7 +5323,13 @@ function marksKindWire(){
     var imd = (ex.marksInt && ex.marksInt[sub]) || {};
     var tpOn = !intOn && subHasTP_(sub), tpm = (ex.marksTP && ex.marksTP[sub]) || {};
     var absM = (ex.absent && ex.absent[sub]) || {};
-    $("mk_body").innerHTML = (subjCompulsoryFor_(ex.std, sub) ? '' : '<p class="hint" style="margin:6px 0">વૈકલ્પિક વિષય — ફક્ત આ વિષય પસંદ કરનાર '+kids.length+' વિદ્યાર્થી (કુલ '+allKids.length+' માંથી).'
+    var pconv = intOn ? comps.map(function(c){ var n = periodicNo_(c.name); return n ? {n:n, ex:periodicExamFor_(ex.std, n)} : null; }) : [];
+    var anyP = pconv.some(function(x){ return !!x; });
+    var pHint = anyP ? '<p class="hint" style="margin:6px 0">' + pconv.map(function(x, ci){
+        if (!x) return "";
+        return 'સામાયિક કસોટી ' + x.n + ': ' + (x.ex ? '<b>' + esc(x.ex.name) + '</b> (' + (Number(subjectMax(x.ex, sub)) || 100) + ' માંથી → ' + comps[ci].marks + ' ગુણ)' : '<b style="color:var(--bad)">ધોરણ ' + esc(ex.std) + ' માં "સામાયિક કસોટી" પ્રકારની પરીક્ષા મળી નથી</b>');
+      }).filter(Boolean).join(' &nbsp;·&nbsp; ') + '</p>' : '';
+    $("mk_body").innerHTML = pHint + (subjCompulsoryFor_(ex.std, sub) ? '' : '<p class="hint" style="margin:6px 0">વૈકલ્પિક વિષય — ફક્ત આ વિષય પસંદ કરનાર '+kids.length+' વિદ્યાર્થી (કુલ '+allKids.length+' માંથી).'
         + (notSet ? ' <b>'+notSet+' વિદ્યાર્થીની પસંદગી હજુ નોંધાઈ નથી</b> (વિદ્યાર્થી › વૈકલ્પિક વિષયની પસંદગી).' : '') + '</p>')
       + '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>નામ</th>'
       + (intOn ? comps.map(function(c){ return '<th class="num">'+esc(c.name)+' ('+c.marks+')</th>'; }).join("") + '<th class="num">કુલ (મહત્તમ '+maxM+')</th>' : tpOn ? '<th class="num">થીયરી</th><th class="num">પ્રેક્ટીકલ</th><th class="num">કુલ (મહત્તમ '+maxM+')</th>' : '<th class="num">ગુણ (કુલ '+maxM+')</th>')
@@ -5319,7 +5342,8 @@ function marksKindWire(){
           if (intOn){
             var iv = imd[s.id] || [], ileg = (m[s.id] != null && !imd[s.id]);
             inputs = comps.map(function(c, ci){
-              return '<td><input type="number" min="0" max="'+c.marks+'" step="any" data-ci="'+s.id+'|'+ci+'" value="'+(iv[ci] != null ? esc(iv[ci]) : "")+'" style="width:78px"></td>';
+              var av = (iv[ci] == null && !ileg && pconv[ci] && pconv[ci].ex) ? periodicConv_(pconv[ci].ex, sub, s.id, c.marks) : null;
+              return '<td><input type="number" min="0" max="'+c.marks+'" step="any" data-ci="'+s.id+'|'+ci+'" value="'+(iv[ci] != null ? esc(iv[ci]) : (av != null ? av : ""))+'"'+(av != null ? ' data-auto="1" title="સામાયિક કસોટીમાંથી આપોઆપ"' : '')+' style="width:78px'+(av != null ? ';background:#fff8dc' : '')+'"></td>';
             }).join("") + '<td><input type="number" readonly tabindex="-1" data-k="'+s.id+'"'+(ileg ? ' data-legacy="1"' : '')+' value="'+(m[s.id]!=null?esc(m[s.id]):"")+'" style="width:80px;background:var(--bg2,#f3f4f6);font-weight:700"></td>';
           } else if (tpOn){
             var tp = tpm[s.id] || {}, legacy = (m[s.id] != null && !tpm[s.id]);
@@ -5336,6 +5360,7 @@ function marksKindWire(){
         }).join("") + '</tbody></table></div>'
       + '<div style="margin-top:12px" class="row">'
       + '<button class="btn" id="mk_save">ગુણ સાચવો</button>'
+      + (anyP ? '<button class="btn sec" id="mk_pull">⟳ સામાયિક કસોટીમાંથી ગુણ લાવો</button>' : '')
       + '<button class="btn sec" id="mk_reset">વિદ્યાર્થી રીસેટ કરવા</button>'
       + '<button class="btn sec" id="mk_xls">Excel</button>'
       + '</div>';
@@ -5372,8 +5397,23 @@ function marksKindWire(){
       k.value = Math.round(sum * 100) / 100; k.style.color = sum > maxM ? "var(--bad)" : "";
     }
     if (intOn) Array.prototype.forEach.call($("mk_body").querySelectorAll("input[data-ci]"), function(i){
-      i.oninput = function(){ if (Number(i.value) < 0) i.value = ""; intSum(i.dataset.ci.split("|")[0]); };
+      i.oninput = function(){ if (Number(i.value) < 0) i.value = ""; i.style.background = ""; intSum(i.dataset.ci.split("|")[0]); };
+      if (i.dataset.auto) intSum(i.dataset.ci.split("|")[0]);
     });
+    if ($("mk_pull")) $("mk_pull").onclick = function(){
+      var n = 0;
+      kids.forEach(function(s){
+        if (absM[s.id] || $("mk_body").querySelector('input[data-ab="'+s.id+'"]:checked')) return;
+        comps.forEach(function(c, ci){
+          if (!pconv[ci] || !pconv[ci].ex) return;
+          var v = periodicConv_(pconv[ci].ex, sub, s.id, c.marks);
+          var inp = $("mk_body").querySelector('input[data-ci="'+s.id+'|'+ci+'"]');
+          if (v != null && inp){ inp.value = v; inp.style.background = "#fff8dc"; n++; }
+        });
+        intSum(s.id);
+      });
+      toast(n ? n + " ગુણ સામાયિક કસોટીમાંથી લવાયા — ‘ગુણ સાચવો’ દબાવો" : "સામાયિક કસોટીના ગુણ મળ્યા નથી (પહેલા તેની એન્ટ્રી કરો)");
+    };
     $("mk_save").onclick = async function(){
       var obj = {}, tpo = {}, over = [], abo = {};
       Array.prototype.forEach.call($("mk_body").querySelectorAll("input[data-ab]:checked"), function(cb){ abo[cb.dataset.ab] = true; });
