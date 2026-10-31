@@ -342,6 +342,7 @@ header.top{
   background:linear-gradient(120deg, var(--brand), color-mix(in srgb, var(--brand) 62%, #000));
   box-shadow:0 10px 26px -12px color-mix(in srgb, var(--brand) 70%, #000), inset 0 1px 0 rgba(255,255,255,.18);
 }
+.crest,.sbrand .lg,.lg-crest{overflow:hidden}
 .crest{border-radius:12px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3)}
 .top h1{font-size:18.5px;letter-spacing:.1px}
 .yearchip{background:rgba(255,255,255,.17);border:1px solid rgba(255,255,255,.22);backdrop-filter:blur(3px)}
@@ -1138,6 +1139,7 @@ function drawMenu(){
       if (window.matchMedia && matchMedia("(max-width:860px)").matches) closeSidebarMobile();
     };
   });
+  applyLogo_();
 }
 function goHome_(){
   var g = MENU.find(function(m){ return m.k === "shala" && (!LOGGED_IN || allowed(m.k)); }) || MENU.find(function(m){ return !LOGGED_IN || allowed(m.k); });
@@ -1157,6 +1159,7 @@ function head(){
     (S.school.district ? "જિ. " + S.school.district : "") ||
     "શાળાની માહિતી ભરવા માટે → શાળા › શાળા માહિતી";
   $("yearChip").textContent = "શૈક્ષણિક વર્ષ " + (S.settings.year||"—");
+  applyLogo_();
 }
 
 /* ---------- render ---------- */
@@ -1275,6 +1278,14 @@ VIEWS["shala:profile"] = function(){
     + fld("sc_reg","નોંધણી નં.",k.regNo)
     + fld("sc_bank","બેંક ખાતા નં.",k.bankAcc)
     + '</div></div>'
+    + '<div class="card"><h3>શાળાનો લોગો</h3><div class="row" style="gap:16px;align-items:center;flex-wrap:wrap">'
+    + '<div id="sc_logoprev" style="width:110px;height:110px;border:1.5px dashed #aab;border-radius:12px;display:grid;place-items:center;background:#fff;overflow:hidden;font-size:12px;color:#889;text-align:center">'
+    + (k.logo ? '<img src="'+k.logo+'" style="max-width:100%;max-height:100%;object-fit:contain">' : 'લોગો નથી') + '</div>'
+    + '<div style="display:grid;gap:8px"><input type="file" id="sc_logofile" accept="image/*" style="max-width:260px">'
+    + '<div class="row" style="gap:8px"><button class="btn" id="sc_logoup">⬆ લોગો અપલોડ કરો</button><button class="btn sec" id="sc_logodel">🗑 લોગો કાઢી નાખો</button></div>'
+    + chk("sc_logoshow","બધા રિપોર્ટ / પ્રિન્ટમાં શાળાના નામ સાથે લોગો બતાવો",k.logoShow !== false)
+    + '<div style="font-size:12px;color:var(--muted)">PNG / JPG પસંદ કરો. લોગો આપોઆપ નાનો કરી સચવાશે અને રિપોર્ટ, માર્કશીટ, સર્ટિફિકેટ, ઓળખપત્ર વગેરેમાં નામની આગળ છપાશે.</div></div>'
+    + '</div></div>'
     + '<div class="card"><h3>સરનામું</h3><div class="grid">'
     + fld("sc_addr","સરનામું (ગુજરાતી)",k.village)
     + fld("sc_addren","સરનામું (અંગ્રેજી)",k.addressEn)
@@ -1333,6 +1344,27 @@ function printSchoolProfile_(){
 }
 WIRE["shala:profile"] = function(){
   $("sc_print").onclick = printSchoolProfile_;
+  $("sc_logoup").onclick = function(){
+    var f = $("sc_logofile").files && $("sc_logofile").files[0];
+    if (!f) return toast("પહેલા લોગો ફાઈલ પસંદ કરો");
+    logoResize_(f, async function(data, err){
+      if (!data) return toast(err || "લોગો અપલોડ ન થયો");
+      S.school = Object.assign({}, S.school, {logo:data, logoShow:$("sc_logoshow").checked});
+      $("sc_logoprev").innerHTML = '<img src="'+data+'" style="max-width:100%;max-height:100%;object-fit:contain">';
+      await saveMeta(); head(); applyLogo_(); toast("લોગો સચવાયો");
+    });
+  };
+  $("sc_logodel").onclick = async function(){
+    if (!S.school.logo) return toast("લોગો નથી");
+    if (!confirm("લોગો કાઢી નાખવો?")) return;
+    S.school = Object.assign({}, S.school, {logo:""});
+    $("sc_logoprev").textContent = "લોગો નથી"; $("sc_logofile").value = "";
+    await saveMeta(); head(); applyLogo_(); toast("લોગો કાઢી નાખ્યો");
+  };
+  $("sc_logoshow").onchange = async function(){
+    S.school = Object.assign({}, S.school, {logoShow:$("sc_logoshow").checked});
+    await saveMeta(); toast($("sc_logoshow").checked ? "રિપોર્ટમાં લોગો દેખાશે" : "રિપોર્ટમાં લોગો નહીં દેખાય");
+  };
   $("sc_save").onclick = async function(){
     S.school = Object.assign({}, S.school, {
       code:val("sc_code"), scode:val("sc_scode"), udise:val("sc_udise"),
@@ -1346,7 +1378,7 @@ WIRE["shala:profile"] = function(){
       trustPhone:val("sc_trustphone"), trustee:val("sc_trustee"),
       index:val("sc_index"), hscIndex:val("sc_hsc"), tan:val("sc_tan"), pan:val("sc_pan"),
       schoolTime:val("sc_time"), stream:val("sc_stream"),
-      logoCerti:$("sc_logo").checked, classWiseExam:$("sc_classexam").checked, monthlyAttend:$("sc_attend").checked
+      logoShow:$("sc_logoshow").checked, logoCerti:$("sc_logo").checked, classWiseExam:$("sc_classexam").checked, monthlyAttend:$("sc_attend").checked
     });
     await saveMeta(); head(); toast("શાળાની માહિતી સાચવાઈ");
   };
@@ -1845,7 +1877,7 @@ function letterHTML(d){
     + 'border-radius:8px;font-size:14.5px;line-height:1.9">'
     + '<div style="text-align:center;border-bottom:2.5px solid #111;padding-bottom:10px">'
       + (k.trustName ? '<div style="font-size:13px;font-weight:700;letter-spacing:.2px">'+esc(k.trustName)+'</div>' : '')
-      + '<div style="font-size:23px;font-weight:700;margin:3px 0">'+esc(k.name||"શાળાનું નામ")+'</div>'
+      + '<div style="font-size:23px;font-weight:700;margin:3px 0">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
       + '<div style="font-size:13px">'+esc(addr)+'</div>'
       + (line2?'<div style="font-size:11.5px;margin-top:3px">'+esc(line2)+'</div>':"")
     + '</div>'
@@ -2002,7 +2034,7 @@ WIRE["system:report"] = function(){
       + 'table{border-collapse:collapse;width:100%;font-size:12.5px}'
       + 'th,td{border:1px solid #999;padding:5px 7px;text-align:right}'
       + 'th{background:#eee}h2,h3{margin:2px 0;text-align:center}</style></head><body>'
-      + '<h2>'+esc(k.name||"શાળા")+'</h2>'
+      + '<h2>'+lgImg_(50)+esc(k.name||"શાળા")+'</h2>'
       + '<h3 style="font-weight:400;font-size:13px">'+esc([k.village,k.taluka,k.district].filter(Boolean).join(", "))+'</h3>'
       + '<h3>'+esc(val("rp_sel"))+' — વર્ષ '+esc(S.settings.year)+'</h3>'
       + $("rp_body").innerHTML.replace(/<div class="tw">|<\/div>/g,"") + '</body></html>');
@@ -2368,7 +2400,7 @@ WIRE["staff:add"] = function(){
     function row(label,v){ return '<tr><td style="color:#555">'+esc(label)+'</td><td style="text-align:right">'+esc(v||"—")+'</td></tr>'; }
     var k = S.school;
     var body = '<div style="max-width:560px">'
-      + '<div style="text-align:center;border-bottom:2px solid #111;padding-bottom:8px"><div style="font-size:19px;font-weight:700">'+esc(k.name||"શાળાનું નામ")+'</div></div>'
+      + '<div style="text-align:center;border-bottom:2px solid #111;padding-bottom:8px"><div style="font-size:19px;font-weight:700">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div></div>'
       + '<div style="text-align:center;font-weight:700;margin:10px 0">કર્મચારીની વિગત</div>'
       + '<table style="width:100%;border-collapse:collapse;font-size:13.5px">'
       + row("કર્મચારી ક્રમ", val("sf_empno")) + row("નામ", val("sf_name")) + row("હોદ્દો", val("sf_post"))
@@ -2411,13 +2443,59 @@ WIRE["staff:add"] = function(){
 /* ---------- સામાન્ય છાપકામ સહાયક: શાળા હેડર, ટેબલ, સહી ---------- */
 var PR_TBL = "width:100%;border-collapse:collapse;font-size:13px";
 var PR_TD = "border:1px solid #333;padding:5px 7px;vertical-align:top";
+/* ---------- શાળાનો લોગો ---------- */
+function logoSrc_(){ return (S.school && S.school.logo && S.school.logoShow !== false && /^data:image\//.test(S.school.logo)) ? S.school.logo : ""; }
+function lgImg_(h){
+  var src = logoSrc_(); if (!src) return "";
+  h = h || 46;
+  return '<img class="schlogo" src="' + src + '" alt="" style="height:' + h + 'px;width:auto;max-width:' + Math.round(h * 2.2) + 'px;object-fit:contain;vertical-align:middle;margin-right:10px">';
+}
+function applyLogo_(){
+  var src = (S.school && S.school.logo && /^data:image\//.test(S.school.logo)) ? S.school.logo : "";
+  ["#sidebar .sbrand .lg", "header.top .crest", ".lg-crest"].forEach(function(sel){
+    var el = document.querySelector(sel); if (!el) return;
+    if (src){ el.innerHTML = '<img src="' + src + '" alt="" style="width:100%;height:100%;object-fit:contain;border-radius:inherit;background:#fff;padding:2px;box-sizing:border-box">'; }
+    else if (el.querySelector("img")){ el.textContent = "શા"; }
+  });
+}
+function logoResize_(file, cb){
+  var fr = new FileReader();
+  fr.onerror = function(){ cb(null, "ફાઈલ વાંચી શકાઈ નહીં"); };
+  fr.onload = function(){
+    var im = new Image();
+    im.onerror = function(){ cb(null, "આ ફાઈલ ઈમેજ નથી (PNG / JPG પસંદ કરો)"); };
+    im.onload = function(){
+      var out = "", sizes = [240, 200, 160, 128, 96], quals = [0.9, 0.8, 0.7, 0.6];
+      var png = /png|gif|webp|svg/i.test(file.type || "");
+      for (var i = 0; i < sizes.length && !out; i++){
+        var r = Math.min(1, sizes[i] / Math.max(im.width, im.height));
+        var w = Math.max(1, Math.round(im.width * r)), h = Math.max(1, Math.round(im.height * r));
+        var cv = document.createElement("canvas"); cv.width = w; cv.height = h;
+        var cx = cv.getContext("2d");
+        if (!png){ cx.fillStyle = "#fff"; cx.fillRect(0, 0, w, h); }
+        cx.drawImage(im, 0, 0, w, h);
+        var d;
+        if (png){ d = cv.toDataURL("image/png"); if (d.length <= 30000){ out = d; break; } }
+        for (var q = 0; q < quals.length; q++){
+          if (png){ var c2 = document.createElement("canvas"); c2.width = w; c2.height = h; var x2 = c2.getContext("2d"); x2.fillStyle = "#fff"; x2.fillRect(0, 0, w, h); x2.drawImage(im, 0, 0, w, h); d = c2.toDataURL("image/jpeg", quals[q]); }
+          else d = cv.toDataURL("image/jpeg", quals[q]);
+          if (d.length <= 30000){ out = d; break; }
+        }
+      }
+      if (!out) return cb(null, "ઈમેજ ખૂબ મોટી/જટિલ છે, નાનો લોગો પસંદ કરો");
+      cb(out);
+    };
+    im.src = fr.result;
+  };
+  fr.readAsDataURL(file);
+}
 function printHead_(title, sub){
   var k = S.school;
   var addr = [k.village, k.city, k.taluka ? ("તા. " + k.taluka) : "", k.district ? ("જિ. " + k.district) : ""].filter(Boolean).join(", ");
   var l2 = [k.udise ? ("યુ-ડાયસ: " + k.udise) : "", k.phone ? ("ફોન: " + k.phone) : "", k.email || ""].filter(Boolean).join("  ·  ");
   return '<div style="text-align:center;border-bottom:2.5px solid #111;padding-bottom:8px;margin-bottom:10px">'
     + (k.trustName ? '<div style="font-size:12.5px;font-weight:700">' + esc(k.trustName) + '</div>' : '')
-    + '<div style="font-size:21px;font-weight:700">' + esc(k.name || "શાળાનું નામ") + '</div>'
+    + '<div style="font-size:21px;font-weight:700">' + lgImg_(56)+esc(k.name || "શાળાનું નામ") + '</div>'
     + (addr ? '<div style="font-size:12.5px">' + esc(addr) + '</div>' : '')
     + (l2 ? '<div style="font-size:11.5px">' + esc(l2) + '</div>' : '') + '</div>'
     + '<div style="text-align:center;font-weight:700;font-size:16px;margin:6px 0 2px">' + esc(title) + '</div>'
@@ -2734,7 +2812,7 @@ function payslipHTML(p){
   var k = S.school;
   return '<div style="background:#fff;color:#111;padding:26px 30px;border:1px solid #ccc;border-radius:8px;font-size:14px;line-height:1.7;max-width:520px">'
     + '<div style="text-align:center;border-bottom:2px solid #111;padding-bottom:8px">'
-      + '<div style="font-size:20px;font-weight:700">'+esc(k.name||"શાળાનું નામ")+'</div>'
+      + '<div style="font-size:20px;font-weight:700">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
       + '<div style="font-size:12px">'+esc(k.village||"")+'</div></div>'
     + '<div style="text-align:center;font-weight:700;margin:10px 0">પગાર સ્લિપ — '+esc(p.month)+'</div>'
     + '<table style="width:100%;border-collapse:collapse;font-size:13.5px">'
@@ -2810,7 +2888,7 @@ function f16HTML(staffId, fy){
   var pt = rows.reduce(function(a,p){return a+Number(p.pt||0);},0);
   return '<div style="background:#fff;color:#111;padding:26px 30px;border:1px solid #ccc;border-radius:8px;font-size:14px;line-height:1.8">'
     + '<div style="text-align:center;border-bottom:2px solid #111;padding-bottom:8px">'
-      + '<div style="font-size:20px;font-weight:700">'+esc(k.name||"શાળાનું નામ")+'</div>'
+      + '<div style="font-size:20px;font-weight:700">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
       + '<div style="font-size:12px">'+esc(k.village||"")+'</div></div>'
     + '<div style="text-align:center;font-weight:700;margin:10px 0">વાર્ષિક પગાર પ્રમાણપત્ર (ફોર્મ 16) — નાણાકીય વર્ષ '+esc(fy)+'</div>'
     + '<p>કર્મચારીનું નામ: <b>'+esc(t.name||"—")+'</b>&nbsp;&nbsp;&nbsp; હોદ્દો: '+esc(t.post||"—")+'</p>'
@@ -3455,7 +3533,7 @@ function staffSheetHTML(staffId){
   function row(label,v){ return '<tr><td style="color:#555">'+esc(label)+'</td><td style="text-align:right">'+esc(v||"—")+'</td></tr>'; }
   return '<div style="max-width:560px">'
     + '<div style="text-align:center;border-bottom:2px solid #111;padding-bottom:8px">'
-      + '<div style="font-size:19px;font-weight:700">'+esc(k.name||"શાળાનું નામ")+'</div></div>'
+      + '<div style="font-size:19px;font-weight:700">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div></div>'
     + '<div style="text-align:center;font-weight:700;margin:10px 0">સ્ટાફ માહિતી પત્રક</div>'
     + '<table style="width:100%;border-collapse:collapse;font-size:13.5px">'
     + row("નામ", t.name) + row("હોદ્દો", t.post) + row("મુખ્ય વિષય", t.subject)
@@ -3887,7 +3965,7 @@ function grInfoWire(){
     var k = S.school;
     var body = '<div style="max-width:560px">'
       + '<div style="text-align:center;border-bottom:2px solid #111;padding-bottom:8px">'
-      + '<div style="font-size:19px;font-weight:700">'+esc(k.name||"શાળાનું નામ")+'</div></div>'
+      + '<div style="font-size:19px;font-weight:700">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div></div>'
       + '<div style="text-align:center;font-weight:700;margin:10px 0">જી.આર.ની વિગત</div>'
       + '<table style="width:100%;border-collapse:collapse;font-size:13.5px">'
       + row("જી.આર. નં.", val("sd_gr")) + row("નામ", val("sd_name")) + row("પિતાનું નામ", val("sd_father"))
@@ -4152,7 +4230,7 @@ function lcHTML(d, s){
     + 'border-radius:8px;font-size:13.5px;line-height:1.6">'
     + '<div style="text-align:center;border-bottom:2.5px solid #111;padding-bottom:10px">'
       + '<div style="font-size:12px">'+esc(k.board||"")+'</div>'
-      + '<div style="font-size:21px;font-weight:700;margin:3px 0">'+esc(k.name||"શાળાનું નામ")+'</div>'
+      + '<div style="font-size:21px;font-weight:700;margin:3px 0">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
       + '<div style="font-size:12.5px">'+esc(addr)+'</div>'
       + (line2?'<div style="font-size:11px;margin-top:3px">'+esc(line2)+'</div>':"")
       + '<div style="font-size:16px;font-weight:700;margin-top:10px;text-decoration:underline">શાળા છોડ્યાનું પ્રમાણપત્ર</div>'
@@ -4945,6 +5023,7 @@ function structureWire(){
       if (tpAll) drop_.forEach(function(k){ delete tpAll[k]; });
       var upd_ = Object.assign({}, ex, {subjects: working.map(function(w){ return {name:w.name, max:w.max, pass:w.pass}; }), marks: marks});
       if (tpAll) upd_.marksTP = tpAll;
+      if (ex.marksInt){ var inAll = Object.assign({}, ex.marksInt); Object.keys(inAll).forEach(function(k){ if (keep.indexOf(k) < 0) delete inAll[k]; }); upd_.marksInt = inAll; }
       if (ex.absent){ var abAll = Object.assign({}, ex.absent); Object.keys(abAll).forEach(function(k){ if (keep.indexOf(k) < 0) delete abAll[k]; }); upd_.absent = abAll; }
       await put("exams", upd_);
       toast("માળખું સચવાયું"); working = null; render();
@@ -4964,12 +5043,121 @@ function mainStructByStdView(){
         return '<tr><td>'+esc(e.std)+'</td><td>'+esc(e.name)+'</td><td class="num">'+subs.length+' / '+subList().length+'</td><td class="num">'+total+'</td></tr>';
       }).join("") + '</tbody></table></div></div>';
 }
+/* ========== આંતરિક ગુણના માળખાની એન્ટ્રી ========== */
+var INT_TYPES = ["સામાયિક કસોટી","નોટબુક સબમિશન","પ્રોજેક્ટ કાર્ય","પ્રાયોગિક કાર્ય","મેદાનકાર્ય","ચિત્રપોથી","અન્ય પ્રવૃત્તિ"];
+var INT_STD = {std:"9"};
+var GU_NUM = ["(૧)","(૨)","(૩)","(૪)"];
+function internalStructView(){
+  var stds = ["1","2","3","4","5","6","7","8","9","10","11","12"];
+  var rows = [0,1,2,3].map(function(i){
+    return '<div style="display:grid;grid-template-columns:34px 1fr 78px;gap:6px;align-items:center;margin-bottom:8px">'
+      + '<span style="color:var(--brand);font-weight:700">'+GU_NUM[i]+'</span>'
+      + '<input id="in_n'+i+'" list="in_types" data-lang="gu" autocomplete="off" placeholder="નામ પસંદ કરો / લખો" aria-label="નામ '+(i+1)+'">'
+      + '<input id="in_m'+i+'" type="number" min="0" step="any" inputmode="decimal" placeholder="ગુણ" aria-label="ગુણ '+(i+1)+'"></div>';
+  }).join("");
+  return '<div class="card"><h3 style="margin-top:0">આંતરિક ગુણના માળખાની એન્ટ્રી</h3>'
+    + '<div style="display:flex;gap:16px;flex-wrap:wrap;align-items:flex-start">'
+    + '<div style="flex:0 0 300px;max-width:100%;background:var(--bg2,#faf3e6);border-radius:10px;padding:14px">'
+    + '<label class="f" for="in_std">ધોરણ</label><select id="in_std">'+opts(stds, INT_STD.std)+'</select>'
+    + '<label class="f" for="in_sub" style="margin-top:8px">વિષય</label><select id="in_sub"></select>'
+    + '<div style="background:#111;color:#fff;text-align:center;font-weight:700;padding:4px;margin:14px 0 8px;border-radius:4px">વર્ગીકરણ</div>'
+    + '<div style="display:grid;grid-template-columns:34px 1fr 78px;gap:6px;font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:4px"><span>ક્રમ</span><span>નામ</span><span>ગુણ</span></div>'
+    + rows + '<datalist id="in_types"></datalist>'
+    + '<div style="display:flex;justify-content:flex-end;align-items:center;gap:8px;margin:6px 0 12px"><label class="f" style="margin:0" for="in_tot">કુલ</label><input id="in_tot" readonly tabindex="-1" style="width:78px;font-weight:700"></div>'
+    + '<div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn" id="in_save">✔ સેવ</button><button class="btn warn" id="in_del">✕ ડીલીટ</button><button class="btn sec" id="in_exit">બહાર</button></div>'
+    + '</div>'
+    + '<div style="flex:1 1 360px;min-width:0"><div class="tw" id="in_grid"></div>'
+    + '<p class="hint">હરોળ પર દબાવવાથી તે વિષયનું માળખું ડાબી બાજુ ખુલે છે. આંતરિક ગુણની પરીક્ષાની ગુણ એન્ટ્રીમાં આ ઘટકો અલગ-અલગ ખાનામાં આવશે અને કુલ આપોઆપ થશે.</p></div>'
+    + '</div></div>';
+}
+function internalStructWire(){
+  var DEF_SUBS = ["ગુજરાતી","હિન્દી","અંગ્રેજી","સંસ્કૃત","ગણિત","વિજ્ઞાન અને ટેકનોલોજી","સામાજિક વિજ્ઞાન","શારીરિક શિક્ષણ","ચિત્રકામ","કમ્પ્યુટર"];
+  function subsFor(std){
+    var all = subList().length ? subList() : DEF_SUBS;
+    return all.filter(function(n){ return subjOffered_(std, n); });
+  }
+  function types(){
+    var t = INT_TYPES.slice(), st = S.settings.internalStruct || {};
+    Object.keys(st).forEach(function(k){ (st[k] || []).forEach(function(c){ if (t.indexOf(c.name) < 0) t.push(c.name); }); });
+    return t;
+  }
+  function fillSubs(keep){
+    var std = val("in_std"), list = subsFor(std);
+    $("in_sub").innerHTML = opts(list, list.indexOf(keep) > -1 ? keep : list[0]);
+  }
+  function total(){
+    var t = 0;
+    for (var i = 0; i < 4; i++){ var v = $("in_m"+i).value; if (v !== "" && Number(v) >= 0) t += Number(v); }
+    $("in_tot").value = Math.round(t * 100) / 100;
+  }
+  function loadRow(){
+    var c = internalStruct_(val("in_std"), val("in_sub")) || [];
+    for (var i = 0; i < 4; i++){ $("in_n"+i).value = c[i] ? c[i].name : ""; $("in_m"+i).value = c[i] ? c[i].marks : ""; }
+    total();
+  }
+  function grid(){
+    var std = val("in_std"), list = subsFor(std);
+    var th = 'background:#8a5a1a;color:#fff;text-align:center;padding:6px 8px;white-space:nowrap';
+    $("in_grid").innerHTML = '<table style="min-width:620px"><thead><tr><th style="'+th+'">વિષય</th>'
+      + GU_NUM.map(function(n){ return '<th style="'+th+'">'+n+' નામ</th><th style="'+th+'">ગુણ</th>'; }).join("") + '<th style="'+th+'">કુલ</th></tr></thead><tbody>'
+      + list.map(function(sub){
+          var c = internalStruct_(std, sub) || [], cur_ = sub === val("in_sub");
+          return '<tr data-gsub="'+esc(sub)+'" style="cursor:pointer;'+(cur_ ? 'background:rgba(138,90,26,.14);font-weight:700' : '')+'"><td>'+esc(sub)+'</td>'
+            + [0,1,2,3].map(function(i){ return '<td>'+(c[i] ? esc(c[i].name) : "")+'</td><td class="num">'+(c[i] ? esc(c[i].marks) : "")+'</td>'; }).join("")
+            + '<td class="num"><b>'+(c.length ? internalTotal_(c) : "")+'</b></td></tr>';
+        }).join("") + '</tbody></table>';
+    Array.prototype.forEach.call($("in_grid").querySelectorAll("[data-gsub]"), function(tr){
+      tr.onclick = function(){ $("in_sub").value = tr.dataset.gsub; loadRow(); grid(); };
+    });
+  }
+  function refreshTypes(){ $("in_types").innerHTML = types().map(function(t){ return '<option value="'+esc(t)+'">'; }).join(""); }
+  fillSubs(); refreshTypes(); loadRow(); grid();
+  $("in_std").onchange = function(){ INT_STD.std = val("in_std"); fillSubs(); loadRow(); grid(); };
+  $("in_sub").onchange = function(){ loadRow(); grid(); };
+  [0,1,2,3].forEach(function(i){
+    $("in_m"+i).oninput = function(){
+      if (this.value !== "" && Number(this.value) < 0){ this.value = ""; toast("ગુણ ઋણ (Negative) ન હોઈ શકે"); }
+      total();
+    };
+    $("in_m"+i).onkeydown = function(e){ if (e.key === "-" || e.key === "e" || e.key === "E" || e.key === "+") e.preventDefault(); };
+  });
+  $("in_save").onclick = async function(){
+    var std = val("in_std"), sub = val("in_sub"); if (!sub) return toast("વિષય પસંદ કરો");
+    var comps = [], seen = {};
+    for (var i = 0; i < 4; i++){
+      var n = val("in_n"+i), v = $("in_m"+i).value;
+      if (!n && v === "") continue;
+      if (!n) return toast("હરોળ " + GU_NUM[i] + " માં નામ પસંદ કરો");
+      if (v === "" || isNaN(Number(v))) return toast("હરોળ " + GU_NUM[i] + " માં ગુણ લખો (ફક્ત આંકડા)");
+      if (Number(v) < 0) return toast("ગુણ ઋણ (Negative) ન હોઈ શકે");
+      if (Number(v) === 0) return toast("હરોળ " + GU_NUM[i] + " ના ગુણ 0 થી વધુ હોવા જોઈએ");
+      if (seen[n]) return toast('"' + n + '" બે વાર આવ્યું છે');
+      seen[n] = 1; comps.push({name:n, marks:Number(v)});
+    }
+    if (!comps.length) return toast("ઓછામાં ઓછું એક વર્ગીકરણ ભરો");
+    S.settings.internalStruct = Object.assign({}, S.settings.internalStruct || {});
+    S.settings.internalStruct[std + "|" + sub] = comps;
+    var b = $("in_save"); b.disabled = true;
+    await saveMeta(); b.disabled = false;
+    toast("ધોરણ " + std + " — " + sub + ": માળખું સચવાયું (કુલ " + internalTotal_(comps) + ")");
+    refreshTypes(); grid();
+  };
+  $("in_del").onclick = async function(){
+    var std = val("in_std"), sub = val("in_sub");
+    if (!internalStruct_(std, sub)) return toast("આ વિષયનું માળખું હજુ સચવાયું નથી");
+    if (!confirm('ધોરણ ' + std + ' — "' + sub + '" નું આંતરિક ગુણનું માળખું કાઢી નાખવું? (ભરેલા ગુણ સલામત રહે છે)')) return;
+    S.settings.internalStruct = Object.assign({}, S.settings.internalStruct || {});
+    delete S.settings.internalStruct[std + "|" + sub];
+    await saveMeta(); toast("માળખું કાઢી નાખ્યું"); loadRow(); grid();
+  };
+  $("in_exit").onclick = function(){ cur.t = "list"; render(); };
+}
 VIEWS["exam:structure"] = function(){
   var items = [["grademaster","ગ્રેડેશન માસ્ટર"],["main","મુખ્ય પરીક્ષા માળખું"],["internal","આંતરિક ગુણ માળખું"],
     ["periodic","સામાયિક કસોટી માળખું"],["bystd","વર્ગમુજબ મુખ્ય પરીક્ષા માળખું"],["unit","એકમ કસોટી માળખું"]];
   var body = SUB.structure==="grademaster" ? gradeMasterView()
     : SUB.structure==="main" ? structureView("મુખ્ય પરીક્ષા","મુખ્ય પરીક્ષા ના માળખાની એન્ટ્રી")
-    : SUB.structure==="internal" ? structureView("આંતરિક ગુણ","આંતરિક ગુણ ના માળખાની એન્ટ્રી")
+    : SUB.structure==="internal" ? internalStructView() + structureView("આંતરિક ગુણ","પરીક્ષા મુજબ વિષયોનું માળખું (આંતરિક ગુણ પરીક્ષા)")
     : SUB.structure==="periodic" ? structureView("સામાયિક કસોટી","સામાયિક કસોટી (પીરીયોડીક ટેસ્ટ) નું માળખું")
     : SUB.structure==="bystd" ? mainStructByStdView()
     : structureView("એકમ કસોટી","એકમ કસોટીનું માળખું");
@@ -4978,7 +5166,7 @@ VIEWS["exam:structure"] = function(){
 WIRE["exam:structure"] = function(){
   wireSubBar("structure");
   if (SUB.structure==="grademaster") gradeMasterWire();
-  else if (SUB.structure!=="bystd") structureWire();
+  else if (SUB.structure!=="bystd"){ if (SUB.structure==="internal") internalStructWire(); structureWire(); }
 };
 
 /* ========== ગુણની એન્ટ્રી અને ગણતરી (sub-tabs) ========== */
@@ -5000,8 +5188,8 @@ function examCalc(ex, studentId){
   cfg.forEach(function(c){
     if (!takesSubject(stu, c.name)) return;
     var v = ex.marks && ex.marks[c.name] && ex.marks[c.name][studentId];
-    if (v!=null){ got+=Number(v); max+=Number(c.max)||0; }
-    else if (examAbsent_(ex, c.name, studentId)){ max+=Number(c.max)||0; } /* ગેરહાજર = 0 ગુણ, કુલ ગુણમાં ગણાય */
+    if (v!=null){ got+=Number(v); max+=subjectMax(ex, c.name); }
+    else if (examAbsent_(ex, c.name, studentId)){ max+=subjectMax(ex, c.name); } /* ગેરહાજર = 0 ગુણ, કુલ ગુણમાં ગણાય */
   });
   return {got:got,max:max,pct:max?(got/max*100):0};
 }
@@ -5052,7 +5240,7 @@ function resHeadHTML_(ex, title, extra){
   kids.forEach(function(st){ var f = examStuResult_(ex, st, subs).full; if (f > full) full = f; });
   var cell = 'padding:3px 8px;text-align:left;font-size:13px;';
   return '<div style="border:1.5px solid #000;text-align:center;padding:6px 8px">'
-    + '<div style="font-size:22px;font-weight:700;color:#b00000;line-height:1.3">'+esc(k.name || "શાળાનું નામ")+'</div>'
+    + '<div style="font-size:22px;font-weight:700;color:#b00000;line-height:1.3">'+lgImg_()+esc(k.name || "શાળાનું નામ")+'</div>'
     + (addr ? '<div style="font-size:12.5px">'+esc(addr)+'</div>' : '') + '</div>'
     + '<div style="text-align:center;font-weight:700;font-size:16px;margin:8px 0 6px;color:#0a1a8a">'+esc(title)+'</div>'
     + '<table style="width:100%;border-collapse:collapse;margin-bottom:8px"><tr>'
@@ -5112,22 +5300,28 @@ function marksKindWire(){
     var sub = val("mk_sub");
     var kids = allKids.filter(function(s){ return takesSubject(s, sub); });
     var notSet = subjCompulsoryFor_(ex.std, sub) ? 0 : kids.filter(function(s){ return !Array.isArray(s.electives); }).length;
-    var subCfg = (ex.subjects||[]).find(function(x){return x.name===sub;});
-    var maxM = subCfg ? subCfg.max : (ex.total||100);
+    var maxM = subjectMax(ex, sub);
     var m = (ex.marks && ex.marks[sub]) || {};
-    var tpOn = subHasTP_(sub), tpm = (ex.marksTP && ex.marksTP[sub]) || {};
+    var comps = internalComps_(ex, sub), intOn = !!comps;
+    var imd = (ex.marksInt && ex.marksInt[sub]) || {};
+    var tpOn = !intOn && subHasTP_(sub), tpm = (ex.marksTP && ex.marksTP[sub]) || {};
     var absM = (ex.absent && ex.absent[sub]) || {};
     $("mk_body").innerHTML = (subjCompulsoryFor_(ex.std, sub) ? '' : '<p class="hint" style="margin:6px 0">વૈકલ્પિક વિષય — ફક્ત આ વિષય પસંદ કરનાર '+kids.length+' વિદ્યાર્થી (કુલ '+allKids.length+' માંથી).'
         + (notSet ? ' <b>'+notSet+' વિદ્યાર્થીની પસંદગી હજુ નોંધાઈ નથી</b> (વિદ્યાર્થી › વૈકલ્પિક વિષયની પસંદગી).' : '') + '</p>')
       + '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>નામ</th>'
-      + (tpOn ? '<th class="num">થીયરી</th><th class="num">પ્રેક્ટીકલ</th><th class="num">કુલ (મહત્તમ '+maxM+')</th>' : '<th class="num">ગુણ (કુલ '+maxM+')</th>')
+      + (intOn ? comps.map(function(c){ return '<th class="num">'+esc(c.name)+' ('+c.marks+')</th>'; }).join("") + '<th class="num">કુલ (મહત્તમ '+maxM+')</th>' : tpOn ? '<th class="num">થીયરી</th><th class="num">પ્રેક્ટીકલ</th><th class="num">કુલ (મહત્તમ '+maxM+')</th>' : '<th class="num">ગુણ (કુલ '+maxM+')</th>')
       + '<th class="num" title="ગેરહાજર વિદ્યાર્થી માટે ટિક કરો">ગેરહાજર (AB)</th>'
       + '<th class="num">કુલ (અત્યાર સુધી)</th><th class="num">ટકા</th></tr></thead><tbody>'
       + kids.map(function(s, _ix){
           var c = examCalc(ex, s.id);
           var isAb = !!absM[s.id];
           var inputs;
-          if (tpOn){
+          if (intOn){
+            var iv = imd[s.id] || [], ileg = (m[s.id] != null && !imd[s.id]);
+            inputs = comps.map(function(c, ci){
+              return '<td><input type="number" min="0" max="'+c.marks+'" step="any" data-ci="'+s.id+'|'+ci+'" value="'+(iv[ci] != null ? esc(iv[ci]) : "")+'" style="width:78px"></td>';
+            }).join("") + '<td><input type="number" readonly tabindex="-1" data-k="'+s.id+'"'+(ileg ? ' data-legacy="1"' : '')+' value="'+(m[s.id]!=null?esc(m[s.id]):"")+'" style="width:80px;background:var(--bg2,#f3f4f6);font-weight:700"></td>';
+          } else if (tpOn){
             var tp = tpm[s.id] || {}, legacy = (m[s.id] != null && !tpm[s.id]);
             inputs = '<td><input type="number" min="0" max="'+maxM+'" step="any" data-t="'+s.id+'" value="'+(tp.t != null ? esc(tp.t) : "")+'" style="width:80px"></td>'
               + '<td><input type="number" min="0" max="'+maxM+'" step="any" data-p="'+s.id+'" value="'+(tp.p != null ? esc(tp.p) : "")+'" style="width:80px"></td>'
@@ -5168,10 +5362,37 @@ function marksKindWire(){
     if (tpOn) Array.prototype.forEach.call($("mk_body").querySelectorAll("input[data-t],input[data-p]"), function(i){
       i.oninput = function(){ tpSum(i.dataset.t || i.dataset.p); };
     });
+    /* આંતરિક ગુણના ઘટકોનો કુલ (આપોઆપ) */
+    function intSum(id){
+      var k = $("mk_body").querySelector('input[data-k="'+id+'"]'); if (!k) return;
+      var ins = Array.prototype.slice.call($("mk_body").querySelectorAll('input[data-ci^="'+id+'|"]'));
+      if (ins.every(function(i){ return i.value === ""; })){ if (!k.dataset.legacy) k.value = ""; return; }
+      delete k.dataset.legacy;
+      var sum = ins.reduce(function(a, i){ return a + (Number(i.value) || 0); }, 0);
+      k.value = Math.round(sum * 100) / 100; k.style.color = sum > maxM ? "var(--bad)" : "";
+    }
+    if (intOn) Array.prototype.forEach.call($("mk_body").querySelectorAll("input[data-ci]"), function(i){
+      i.oninput = function(){ if (Number(i.value) < 0) i.value = ""; intSum(i.dataset.ci.split("|")[0]); };
+    });
     $("mk_save").onclick = async function(){
       var obj = {}, tpo = {}, over = [], abo = {};
       Array.prototype.forEach.call($("mk_body").querySelectorAll("input[data-ab]:checked"), function(cb){ abo[cb.dataset.ab] = true; });
-      if (tpOn) kids.forEach(function(s){
+      var ico = {};
+      if (intOn) kids.forEach(function(s){
+        if (abo[s.id]) return;
+        var ins = comps.map(function(c, ci){ return $("mk_body").querySelector('input[data-ci="'+s.id+'|'+ci+'"]'); });
+        var k = $("mk_body").querySelector('input[data-k="'+s.id+'"]');
+        if (ins.some(function(i){ return i && i.value !== ""; })){
+          var arr = ins.map(function(i, ci){
+            if (!i || i.value === "") return null;
+            var v = Number(i.value); if (v < 0 || v > comps[ci].marks) over.push(s.name);
+            return v;
+          });
+          obj[s.id] = Math.round(arr.reduce(function(a, v){ return a + (v || 0); }, 0) * 100) / 100;
+          ico[s.id] = arr;
+        } else if (k && k.dataset.legacy && k.value !== "") obj[s.id] = Number(k.value);
+      });
+      else if (tpOn) kids.forEach(function(s){
         if (abo[s.id]) return;
         var t = $("mk_body").querySelector('input[data-t="'+s.id+'"]'), p = $("mk_body").querySelector('input[data-p="'+s.id+'"]'), k = $("mk_body").querySelector('input[data-k="'+s.id+'"]');
         if (!t || !p || !k) return;
@@ -5188,13 +5409,14 @@ function marksKindWire(){
         if (abo[i.dataset.k]) return;
         if (i.value !== "") obj[i.dataset.k] = Number(i.value);
       });
-      if (over.length) return toast("થીયરી + પ્રેક્ટીકલ મહત્તમ " + maxM + " થી વધુ છે: " + over.slice(0,3).join(", ") + (over.length > 3 ? " …" : ""));
+      if (over.length) return toast((intOn ? "કોઈ ઘટકના ગુણ મહત્તમ કરતાં વધુ (કે ઋણ) છે: " : "થીયરી + પ્રેક્ટીકલ મહત્તમ " + maxM + " થી વધુ છે: ") + over.slice(0,3).join(", ") + (over.length > 3 ? " …" : ""));
       var copy = Object.assign({}, ex);
       copy.marks = Object.assign({}, ex.marks || {});
       copy.marks[sub] = obj;
       copy.absent = Object.assign({}, ex.absent || {});
       if (Object.keys(abo).length) copy.absent[sub] = abo; else delete copy.absent[sub];
       if (tpOn){ copy.marksTP = Object.assign({}, ex.marksTP || {}); copy.marksTP[sub] = tpo; }
+      if (intOn){ copy.marksInt = Object.assign({}, ex.marksInt || {}); copy.marksInt[sub] = ico; }
       await put("exams", copy);
       toast(sub + " ના ગુણ સાચવાયા"); draw();
     };
@@ -5205,6 +5427,7 @@ function marksKindWire(){
       copy.marks[sub] = {};
       if (copy.marksTP){ copy.marksTP = Object.assign({}, copy.marksTP); delete copy.marksTP[sub]; }
       if (copy.absent){ copy.absent = Object.assign({}, copy.absent); delete copy.absent[sub]; }
+      if (copy.marksInt){ copy.marksInt = Object.assign({}, copy.marksInt); delete copy.marksInt[sub]; }
       await put("exams", copy);
       toast("ગુણ સાફ કરાયા"); draw();
     };
@@ -5213,6 +5436,7 @@ function marksKindWire(){
       var rows = kids.map(function(s){
         var c = examCalc(ex, s.id);
         var row = {"જી.આર.":s.gr, "નામ":s.name};
+        if (intOn){ var iq = imd[s.id] || []; comps.forEach(function(cc, ci){ row[cc.name + " (" + cc.marks + ")"] = iq[ci] != null ? iq[ci] : ""; }); }
         if (tpOn){ var tq = tpm[s.id] || {}; row["થીયરી"] = tq.t != null ? tq.t : ""; row["પ્રેક્ટીકલ"] = tq.p != null ? tq.p : ""; row["કુલ ગુણ"] = (m[s.id]!=null?m[s.id]:""); }
         else row["ગુણ"] = (m[s.id]!=null?m[s.id]:"");
         row["ગેરહાજર"] = absM[s.id] ? "AB" : "";
@@ -5237,11 +5461,22 @@ VIEWS["exam:marks"] = function(){
 WIRE["exam:marks"] = function(){ wireSubBar("marks"); marksKindWire(); };
 
 /* ========== રજીસ્ટર (sub-tabs) ========== */
+/* આંતરિક ગુણનું માળખું: ધોરણ|વિષય → [{name, marks}] (વધુમાં વધુ 4 ઘટક) */
+function internalStruct_(std, sub){
+  var m = (S.settings.internalStruct || {})[String(std) + "|" + sub];
+  return (m && m.length) ? m : null;
+}
+function internalComps_(ex, sub){ return (ex && (ex.kind || "") === "આંતરિક ગુણ") ? internalStruct_(ex.std, sub) : null; }
+function internalTotal_(comps){ return comps.reduce(function(a, c){ return a + (Number(c.marks) || 0); }, 0); }
 function subjectPass(ex, subName){
+  var ic = internalComps_(ex, subName);
+  if (ic) return Math.ceil(internalTotal_(ic) * 0.33);
   var cfg = (ex.subjects||[]).find(function(x){return x.name===subName;});
   return cfg ? Number(cfg.pass)||0 : Math.ceil((ex.total||100)*0.33);
 }
 function subjectMax(ex, subName){
+  var ic = internalComps_(ex, subName);
+  if (ic) return internalTotal_(ic);
   var cfg = (ex.subjects||[]).find(function(x){return x.name===subName;});
   return cfg ? Number(cfg.max)||0 : (ex.total||100);
 }
@@ -5371,7 +5606,7 @@ WIRE["exam:register"] = function(){
       var th = RT_TD + 'background:#eef1f8;font-weight:700;font-size:12px;';
       var kk = S.school || {};
       $("an_body").innerHTML = rows.length
-        ? '<div style="background:#fff;color:#000;padding:10px;overflow-x:auto"><div style="border:1.5px solid #000;text-align:center;padding:6px"><div style="font-size:22px;font-weight:700;color:#b00000">'+esc(kk.name||"શાળાનું નામ")+'</div>'
+        ? '<div style="background:#fff;color:#000;padding:10px;overflow-x:auto"><div style="border:1.5px solid #000;text-align:center;padding:6px"><div style="font-size:22px;font-weight:700;color:#b00000">'+lgImg_()+esc(kk.name||"શાળાનું નામ")+'</div>'
           + '<div style="font-size:12.5px">'+esc([kk.village, kk.taluka ? "તા. "+kk.taluka : "", kk.district ? "જિ. "+kk.district : ""].filter(Boolean).join(", "))+'</div></div>'
           + '<div style="text-align:center;font-weight:700;font-size:16px;margin:8px 0;color:#0a1a8a">વાર્ષિક પરિણામ પત્રક રજીસ્ટર</div>'
           + '<div style="font-size:13px;margin-bottom:8px">ધોરણ: <b>'+esc(std)+'</b> &nbsp; શૈક્ષણિક વર્ષ: <b>'+esc(S.settings.year||"—")+'</b> &nbsp; પરીક્ષાઓ: <b>'+esc(exams.map(function(e){return e.name;}).join(" + "))+'</b></div>'
@@ -5406,7 +5641,16 @@ VIEWS["exam:marksheet"] = function(){
     + '</select></div>'
     + '<div><label class="f">વિદ્યાર્થી</label><select id="ms_stu"></select></div>'
     + '</div><div class="row" style="margin-top:12px"><button class="btn sec" id="ms_print">છાપો</button></div>'
-    + '</div><div class="card"><h3>પૂર્વાવલોકન</h3><div id="ms_paper"></div></div>';
+    + '</div>'
+    + '<div class="card"><h3>એક સાથે ઘણી માર્કશીટ છાપો</h3>'
+    + '<p class="hint" style="margin:0 0 8px">ઉપર પસંદ કરેલી પરીક્ષાની માર્કશીટ — દરેક વિદ્યાર્થીની અલગ A4 પાના પર. જેના ગુણ ભરાયા નથી તેની માર્કશીટ બનતી નથી.</p>'
+    + '<div class="row" style="gap:10px;flex-wrap:wrap;align-items:end"><div><label class="f" for="mb_div">વર્ગ</label><select id="mb_div"><option value="">બધા વર્ગ</option>'+opts(divList(),"")+'</select></div>'
+    + '<div><button class="btn sm sec" id="mb_all">બધા પસંદ કરો</button></div><div><button class="btn sm sec" id="mb_none">બધા કાઢો</button></div>'
+    + '<span class="hint" id="mb_cnt" style="margin:0"></span></div>'
+    + '<div id="mb_list" class="tw" style="max-height:340px;overflow:auto;margin-top:10px"></div>'
+    + '<div class="row" style="margin-top:12px;gap:10px;flex-wrap:wrap"><button class="btn" id="mb_sel">🖨 પસંદ કરેલાની માર્કશીટ છાપો</button>'
+    + '<button class="btn sec" id="mb_allprint">🖨 બધાની માર્કશીટ છાપો</button></div></div>'
+    + '<div class="card"><h3>પૂર્વાવલોકન</h3><div id="ms_paper"></div></div>';
 };
 function marksheetHTML(ex, s){
   var k = S.school || {};
@@ -5419,7 +5663,7 @@ function marksheetHTML(ex, s){
   return '<div id="paper" style="background:#fff;color:#111;padding:26px 30px;border:1px solid var(--line);'
     + 'border-radius:8px;font-size:13.5px;line-height:1.6">'
     + '<div style="text-align:center;border-bottom:2.5px solid #111;padding-bottom:10px">'
-      + '<div style="font-size:21px;font-weight:700;margin:3px 0">'+esc(k.name||"શાળાનું નામ")+'</div>'
+      + '<div style="font-size:21px;font-weight:700;margin:3px 0">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
       + (addr ? '<div style="font-size:12.5px">'+esc(addr)+'</div>' : '')
       + '<div style="font-size:12.5px;margin-top:2px">શૈક્ષણિક વર્ષ: <b>'+esc(S.settings.year||"—")+'</b></div>'
       + '<div style="font-size:16px;font-weight:700;margin-top:8px;text-decoration:underline">ગુણ પત્રક — '+esc(ex.name)+'</div>'
@@ -5459,7 +5703,56 @@ WIRE["exam:marksheet"] = function(){
     if (!ex || !s) { $("ms_paper").innerHTML = '<div class="empty">આ ધોરણમાં કોઈ વિદ્યાર્થી નથી.</div>'; return; }
     $("ms_paper").innerHTML = marksheetHTML(ex, s);
   }
-  $("ms_exam").onchange = function(){ fillStudents(); preview(); };
+  /* ---- એક સાથે ઘણી માર્કશીટ ---- */
+  function batchKids(){
+    var ex = S.exams.find(function(e){ return e.id === val("ms_exam"); });
+    if (!ex) return {ex:null, kids:[]};
+    var dv = val("mb_div");
+    return {ex:ex, kids:S.students.filter(function(s){ return String(s.std) === String(ex.std) && (!dv || String(s.div || "") === dv); })};
+  }
+  function paintBatch(){
+    var B = batchKids(), R = B.ex ? examResults_(B.ex) : null;
+    var hasMarks = {}; if (R) R.rows.forEach(function(r){ hasMarks[r.s.id] = r.any; });
+    $("mb_list").innerHTML = B.kids.length
+      ? '<table><thead><tr><th></th><th class="num">ક્રમ</th><th class="num">રોલ</th><th class="num">જી.આર.</th><th>નામ</th><th>વર્ગ</th><th>ગુણ</th></tr></thead><tbody>'
+        + B.kids.map(function(s, i){
+            var hm = hasMarks[s.id];
+            return '<tr><td><input type="checkbox" class="mb_chk" data-k="'+s.id+'"'+(hm ? '' : ' disabled')+' style="width:18px;height:18px"></td><td class="num">'+(i+1)+'</td><td class="num">'+esc(s.roll||"")+'</td><td class="num">'+esc(s.gr)+'</td>'
+              + '<td>'+esc([s.surname, s.name].filter(Boolean).join(" "))+'</td><td>'+esc(s.div||"")+'</td><td>'+(hm ? '<span class="chip g">ભરાયા</span>' : '<span class="chip r">બાકી</span>')+'</td></tr>';
+          }).join("") + '</tbody></table>'
+      : '<div class="empty">આ ધોરણ/વર્ગમાં કોઈ વિદ્યાર્થી નથી.</div>';
+    Array.prototype.forEach.call($("mb_list").querySelectorAll(".mb_chk"), function(c){ c.onchange = cnt; });
+    cnt();
+  }
+  function cnt(){
+    var n = $("mb_list").querySelectorAll(".mb_chk:checked").length, tot = $("mb_list").querySelectorAll(".mb_chk:not(:disabled)").length;
+    $("mb_cnt").textContent = "પસંદ: " + n + " / " + tot + " (ગુણ ભરાયેલા)";
+  }
+  function printBatch(ids){
+    var B = batchKids(); if (!B.ex) return;
+    var list = B.kids.filter(function(s){ return ids.indexOf(s.id) > -1; });
+    if (!list.length) return toast("ઓછામાં ઓછો એક વિદ્યાર્થી પસંદ કરો");
+    var pages = list.map(function(s){
+      return '<div class="pg">' + marksheetHTML(B.ex, s).replace('id="paper"', 'class="paper"') + '</div>';
+    }).join("");
+    var w = window.open("", "_blank");
+    if (!w) return toast("છાપવા માટે પોપ-અપ ચાલુ કરો");
+    w.document.write('<html lang="gu"><head><meta charset="utf-8"><title>માર્કશીટ — '+esc(B.ex.name)+'</title>'
+      + '<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gujarati:wght@400;700&display=swap" rel="stylesheet">'
+      + '<style>@page{size:A4;margin:14mm}body{font-family:"Noto Sans Gujarati",sans-serif;margin:0;padding:0}'
+      + '.pg{page-break-after:always;break-after:page;min-height:262mm;box-sizing:border-box}.pg:last-child{page-break-after:auto;break-after:auto}'
+      + '.paper{border:0 !important;padding:6mm 4mm !important}@media screen{body{padding:12px;background:#eee}.pg{background:#fff;margin:0 auto 14px;max-width:210mm;padding:8mm}}</style></head><body>'
+      + pages + '</body></html>');
+    w.document.close();
+    setTimeout(function(){ w.print(); }, 900);
+    toast(list.length + " માર્કશીટ છાપવા મોકલી");
+  }
+  $("mb_div").onchange = paintBatch;
+  $("mb_all").onclick = function(){ Array.prototype.forEach.call($("mb_list").querySelectorAll(".mb_chk:not(:disabled)"), function(c){ c.checked = true; }); cnt(); };
+  $("mb_none").onclick = function(){ Array.prototype.forEach.call($("mb_list").querySelectorAll(".mb_chk"), function(c){ c.checked = false; }); cnt(); };
+  $("mb_sel").onclick = function(){ printBatch(Array.prototype.map.call($("mb_list").querySelectorAll(".mb_chk:checked"), function(c){ return c.dataset.k; })); };
+  $("mb_allprint").onclick = function(){ printBatch(Array.prototype.map.call($("mb_list").querySelectorAll(".mb_chk:not(:disabled)"), function(c){ return c.dataset.k; })); };
+  $("ms_exam").onchange = function(){ fillStudents(); preview(); paintBatch(); };
   $("ms_stu").onchange = preview;
   $("ms_print").onclick = function(){
     preview();
@@ -5472,7 +5765,7 @@ WIRE["exam:marksheet"] = function(){
     w.document.close();
     setTimeout(function(){ w.print(); }, 700);
   };
-  fillStudents(); preview();
+  fillStudents(); preview(); paintBatch();
 };
 
 /* ========== ઓનલાઇન પરિણામ (વિદ્યાર્થી પોતે જુએ/ડાઉનલોડ કરે) ========== */
@@ -5776,7 +6069,7 @@ function feeReceiptHTML(l){
   var k = S.school;
   return '<div style="max-width:480px;background:#fff;color:#111;padding:20px 26px;border:1px solid #ccc;border-radius:8px;font-size:14px">'
     + '<div style="text-align:center;border-bottom:2px solid #111;padding-bottom:8px">'
-    + '<div style="font-size:18px;font-weight:700">'+esc(k.name||"શાળાનું નામ")+'</div></div>'
+    + '<div style="font-size:18px;font-weight:700">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div></div>'
     + '<div style="text-align:center;font-weight:700;margin:10px 0">ફી પહોંચ</div>'
     + '<p>પહોંચ નં.: <b>'+esc(l.rno||"—")+'</b> &nbsp; તારીખ: '+esc(l.date)+'</p>'
     + '<p>વિદ્યાર્થીનું નામ: <b>'+esc(studentName(l.stuId))+'</b></p>'
@@ -5853,7 +6146,7 @@ function certBodyHTML(title, paragraphs, s){
   var k = S.school;
   return '<div style="max-width:650px;border:3px double #111;border-radius:4px;padding:18px 24px">'
     + '<div style="border:1px solid #111;padding:8px;text-align:center;margin-bottom:4px">'
-    + '<div style="font-size:19px;font-weight:700;color:#1a2f6b">'+esc(k.name||"શાળાનું નામ")+'</div></div>'
+    + '<div style="font-size:19px;font-weight:700;color:#1a2f6b">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div></div>'
     + '<div style="text-align:center;font-size:12px;color:#1a2f6b;font-weight:600;margin-bottom:2px">'
     + esc(k.village||"")+(k.taluka?", તા. "+esc(k.taluka):"")+(k.district?", જિ. "+esc(k.district):"")+'</div>'
     + (k.udise ? '<div style="text-align:center;font-size:12px;font-weight:700">DISE Code : '+esc(k.udise)+'</div>' : "")
@@ -5871,7 +6164,7 @@ function certBodyHTMLEn(title, paragraphs, s){
   var k = S.school;
   return '<div style="max-width:650px;border:3px double #111;border-radius:4px;padding:18px 24px;font-family:Georgia,serif">'
     + '<div style="border:1px solid #111;padding:8px;text-align:center;margin-bottom:4px">'
-    + '<div style="font-size:19px;font-weight:700;color:#1a2f6b">'+esc((k.nameEn||k.name||"SCHOOL NAME").toUpperCase())+'</div></div>'
+    + '<div style="font-size:19px;font-weight:700;color:#1a2f6b">'+lgImg_()+esc((k.nameEn||k.name||"SCHOOL NAME").toUpperCase())+'</div></div>'
     + '<div style="text-align:center;font-size:12px;color:#1a2f6b;font-weight:600;margin-bottom:2px">'
     + esc(k.addressEn||"")+'</div>'
     + (k.udise ? '<div style="text-align:center;font-size:12px;font-weight:700">DISE Code : '+esc(k.udise)+'</div>' : "")
@@ -5969,7 +6262,7 @@ WIRE["reports:trialcert"] = function(){
     if (en){
       $("tr_body").innerHTML = '<div style="max-width:650px;border:3px double #111;border-radius:4px;padding:18px 24px;font-family:Georgia,serif">'
         + '<div style="border:1px solid #111;padding:8px;text-align:center;margin-bottom:4px">'
-        + '<div style="font-size:19px;font-weight:700;color:#1a2f6b">'+esc((k.nameEn||k.name||"SCHOOL NAME").toUpperCase())+'</div></div>'
+        + '<div style="font-size:19px;font-weight:700;color:#1a2f6b">'+lgImg_()+esc((k.nameEn||k.name||"SCHOOL NAME").toUpperCase())+'</div></div>'
         + '<div style="text-align:center;margin:14px 0"><span style="display:inline-block;border:1px solid #111;padding:5px 22px;font-weight:700;font-size:15px;color:#1a2f6b">TRIAL CERTIFICATE</span></div>'
         + '<table style="width:100%;font-size:13.5px;margin-bottom:14px"><tr>'
         + '<td>Gr.No. : <b>'+esc(s.gr)+'</b><br>Seat No. : <b>'+esc(s.seat||"—")+'</b><br>UID No. : <b>'+esc(s.suid||"—")+'</b></td>'
@@ -5984,7 +6277,7 @@ WIRE["reports:trialcert"] = function(){
     } else {
       $("tr_body").innerHTML = '<div style="max-width:650px;border:3px double #111;border-radius:4px;padding:18px 24px">'
         + '<div style="border:1px solid #111;padding:8px;text-align:center;margin-bottom:4px">'
-        + '<div style="font-size:19px;font-weight:700;color:#1a2f6b">'+esc(k.name||"શાળાનું નામ")+'</div></div>'
+        + '<div style="font-size:19px;font-weight:700;color:#1a2f6b">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div></div>'
         + '<div style="text-align:center;font-size:12px;color:#1a2f6b;font-weight:600">'+esc(k.village||"")+(k.taluka?", તા. "+esc(k.taluka):"")+(k.district?", જિ. "+esc(k.district):"")+'</div>'
         + (k.udise ? '<div style="text-align:center;font-size:12px;font-weight:700">DISE Code : '+esc(k.udise)+'</div>' : "")
         + '<div style="text-align:center;margin:14px 0"><span style="display:inline-block;border:1px solid #111;padding:5px 22px;font-weight:700;font-size:15px;color:#1a2f6b">પ્રયાસ પ્રમાણપત્ર</span></div>'
@@ -6023,7 +6316,7 @@ WIRE["reports:idcard"] = function(){
     $("ic_body").innerHTML = !kids.length ? '<div class="empty">કોઈ વિદ્યાર્થી મળ્યો નહીં.</div>'
       : kids.map(function(s){
           return '<div style="display:inline-block;width:260px;border:2px solid #333;border-radius:10px;padding:10px 14px;margin:6px;vertical-align:top;font-size:12.5px">'
-            + '<div style="text-align:center;font-weight:700;font-size:13px;border-bottom:1px solid #999;padding-bottom:4px">'+esc(k.name||"શાળા")+'</div>'
+            + '<div style="text-align:center;font-weight:700;font-size:13px;border-bottom:1px solid #999;padding-bottom:4px">'+lgImg_(24)+esc(k.name||"શાળા")+'</div>'
             + '<div style="text-align:center;font-weight:700;margin:6px 0">વિદ્યાર્થી ઓળખપત્ર</div>'
             + '<div>નામ: '+esc(s.name)+'</div>'
             + '<div>જી.આર.: '+esc(s.gr)+' &nbsp; ધોરણ: '+esc(s.std)+'-'+esc(s.div)+'</div>'
@@ -6119,7 +6412,7 @@ WIRE["reports:stdwise"] = function(){
       cols.push(["બેંકનું નામ","bankName",""]); cols.push(["ખાતા નં.","bankAcc3","num"]);
     }
     $("sw_body").innerHTML = '<div style="text-align:center;margin-bottom:10px">'
-      + '<div style="font-weight:700;font-size:16px">'+esc(k.name||"શાળાનું નામ")+'</div>'
+      + '<div style="font-weight:700;font-size:16px">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
       + '<div style="font-size:13px;color:var(--muted)">ધોરણ : '+esc(std)+' &nbsp; વર્ગ : '+esc(div||"બધા")+' &nbsp; તારીખ : '+today()+'</div></div>'
       + '<div class="tw"><table><thead><tr>'+cols.map(function(c){return '<th'+(c[2]==="num"?' class="num"':'')+'>'+esc(c[0])+'</th>';}).join("")+'</tr></thead><tbody>'
       + kids.map(function(s){
@@ -6159,7 +6452,7 @@ WIRE["reports:truecopy"] = function(){
     var fullGu = [s.surname, s.name, s.father].filter(Boolean).join(" ") || s.name;
     var fullEn = [s.surnameEn, s.nameEn, s.fatherEn].filter(Boolean).join(" ");
     $("tc_body").innerHTML = '<div style="max-width:600px">'
-      + '<div style="text-align:center;border:1px solid #111;padding:6px;font-size:17px;font-weight:700;color:#1a2f6b">'+esc(k.name||"શાળાનું નામ")+'</div>'
+      + '<div style="text-align:center;border:1px solid #111;padding:6px;font-size:17px;font-weight:700;color:#1a2f6b">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
       + '<div style="text-align:center;color:#c00;font-weight:700;font-size:16px;margin:8px 0">વિદ્યાર્થીની માહિતી ખરાઈ ફોર્મ</div>'
       + '<div style="display:flex;justify-content:space-between;font-size:13px;border-bottom:1px solid #111;padding-bottom:4px;margin-bottom:10px">'
       + '<span>વર્ષ : <b>'+esc(S.settings.year||"—")+'</b></span><span>તારીખ : <b>'+today()+'</b></span></div>'
@@ -6187,7 +6480,7 @@ WIRE["reports:genreg"] = function(){
     var kids = S.students.filter(function(s){ return !std || String(s.std)===std; })
       .slice().sort(function(a,b){return (Number(a.gr)||0)-(Number(b.gr)||0);});
     var left = {}; S.lcs.forEach(function(l){ left[l.stuId] = l; });
-    $("gn_body").innerHTML = '<div style="text-align:center;font-weight:700;font-size:16px;color:#1a2f6b">'+esc(k.name||"શાળાનું નામ")+'</div>'
+    $("gn_body").innerHTML = '<div style="text-align:center;font-weight:700;font-size:16px;color:#1a2f6b">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
       + '<div style="text-align:center;font-weight:700;color:#c00;margin:4px 0 8px">જનરલ રજીસ્ટરની માહિતી</div>'
       + '<div class="tw"><table style="font-size:11.5px"><thead><tr><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>વિદ્યાર્થીનું પુરું નામ</th><th>ધર્મ</th><th>જ્ઞાતિ</th>'
       + '<th>જન્મ સ્થળ</th><th>જન્મ તારીખ</th><th>પ્રવેશ તારીખ</th><th>ધોરણ</th><th>શાળા છોડ્યા તારીખ</th><th>એલ.સી. નં.</th></tr></thead><tbody>'
@@ -6213,7 +6506,7 @@ VIEWS["reports:namekami"] = function(){
 WIRE["reports:namekami"] = function(){
   var k = S.school;
   var rows = S.lcs.slice().sort(function(a,b){return (a.date||"").localeCompare(b.date||"");});
-  $("nk_body").innerHTML = '<div style="text-align:center;font-weight:700;font-size:16px;color:#1a2f6b">'+esc(k.name||"શાળાનું નામ")+'</div>'
+  $("nk_body").innerHTML = '<div style="text-align:center;font-weight:700;font-size:16px;color:#1a2f6b">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
     + '<div style="text-align:center;font-weight:700;color:#c00;margin:4px 0 8px">વિદ્યાર્થી નામ કમી રજીસ્ટર</div>'
     + '<div class="tw"><table><thead><tr><th class="num">ક્રમ નં.</th><th class="num">જી.આર. નં.</th><th>વિદ્યાર્થીનું નામ</th><th>ધોરણ/વર્ગ</th>'
     + '<th class="num">કમી કર્યા તારીખ</th><th>નામ કમી કરવાનું કારણ</th><th class="num">લીવીંગ સર્ટી નંબર</th><th>નોંધ</th><th>આચાર્યની નોંધ</th></tr></thead><tbody>'
@@ -6280,7 +6573,7 @@ VIEWS["reports:feereg"] = function(){
   return '<div class="card"><h3>ફી પહોંચ રજીસ્ટર</h3><div style="margin-bottom:10px"><button class="btn sec" id="fr_print">છાપો</button></div>'
     + '<div id="fr_body">'
     + '<div style="text-align:center;border:1px solid #111;padding:6px;margin-bottom:8px">'
-    + '<div style="font-weight:700;font-size:16px;color:#c00">'+esc(k.name||"શાળાનું નામ")+'</div>'
+    + '<div style="font-weight:700;font-size:16px;color:#c00">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
     + '<div style="font-size:12px;color:#1a2f6b">'+esc(k.village||"")+(k.taluka?", તા. "+esc(k.taluka):"")+(k.district?", જિ. "+esc(k.district):"")+'</div>'
     + '<div style="font-weight:700;color:#1a2f6b">ફી પહોંચ રજીસ્ટર</div></div>'
     + '<div class="tw"><table><thead><tr><th class="num">રોલ નંબર</th><th class="num">જી.આર. નંબર</th><th class="num">તારીખ</th><th class="num">રસીદ નંબર</th>'
@@ -6314,7 +6607,7 @@ WIRE["reports:bday"] = function(){
     }).slice().sort(function(a,b){ return (a.dob||"").slice(5).localeCompare((b.dob||"").slice(5)); });
     var dd = d.slice(8,10)+"-"+d.slice(5,7)+"-"+d.slice(0,4);
     $("bd_body").innerHTML = '<div style="max-width:700px">'
-      + '<div style="border:1px solid #111;padding:8px;text-align:center;font-size:19px;font-weight:700;color:#1a2f6b;box-shadow:3px 3px 0 #bbb">'+esc(k.name||"શાળાનું નામ")+'</div>'
+      + '<div style="border:1px solid #111;padding:8px;text-align:center;font-size:19px;font-weight:700;color:#1a2f6b;box-shadow:3px 3px 0 #bbb">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
       + '<div style="border:2px solid #111;margin:10px 0;text-align:center;padding:6px;font-size:30px;font-weight:700;font-style:italic;font-family:Georgia,serif;color:#d00">Wish you Happy Birthday</div>'
       + '<table style="width:100%;border-collapse:collapse;font-size:13px" border="1"><thead><tr>'
       + '<th style="padding:6px">ક્રમ</th><th style="padding:6px">જી.આર. નંબર</th><th>વિદ્યાર્થીનું નામ</th><th>ગામ</th><th>ધોરણ</th><th>રોલ નં.</th></tr></thead><tbody>'
@@ -6367,7 +6660,7 @@ WIRE["reports:utaro"] = function(){
     $("ut_body").innerHTML = '<div style="max-width:560px;border:1px solid #111;padding:12px 16px;font-size:12.5px">'
       + '<div style="text-align:center;font-size:11.5px;line-height:1.6">સામાજિક અને શૈક્ષણિક રીતે પછાત વર્ગના વિદ્યાર્થીઓને જાતિ પ્રમાણપત્ર મેળવવા માટેની અરજી સાથે જોડવા માટે, શાળાના આચાર્યશ્રીએ આપવા માટેનો</div>'
       + '<div style="text-align:center;margin:8px 0"><span style="display:inline-block;border:1px solid #111;padding:6px 20px;font-size:17px;font-weight:700;color:#1a2f6b;box-shadow:3px 3px 0 #bbb">શાળાના વયપત્રકના આધારે ઉતારો</span></div>'
-      + '<div style="text-align:center;font-size:17px;font-weight:700;color:#c00">'+esc(k.name||"શાળાનું નામ")+'</div>'
+      + '<div style="text-align:center;font-size:17px;font-weight:700;color:#c00">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
       + '<div style="text-align:center;font-size:12px;color:#1a2f6b;border-bottom:1px solid #111;padding-bottom:8px">'+esc(k.village||"")+(k.taluka?", તા. "+esc(k.taluka):"")+(k.district?", જિ. "+esc(k.district):"")+'</div>'
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0">'
       + '<div style="border:2px solid #111;padding:6px 10px;font-weight:700">વિદ્યાર્થી જી.આર. નંબર : <span style="border:1px solid #111;padding:2px 8px">'+esc(s.gr)+'</span></div>'
@@ -8264,6 +8557,7 @@ if (RES_MODE){
 } else {
   initStore().then(function(){
     $("gateTitle").textContent = S.school.name || "શાળા વ્યવસ્થાપન સિસ્ટમ";
+    applyLogo_();
     $("gateSub").textContent = [S.school.village, S.school.taluka ? "તા. " + S.school.taluka : "", S.school.district ? "જિ. " + S.school.district : ""].filter(Boolean).join(", ");
     migrateSubjects_();
     fillLoginUsers();
