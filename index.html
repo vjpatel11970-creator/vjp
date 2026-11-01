@@ -20,9 +20,10 @@ try{ if (/[?&]teacher=1/.test(location.search)) document.getElementById("pwaMani
 </script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gujarati:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gujarati:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" media="print" onload="this.media='all'">
+<noscript><link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Gujarati:wght@400;500;600;700&family=Inter:wght@400;500;600&display=swap" rel="stylesheet"></noscript>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js" defer></script>
 <style>
 :root{
   --bg:#f4f1ea; --panel:#ffffff; --panel-2:#faf8f3; --ink:#1d2321; --muted:#6b736f;
@@ -342,6 +343,8 @@ header.top{
   background:linear-gradient(120deg, var(--brand), color-mix(in srgb, var(--brand) 62%, #000));
   box-shadow:0 10px 26px -12px color-mix(in srgb, var(--brand) 70%, #000), inset 0 1px 0 rgba(255,255,255,.18);
 }
+@keyframes ldbar{from{background-position:0 0}to{background-position:-200% 0}}
+body.dataLoading #view{pointer-events:none;opacity:.85}
 .crest,.sbrand .lg,.lg-crest{overflow:hidden}
 .crest{border-radius:12px;background:rgba(255,255,255,.18);border:1px solid rgba(255,255,255,.3)}
 .top h1{font-size:18.5px;letter-spacing:.1px}
@@ -647,6 +650,7 @@ tbody tr:hover td{background:color-mix(in srgb, var(--brand) 8%, var(--panel))}
     <button class="iconbtn" id="outBtn" title="બહાર નીકળો">⏻</button>
   </header>
 
+  <div id="loadBar" style="display:none;position:fixed;top:0;left:0;right:0;height:3px;z-index:999;background:linear-gradient(90deg,var(--brand),#f59e0b,var(--brand));background-size:200% 100%;animation:ldbar 1s linear infinite"></div>
   <main id="view"></main>
   <div class="hint" style="text-align:center;padding:10px 0 20px" id="storeNote"></div>
 </div>
@@ -762,8 +766,25 @@ function lsRead(){
   try{ var raw = localStorage.getItem(LS_KEY); return raw ? JSON.parse(raw) : null; }catch(e){ return null; }
 }
 function lsWrite(){
-  try{ localStorage.setItem(LS_KEY, JSON.stringify(S)); }catch(e){}
+  try{
+    var o = S;
+    if (GAS_READY){
+      /* સુરક્ષા: આ બ્રાઉઝરની નકલમાં પાસવર્ડ/પિન/API ગુપ્ત કી સાચવતા નથી */
+      o = Object.assign({}, S, {apiSettings:{}, settings:Object.assign({}, S.settings)});
+      delete o.settings.pin;
+      if (Array.isArray(o.settings.users)) o.settings.users = o.settings.users.map(function(u){ var c = Object.assign({}, u); delete c.pass; return c; });
+    }
+    localStorage.setItem(LS_KEY, JSON.stringify(o));
+  }catch(e){}
 }
+
+/* ---------- સર્વર-સાઈડ લોગિન ટોકન ---------- */
+var TOKEN = "";
+try{ TOKEN = sessionStorage.getItem("shala_tok") || ""; }catch(e){}
+var LOGIN_CRED = null;
+var PUB_USERS = null;
+var DATA_READY = true;      /* GAS મોડમાં લોગિન પછીનો ડેટા આવી જાય ત્યારે true */
+function setToken_(t){ TOKEN = t || ""; try{ if (t) sessionStorage.setItem("shala_tok", t); else sessionStorage.removeItem("shala_tok"); }catch(e){} }
 
 function gasGet(params){
   var qs = Object.keys(params||{}).map(function(k){
@@ -771,44 +792,113 @@ function gasGet(params){
   }).join("&");
   return fetch(GAS_URL + (qs ? ("?" + qs) : "")).then(function(r){ return r.json(); });
 }
-function gasPost(payload){
+function gasRaw_(payload){
   return fetch(GAS_URL, {
     method:"POST",
     headers:{"Content-Type":"text/plain;charset=utf-8"}, /* avoids a CORS preflight against Apps Script */
     body: JSON.stringify(payload)
   }).then(function(r){ return r.json(); });
 }
+function gasPost(payload, _retry){
+  if (TOKEN) payload = Object.assign({}, payload, {token:TOKEN});
+  return gasRaw_(payload).then(function(res){
+    if (res && res.ok === false && res.error === "AUTH" && payload.action !== "login"){
+      if (!_retry && LOGIN_CRED){
+        return gasRaw_({action:"login", user:LOGIN_CRED.u, pass:LOGIN_CRED.p}).then(function(lr){
+          if (lr && lr.ok){ setToken_(lr.token); return gasPost(payload, true); }
+          authLost_(); return res;
+        });
+      }
+      authLost_();
+    }
+    return res;
+  });
+}
+var AUTH_SHOWN = false;
+function authLost_(){
+  if (AUTH_SHOWN) return; AUTH_SHOWN = true;
+  setToken_("");
+  try{ toast("સત્ર પૂરું થયું — ફરી લોગિન કરો"); }catch(e){}
+  setTimeout(function(){ AUTH_SHOWN = false; var b = document.getElementById("outBtn"); if (b && LOGGED_IN) b.click(); }, 400);
+}
 
+function mirrorLoad_(){
+  var local = lsRead();
+  if (!local) return false;
+  S.school = Object.assign(S.school, local.school || {});
+  S.settings = Object.assign(S.settings, local.settings || {});
+  S.apiSettings = Object.assign(S.apiSettings, local.apiSettings || {});
+  COLLS.forEach(function(c){ S[c] = local[c] || []; });
+  sortStudents_();
+  return true;
+}
 async function initStore(){
   if (GAS_READY){
-    try{
-      var res = await gasGet({action:"getAll"});
-      if (res && res.ok){
-        S.school = Object.assign(S.school, res.data.school || {});
-        S.settings = Object.assign(S.settings, res.data.settings || {});
-        S.apiSettings = Object.assign(S.apiSettings, res.data.apiSettings || {});
-        COLLS.forEach(function(c){ S[c] = res.data[c] || []; });
-        sortStudents_();
-        lsWrite(); /* keep an offline mirror */
-        note("રેકોર્ડ Google Sheet પર સાચવાય છે — બીજા ઉપકરણ પરથી પણ જોઈ શકાશે.");
-        syncChip(true, "☁ Google Sheet જોડાયેલ", "ડેટા Google Sheet પર સચવાય છે — દરેક કોમ્પ્યુટર/ફોનમાં દેખાશે.");
-        return;
+    var had = mirrorLoad_();
+    note(had ? "છેલ્લે સચવાયેલ ડેટા બતાવ્યો છે — લોગિન પછી Google Sheet માંથી તાજો થશે." : "લોગિન પછી ડેટા Google Sheet માંથી લોડ થશે.");
+    syncChip(true, "☁ Google Sheet", "લોગિન પછી ડેટા Google Sheet માંથી આવશે અને ત્યાં જ સચવાશે.");
+    return;
+  }
+  note("Google Sheet સેટઅપ બાકી છે (GAS_URL) — હાલ આ બ્રાઉઝરમાં ડેટા સાચવાય છે.");
+  syncChip(false, "⚠ ફક્ત આ કોમ્પ્યુટરમાં", "Google Sheet જોડાયેલ નથી (index.html માં GAS_URL નથી મૂકી), તેથી આ કોમ્પ્યુટરમાં નાખેલી માહિતી બીજા કોમ્પ્યુટરમાં દેખાશે નહીં.");
+  mirrorLoad_();
+}
+
+/* લોગિન સ્ક્રીન માટે જ સામાન્ય માહિતી (ડેટાબેઝ નહીં) — ખૂબ ઝડપી */
+async function fetchPublicInfo_(){
+  if (!GAS_READY) return;
+  try{
+    var r = await gasRaw_({action:"publicInfo"});
+    if (!r || !r.ok) return;
+    PUB_USERS = r.users || [];
+    Object.keys(r.school || {}).forEach(function(k){ if (r.school[k] !== "" && r.school[k] != null) S.school[k] = r.school[k]; });
+    if (r.year) S.settings.year = S.settings.year || r.year;
+    S.apiSettings = Object.assign(S.apiSettings || {}, r.pay || {});
+    $("gateTitle").textContent = S.school.name || "શાળા વ્યવસ્થાપન સિસ્ટમ";
+    $("gateSub").textContent = [S.school.village, S.school.taluka ? "તા. " + S.school.taluka : "", S.school.district ? "જિ. " + S.school.district : ""].filter(Boolean).join(", ");
+    applyLogo_(); fillLoginUsers();
+    if ($("payGate") && $("payGate").style.display !== "none" && typeof renderPayForm === "function") renderPayForm();
+  }catch(e){}
+}
+
+/* લોગિન પછી ડેટા: 3 સમાંતર વિનંતી (જૂની 1 મોટી વિનંતી કરતાં ઘણું ઝડપી) */
+function setLoading_(on){
+  var b = $("loadBar"); if (b) b.style.display = on ? "block" : "none";
+  document.body.classList.toggle("dataLoading", !!on);
+}
+var USER_TOUCHED = false;
+async function loadData_(){
+  if (!GAS_READY || !TOKEN) return;
+  var hadMirror = (S.students.length || S.staff.length || S.exams.length) ? true : false;
+  DATA_READY = false; setLoading_(true);
+  var cols = COLLS.slice(), third = Math.ceil(cols.length / 3);
+  var chunks = [cols.slice(0, third), cols.slice(third, 2*third), cols.slice(2*third)];
+  var jobs = chunks.map(function(ch, i){ return gasPost({action:"getAll", colls:ch, meta:(i === 0)}); });
+  var ok = true, firstDone = false;
+  try{
+    var res = await Promise.all(jobs);
+    res.forEach(function(r, i){
+      if (!r || !r.ok){ ok = false; return; }
+      var d = r.data || {};
+      if (i === 0){
+        S.school = Object.assign({}, S.school, d.school || {});
+        S.settings = Object.assign({}, S.settings, d.settings || {});
+        S.apiSettings = Object.assign({}, S.apiSettings, d.apiSettings || {});
       }
-    }catch(e){ /* fall through to local copy below */ }
-    note("Google Sheet સાથે જોડાણ ન થયું — હાલ પુરતો આ બ્રાઉઝરમાં સંગ્રહિત ડેટા વપરાશે.");
-    syncChip(false, "⚠ જોડાણ નથી", "Google Sheet સાથે જોડાણ ન થયું. હાલ દેખાતો ડેટા ફક્ત આ બ્રાઉઝરની જૂની નકલ છે. ઇન્ટરનેટ તપાસો / Apps Script ને 'Anyone' access સાથે Deploy કરો.");
-  } else {
-    note("Google Sheet સેટઅપ બાકી છે (GAS_URL) — હાલ આ બ્રાઉઝરમાં ડેટા સાચવાય છે.");
-    syncChip(false, "⚠ ફક્ત આ કોમ્પ્યુટરમાં", "Google Sheet જોડાયેલ નથી (index.html માં GAS_URL નથી મૂકી), તેથી આ કોમ્પ્યુટરમાં નાખેલી માહિતી બીજા કોમ્પ્યુટરમાં દેખાશે નહીં.");
+      chunks[i].forEach(function(c){ if (d[c]) S[c] = d[c]; });
+    });
+  }catch(e){ ok = false; }
+  DATA_READY = true; setLoading_(false);
+  if (!ok){
+    syncChip(false, "⚠ જોડાણ નથી", "Google Sheet સાથે જોડાણ ન થયું. હાલ દેખાતો ડેટા ફક્ત આ બ્રાઉઝરની જૂની નકલ છે.");
+    toast("Google Sheet સાથે જોડાણ ન થયું");
+    return;
   }
-  var local = lsRead();
-  if (local){
-    S.school = Object.assign(S.school, local.school || {});
-    S.settings = Object.assign(S.settings, local.settings || {});
-    S.apiSettings = Object.assign(S.apiSettings, local.apiSettings || {});
-    COLLS.forEach(function(c){ S[c] = local[c] || []; });
-    sortStudents_();
-  }
+  sortStudents_(); lsWrite(); migrateSubjects_();
+  note("રેકોર્ડ Google Sheet પર સચવાય છે — બીજા ઉપકરણ પરથી પણ જોઈ શકાશે.");
+  syncChip(true, "☁ Google Sheet જોડાયેલ", "ડેટા Google Sheet પર સચવાય છે — દરેક કોમ્પ્યુટર/ફોનમાં દેખાશે.");
+  if (!USER_TOUCHED || !hadMirror){ drawMenu(); render(); }
+  else { head(); toast("ડેટા અપડેટ થયો"); }
 }
 
 function note(t){ document.getElementById("storeNote").textContent = t; }
@@ -825,14 +915,20 @@ function syncChip(ok, text, tip){
 async function saveMeta(){
   lsWrite();
   if (GAS_READY){
-    try{ await gasPost({action:"saveMeta", school:S.school, settings:S.settings}); }
+    try{
+      var mr = await gasPost({action:"saveMeta", school:S.school, settings:S.settings});
+      if (mr && mr.ok === false && mr.error !== "AUTH") toast("⚠ Google Sheet પર સચવાયું નહીં: " + (mr.error || ""));
+    }
     catch(e){ toast("Google Sheet પર સાચવવામાં તકલીફ પડી (સ્થાનિક નકલ સચવાઈ છે)"); }
   }
 }
 async function saveApiSettings(){
   lsWrite();
   if (GAS_READY){
-    try{ await gasPost({action:"saveApi", apiSettings:S.apiSettings}); }
+    try{
+      var ar = await gasPost({action:"saveApi", apiSettings:S.apiSettings});
+      if (ar && ar.ok === false && ar.error !== "AUTH") toast("⚠ " + (ar.error || "API સેટિંગ સચવાયા નહીં"));
+    }
     catch(e){ toast("API સેટિંગ સાચવવામાં તકલીફ પડી"); }
   }
 }
@@ -922,7 +1018,7 @@ async function refreshColl_(colls){
   colls = [].concat(colls);
   var data = null;
   try{
-    var all = await gasGet({action:"getAll"});
+    var all = await gasPost({action:"getAll", colls:colls, meta:false});
     if (all && all.ok) data = all.data;
   }catch(e){}
   if (!data) return false;
@@ -3013,7 +3109,7 @@ function edLegend(){
 }
 function schoolAddrLine(){
   var k = S.school;
-  return esc([k.addressEn||k.village, (k.taluka?("Ta-"+k.taluka):""), (k.district?("Dist-"+k.district):"")].filter(Boolean).join(", "));
+  return esc(schAddrEn_());
 }
 function signBlock(){
   /* margin-top:auto on the first piece pushes this whole block (and the page-number line after it)
@@ -3022,7 +3118,7 @@ function signBlock(){
     + '<div>Sign of H.M.<br>with STAMP</div>'
     + '<div style="text-align:right">Dist. Edu. Officer :<br>Dist. '+esc(S.school.district||"")+'</div></div>'
     + '<div style="border:1px solid #999;border-top:0;padding:8px;font-size:12.5px">'
-    + '<b>Name &amp; Address of school</b> &nbsp; '+esc(S.school.nameEn||S.school.name||"")+'<br>'
+    + '<b>Name &amp; Address of school</b> &nbsp; '+esc(schEn_())+'<br>'
     + '&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;'+schoolAddrLine()+'</div>'
     + '<div style="text-align:right;font-size:11.5px;margin-top:4px">Page 1 of 1</div>';
 }
@@ -3172,7 +3268,7 @@ function payM1Wire(){
         + '<div style="margin-bottom:5px">Record Type &nbsp;: 1</div>'
         + '<div style="margin-bottom:5px">Company Code &nbsp;: '+esc(st.payCompanyCode||"")+'</div>'
         + '<div style="margin-bottom:5px">Employee No &nbsp;: '+esc(t.empNo||"")+'</div>'
-        + '<div style="margin-top:8px">Employee Name &nbsp;: '+esc(t.name||"")+'</div>'
+        + '<div style="margin-top:8px">Employee Name &nbsp;: '+esc(stfEn_(t))+'</div>'
       + '</td>'
       + '<td style="width:50%;vertical-align:top">'
         + '<div style="margin-bottom:5px">Action Code &nbsp;: '+esc(val("r1_action"))+'</div>'
@@ -3236,7 +3332,7 @@ function payM3View(){
       ? '<div class="tw"><table><thead><tr><th>SR No</th><th>Action Code</th><th>Emp Code</th><th>Emp Name</th><th>E/D</th><th>Code</th><th>Description</th><th class="num">Amount</th><th></th></tr></thead><tbody>'
         + rows.map(function(r,i){
             return '<tr><td>'+(i+1)+'</td><td>'+esc((r.action||"").slice(0,2))+'</td><td>'+esc(staffEmpNo(r.staffId))+'</td>'
-              + '<td>'+esc(staffName(r.staffId))+'</td><td>'+esc(r.ed)+'</td>'
+              + '<td>'+esc(staffNameEn(r.staffId))+'</td><td>'+esc(r.ed)+'</td>'
               + '<td>'+esc(r.head||"—")+'</td><td>'+esc(headLabel(r.head)||"—")+'</td>'
               + '<td class="num">'+money(r.amt)+'</td>'
               + '<td><button class="btn sm sec" data-del="'+r.id+'">કાઢો</button></td></tr>';
@@ -3271,7 +3367,7 @@ function payM3Wire(){
           return '<tr><td style="border:1px solid #c9a0c9;padding:3px;text-align:center">'+(i+1)+'</td>'
             + '<td style="border:1px solid #c9a0c9;padding:3px;text-align:center">'+esc((r.action||"").slice(0,2))+'</td>'
             + '<td style="border:1px solid #c9a0c9;padding:3px;text-align:center">'+esc(staffEmpNo(r.staffId))+'</td>'
-            + '<td style="border:1px solid #c9a0c9;padding:3px">'+esc(staffName(r.staffId))+'</td>'
+            + '<td style="border:1px solid #c9a0c9;padding:3px">'+esc(staffNameEn(r.staffId))+'</td>'
             + '<td style="border:1px solid #c9a0c9;padding:3px;text-align:center">'+esc(r.ed)+'</td>'
             + '<td style="border:1px solid #c9a0c9;padding:3px;text-align:center">'+esc(r.head||"—")+'</td>'
             + '<td style="border:1px solid #c9a0c9;padding:3px">'+esc(headLabel(r.head)||"—")+'</td>'
@@ -3297,7 +3393,7 @@ function payM10View(){
     + '<th class="num">Leave Without Pay — FULL</th><th class="num">Leave Without Pay — HALF</th></tr></thead><tbody>'
     + staff.map(function(t,i){
         var r = rec(t.id);
-        return '<tr><td>'+(i+1)+'</td><td>'+esc(staffEmpNo(t.id)||"—")+'</td><td>'+esc(t.name)+'</td>'
+        return '<tr><td>'+(i+1)+'</td><td>'+esc(staffEmpNo(t.id)||"—")+'</td><td>'+esc(stfEn_(t))+'</td>'
           + '<td><input type="number" min="0" data-full="'+t.id+'" value="'+(r?(r.full||0):0)+'" style="width:80px"></td>'
           + '<td><input type="number" min="0" data-half="'+t.id+'" value="'+(r?(r.half||0):0)+'" style="width:80px"></td></tr>';
       }).join("") + '</tbody></table></div>'
@@ -3340,7 +3436,7 @@ function payM10Wire(){
           var full = fEl ? fEl.value : 0, half = hEl ? hEl.value : 0;
           return '<tr><td style="border:1px solid #c9a0c9;padding:3px;text-align:center">'+(i+1)+'</td>'
             + '<td style="border:1px solid #c9a0c9;padding:3px;text-align:center">'+esc(staffEmpNo(t.id)||"—")+'</td>'
-            + '<td style="border:1px solid #c9a0c9;padding:3px">'+esc(t.name)+'</td>'
+            + '<td style="border:1px solid #c9a0c9;padding:3px">'+esc(stfEn_(t))+'</td>'
             + '<td style="border:1px solid #c9a0c9;padding:3px;text-align:right">'+esc(full)+'</td>'
             + '<td style="border:1px solid #c9a0c9;padding:3px;text-align:right">'+esc(half)+'</td></tr>';
         }).join("") + blankRows(Math.max(0,20-staff.length),5) + '</tbody></table>'
@@ -3375,7 +3471,7 @@ function payM12View(){
     + (rows.length
       ? '<div class="tw"><table><thead><tr><th>Emp Code</th><th>Name</th><th>E/D</th><th>Head Code</th><th>Description</th><th>@Manual/Comp.</th><th class="num">Amount</th><th></th></tr></thead><tbody>'
         + rows.map(function(r){
-            return '<tr><td>'+esc(staffEmpNo(r.staffId))+'</td><td>'+esc(staffName(r.staffId))+'</td><td>'+esc(r.ed)+'</td>'
+            return '<tr><td>'+esc(staffEmpNo(r.staffId))+'</td><td>'+esc(staffNameEn(r.staffId))+'</td><td>'+esc(r.ed)+'</td>'
               + '<td>'+esc(r.head||"—")+'</td><td>'+esc(r.desc||headLabel(r.head)||"—")+'</td>'
               + '<td>'+esc((r.manco||"").slice(0,1))+'</td><td class="num">'+money(r.amt)+'</td>'
               + '<td><button class="btn sm sec" data-del="'+r.id+'">કાઢો</button></td></tr>';
@@ -3409,7 +3505,7 @@ function payM12Wire(){
       + '<th style="border:1px solid #c9a0c9;padding:3px">Amount</th></tr></thead><tbody>'
       + rows.map(function(r){
           return '<tr><td style="border:1px solid #c9a0c9;padding:3px;text-align:center">'+esc(staffEmpNo(r.staffId))+'</td>'
-            + '<td style="border:1px solid #c9a0c9;padding:3px">'+esc(staffName(r.staffId))+'</td>'
+            + '<td style="border:1px solid #c9a0c9;padding:3px">'+esc(staffNameEn(r.staffId))+'</td>'
             + '<td style="border:1px solid #c9a0c9;padding:3px;text-align:center">'+esc(r.ed)+'</td>'
             + '<td style="border:1px solid #c9a0c9;padding:3px;text-align:center">'+esc(r.head||"—")+'</td>'
             + '<td style="border:1px solid #c9a0c9;padding:3px">'+esc(r.desc||headLabel(r.head)||"—")+'</td>'
@@ -3489,7 +3585,7 @@ function payApp3Wire(){
         + list.map(function(t,i){
             return '<tr><td style="border:1px solid #999;padding:3px;text-align:center">'+(i+1)+'</td>'
               + '<td style="border:1px solid #999;padding:3px;text-align:center">'+esc(t.computerNo||t.empNo||"—")+'</td>'
-              + '<td style="border:1px solid #999;padding:3px">'+esc(t.name)+'</td>'
+              + '<td style="border:1px solid #999;padding:3px">'+esc(stfEn_(t))+'</td>'
               + '<td style="border:1px solid #999;padding:3px;text-align:center">'+esc(dmy(t.dob)||"—")+'</td>'
               + '<td style="border:1px solid #999;padding:3px;text-align:center">'+esc(t.joined||"—")+'</td>'
               + '<td style="border:1px solid #999;padding:3px">'+esc(t.post||"—")+'</td>'
@@ -3503,7 +3599,7 @@ function payApp3Wire(){
       + '<td style="width:50%;vertical-align:top">Master Policy No.<br><div style="border:1px solid #999;padding:4px;width:70%">'+esc(g.policyNo||"")+'</div></td>'
       + '<td style="width:50%;vertical-align:top;text-align:right">Name &amp; Address of Disbursing Authority<br><b>District Education Office<br>District : '+esc((k.district||"").toUpperCase())+'</b></td>'
       + '</tr></table>'
-      + '<div style="margin-top:8px;font-size:12.5px">Name of the School :<br><b>'+esc(k.nameEn||k.name||"")+'</b><br>'+schoolAddrLine()+'</div>'
+      + '<div style="margin-top:8px;font-size:12.5px">Name of the School :<br><b>'+esc(schEn_())+'</b><br>'+schoolAddrLine()+'</div>'
       + '<div style="margin-top:6px;font-size:12.5px">Company Code : '+esc(S.settings.payCompanyCode||"")+' &nbsp;&nbsp; School Code : '+esc(S.settings.paySchoolCode||"")+' &nbsp;&nbsp; Year : '+esc(g.year||"")+'</div>'
       + sectionsHtml
       + '<div style="margin-top:14px;font-size:12.5px">(1) Grand Total of number of employees in all Categories : '+grandN+'<br>'
@@ -6200,13 +6296,41 @@ function certBodyHTML(title, paragraphs, s){
     + '<div>તારીખ : '+today()+'<br>સ્થળ : '+esc(k.village||"—")+'</div>'
     + '<div style="text-align:right"><b>'+esc(k.principal||"આચાર્યશ્રી")+'</b><br>પ્રિન્સીપાલ</div></div></div>';
 }
+/* ---------- અંગ્રેજી રિપોર્ટ માટે અંગ્રેજી નામ ---------- */
+function titleEn_(t){ return String(t || "").replace(/\s+/g," ").trim().replace(/(^|[\s.\-(])([a-z])/g, function(m,a,b){ return a + b.toUpperCase(); }); }
+function stuEn_(s){
+  if (!s) return "";
+  var e = [s.surnameEn, s.nameEn, s.fatherEn].map(function(x){ return String(x || "").trim(); }).filter(Boolean).join(" ");
+  if (!e) e = titleEn_([s.surname, s.name, s.father].filter(Boolean).map(guLat_).join(" "));
+  return e.toUpperCase();
+}
+function stfEn_(t){
+  if (!t) return "";
+  var e = String(t.nameEn || "").trim();
+  return (e || titleEn_(guLat_(t.name || ""))).toUpperCase();
+}
+function staffNameEn(id){ var t = S.staff.find(function(x){ return x.id === id; }); return t ? stfEn_(t) : "—"; }
+function schEn_(){
+  var k = S.school || {};
+  var e = String(k.nameEn || "").trim();
+  return e || titleEn_(guLat_(k.name || "")) || "School Name";
+}
+function schAddrEn_(){
+  var k = S.school || {};
+  if (k.addressEn) return k.addressEn;
+  return [titleEn_(guLat_(k.village || "")), k.taluka ? "Ta-" + titleEn_(guLat_(k.taluka)) : "", k.district ? "Dist-" + titleEn_(guLat_(k.district)) : ""].filter(Boolean).join(", ");
+}
+function placeEn_(){
+  var k = S.school || {};
+  return k.cityEn || (k.addressEn ? String(k.addressEn).split(",")[0].trim() : "") || titleEn_(guLat_(k.village || k.city || "")) || "—";
+}
 function certBodyHTMLEn(title, paragraphs, s){
   var k = S.school;
   return '<div style="max-width:650px;border:3px double #111;border-radius:4px;padding:18px 24px;font-family:Georgia,serif">'
     + '<div style="border:1px solid #111;padding:8px;text-align:center;margin-bottom:4px">'
-    + '<div style="font-size:19px;font-weight:700;color:#1a2f6b">'+lgImg_()+esc((k.nameEn||k.name||"SCHOOL NAME").toUpperCase())+'</div></div>'
+    + '<div style="font-size:19px;font-weight:700;color:#1a2f6b">'+lgImg_()+esc(schEn_().toUpperCase())+'</div></div>'
     + '<div style="text-align:center;font-size:12px;color:#1a2f6b;font-weight:600;margin-bottom:2px">'
-    + esc(k.addressEn||"")+'</div>'
+    + esc(schAddrEn_())+'</div>'
     + (k.udise ? '<div style="text-align:center;font-size:12px;font-weight:700">DISE Code : '+esc(k.udise)+'</div>' : "")
     + '<div style="text-align:center;margin:14px 0"><span style="display:inline-block;border:1px solid #111;padding:5px 22px;font-weight:700;font-size:15px;color:#1a2f6b">'+esc(title.toUpperCase())+'</span></div>'
     + '<div style="text-align:right;font-size:13px;font-weight:700;color:#1a2f6b;margin-bottom:8px">'
@@ -6215,7 +6339,7 @@ function certBodyHTMLEn(title, paragraphs, s){
     + '</div>'
     + paragraphs.map(function(p){ return '<p style="line-height:2;text-align:justify;font-size:14px">'+p+'</p>'; }).join("")
     + '<div style="margin-top:50px;display:flex;justify-content:space-between;font-size:13px">'
-    + '<div>Date : '+today()+'<br>Place : '+esc(k.village||"—")+'</div>'
+    + '<div>Date : '+today()+'<br>Place : '+esc(placeEn_())+'</div>'
     + '<div style="text-align:right"><b>Principal</b></div></div></div>';
 }
 var CERT_DEFS = {
@@ -6223,29 +6347,29 @@ var CERT_DEFS = {
     'આથી પ્રમાણિત કરવામાં આવે છે કે <b>'+esc(s.name)+'</b>, પિતા <b>'+esc(s.father)+'</b>, જી.આર. નંબર <b>'+esc(s.gr)+'</b>, આ શાળામાં ધોરણ <b>'+esc(s.std)+'</b> માં અભ્યાસ કરે છે / કરેલ છે.',
     'શાળામાં અભ્યાસ દરમ્યાન તેમનું ચારિત્ર્ય અને વર્તણૂક સારી જણાયેલ છે.' ]; },
     makeEn:function(s){ return [
-    'This is to certify that, <b>'+esc((s.name||"").toUpperCase())+'</b> is bonafide student of this school and is studying in standard <b>'+esc(s.std)+'</b> during Year '+esc(S.settings.year||"")+'.',
+    'This is to certify that, <b>'+esc(stuEn_(s))+'</b> is bonafide student of this school and is studying in standard <b>'+esc(s.std)+'</b> during Year '+esc(S.settings.year||"")+'.',
     'According to our knowledge and belief he/she bears a good conduct and moral character.' ]; }},
   bonafide:{title:"બોનાફાઈડ પ્રમાણપત્ર (BONAFIDE CERTIFICATE)", titleEn:"Bonafide Certificate", make:function(s){ return [
     'આથી પ્રમાણિત કરવામાં આવે છે કે <b>'+esc(s.name)+'</b>, પિતા <b>'+esc(s.father)+'</b>, જી.આર. નંબર <b>'+esc(s.gr)+'</b> આ શાળાના ધોરણ <b>'+esc(s.std)+'</b> ના ચાલુ વિદ્યાર્થી/વિદ્યાર્થીની છે.',
     'આ પ્રમાણપત્ર જરૂરી કામ માટે આપવામાં આવે છે.' ]; },
     makeEn:function(s){ return [
-    'This is to certify that, <b>'+esc((s.name||"").toUpperCase())+'</b> is bonafide student of this school and is studying in standard <b>'+esc(s.std)+'</b> during Year '+esc(S.settings.year||"")+'.' ]; }},
+    'This is to certify that, <b>'+esc(stuEn_(s))+'</b> is bonafide student of this school and is studying in standard <b>'+esc(s.std)+'</b> during Year '+esc(S.settings.year||"")+'.' ]; }},
   caste:{title:"જ્ઞાતિ પ્રમાણપત્ર (CASTE CERTIFICATE)", titleEn:"Caste Certificate", make:function(s){ return [
     'આથી પ્રમાણિત કરવામાં આવે છે કે <b>'+esc(s.name)+'</b>, પિતા <b>'+esc(s.father)+'</b>, જી.આર. નંબર <b>'+esc(s.gr)+'</b>, ધોરણ <b>'+esc(s.std)+'</b> ના શાળા રેકોર્ડ મુજબ ધર્મ <b>'+esc(s.religion||"—")+'</b> અને જ્ઞાતિ <b>'+esc(s.caste||s.cat||"—")+'</b> નોંધાયેલ છે.',
     'આ પ્રમાણપત્ર શાળાના દાખલા રજિસ્ટર પરથી આપવામાં આવે છે.' ]; },
     makeEn:function(s){ return [
-    'This is to certify that, <b>'+esc((s.name||"").toUpperCase())+'</b> (G.R. No. '+esc(s.gr)+') is studying in standard <b>'+esc(s.std)+'</b> in this school. As per school record his/her religion is <b>'+esc(s.religion||"—")+'</b> and caste is <b>'+esc(s.caste||s.cat||"—")+'</b>.' ]; }},
+    'This is to certify that, <b>'+esc(stuEn_(s))+'</b> (G.R. No. '+esc(s.gr)+') is studying in standard <b>'+esc(s.std)+'</b> in this school. As per school record his/her religion is <b>'+esc(s.religion||"—")+'</b> and caste is <b>'+esc(s.caste||s.cat||"—")+'</b>.' ]; }},
   transfer:{title:"બદલી પ્રમાણપત્ર (TRANSFER CERTIFICATE)", titleEn:"Transfer Certificate", make:function(s){ return [
     '<b>'+esc(s.name)+'</b>, પિતા <b>'+esc(s.father)+'</b>, જી.આર. નંબર <b>'+esc(s.gr)+'</b> એ આ શાળામાં ધોરણ <b>'+esc(s.std)+'</b> સુધી અભ્યાસ કરેલ છે.',
     'આ પ્રમાણપત્ર બદલી/સ્થળાંતરના હેતુ માટે આપવામાં આવે છે.' ]; },
     makeEn:function(s){ return [
-    '<b>'+esc((s.name||"").toUpperCase())+'</b> (G.R. No. '+esc(s.gr)+') has studied up to standard <b>'+esc(s.std)+'</b> in this school.',
+    '<b>'+esc(stuEn_(s))+'</b> (G.R. No. '+esc(s.gr)+') has studied up to standard <b>'+esc(s.std)+'</b> in this school.',
     'This certificate is issued for the purpose of transfer.' ]; }},
   birth:{title:"જન્મ અંગેનું પ્રમાણપત્ર", titleEn:"Birthdate Certificate", make:function(s){ return [
     'શાળાના દાખલા રજિસ્ટર મુજબ <b>'+esc(s.name)+'</b>, પિતા <b>'+esc(s.father)+'</b>, જી.આર. નંબર <b>'+esc(s.gr)+'</b> ની જન્મ તારીખ <b>'+esc(dmy(s.dob)||"—")+'</b> નોંધાયેલ છે.',
     'આ પ્રમાણપત્ર શાળા રેકોર્ડ પરથી આપવામાં આવે છે; સત્તાવાર જન્મ દાખલા માટે નગરપાલિકા/ગ્રામ પંચાયતનો સંપર્ક કરવો.' ]; },
     makeEn:function(s){ return [
-    'This is to certify that, <b>'+esc((s.name||"").toUpperCase())+'</b> is studying in Std.'+esc(s.std)+' in this school.',
+    'This is to certify that, <b>'+esc(stuEn_(s))+'</b> is studying in Std.'+esc(s.std)+' in this school.',
     'Her/His birthdate <b>'+esc(dmy(s.dob)||"—")+'</b> and birthplace <b>'+esc(s.birthplace||"—")+'</b> is registered to School\'s Register.' ]; }}
 };
 function certView(key){
@@ -6302,17 +6426,17 @@ WIRE["reports:trialcert"] = function(){
     if (en){
       $("tr_body").innerHTML = '<div style="max-width:650px;border:3px double #111;border-radius:4px;padding:18px 24px;font-family:Georgia,serif">'
         + '<div style="border:1px solid #111;padding:8px;text-align:center;margin-bottom:4px">'
-        + '<div style="font-size:19px;font-weight:700;color:#1a2f6b">'+lgImg_()+esc((k.nameEn||k.name||"SCHOOL NAME").toUpperCase())+'</div></div>'
+        + '<div style="font-size:19px;font-weight:700;color:#1a2f6b">'+lgImg_()+esc(schEn_().toUpperCase())+'</div></div>'
         + '<div style="text-align:center;margin:14px 0"><span style="display:inline-block;border:1px solid #111;padding:5px 22px;font-weight:700;font-size:15px;color:#1a2f6b">TRIAL CERTIFICATE</span></div>'
         + '<table style="width:100%;font-size:13.5px;margin-bottom:14px"><tr>'
         + '<td>Gr.No. : <b>'+esc(s.gr)+'</b><br>Seat No. : <b>'+esc(s.seat||"—")+'</b><br>UID No. : <b>'+esc(s.suid||"—")+'</b></td>'
         + '<td style="text-align:right">'+esc(TR_BOARD_EN[val("tr_board")])+' Index No. : <b>'+esc(k.index||"—")+'</b><br>Stream : <b>'+esc((s.stream||"GENERAL").toUpperCase())+'</b></td>'
         + '</tr></table>'
         + '<p style="font-style:italic">This is to certify that</p>'
-        + '<p style="text-align:center;font-weight:700;border-bottom:1px solid #111;padding-bottom:6px">'+esc((s.name||"").toUpperCase())+'</p>'
+        + '<p style="text-align:center;font-weight:700;border-bottom:1px solid #111;padding-bottom:6px">'+esc(stuEn_(s))+'</p>'
         + '<p style="font-style:italic">has passed the <b><u>'+esc(TR_BOARD_EN[val("tr_board")])+'</u></b> examination held in <b><u>'+esc(val("tr_exam")||"—")+'</u></b> at <b><u>'+esc(TR_ATTEMPT_EN[val("tr_attempt")])+'</u></b> attempt.</p>'
         + '<div style="margin-top:50px;display:flex;justify-content:space-between;font-size:13px">'
-        + '<div>Date : '+today()+'<br>Place : '+esc(k.village||"—")+'</div>'
+        + '<div>Date : '+today()+'<br>Place : '+esc(placeEn_())+'</div>'
         + '<div style="text-align:right"><b>Principal</b></div></div></div>';
     } else {
       $("tr_body").innerHTML = '<div style="max-width:650px;border:3px double #111;border-radius:4px;padding:18px 24px">'
@@ -7340,35 +7464,39 @@ $("menuBtn").onclick = function(){
 $("backdrop").onclick = closeSidebarMobile;
 /* 🏠 હોમ: ગમે ત્યાંથી એક ક્લિકમાં ડેશબોર્ડ (ડેશબોર્ડની પરવાનગી ન હોય તો પહેલું મળેલું મેનુ) */
 $("homeBtn").onclick = function(){ goHome_(); };
-var LOGGED_IN = false;
+var LOGGED_IN = false, ACT_AT = Date.now();
 var CURRENT_USER = null; /* null = admin (full access); else {name,pass,menus} */
 function fillLoginUsers(){
-  var users = S.settings.users || [];
+  var names = PUB_USERS || (S.settings.users || []).map(function(u){ return u.name; });
+  var keep = $("lg_user").value;
   $("lg_user").innerHTML = '<option value="__admin__">આચાર્ય (એડમિન)</option>'
-    + users.map(function(u){ return '<option value="'+esc(u.name)+'">'+esc(u.name)+'</option>'; }).join("");
+    + names.map(function(n){ return '<option value="'+esc(n)+'">'+esc(n)+'</option>'; }).join("");
+  if (keep) try{ $("lg_user").value = keep; }catch(e){}
 }
 function allowed(mkey){
   if (!CURRENT_USER) return true;
   return (CURRENT_USER.menus || []).indexOf(mkey) > -1;
 }
 $("outBtn").onclick = function(){
-  LOGGED_IN = false; CURRENT_USER = null; LOGIN_CRED = null;
-  try{ sessionStorage.removeItem("shala_login"); }catch(e){}
+  LOGGED_IN = false; CURRENT_USER = null; LOGIN_CRED = null; setToken_("");
+  try{ sessionStorage.removeItem("shala_login"); sessionStorage.removeItem("shala_user"); }catch(e){}
+  /* સુરક્ષા: બીજો યુઝર લોગિન કરે ત્યારે અગાઉના યુઝરનો ડેટા મેમરીમાં ન રહે એટલે પાનું ફરી લોડ */
+  if (GAS_READY){ location.reload(); return; }
   fillLoginUsers();
   $("gate").style.display = "grid";
   $("lg_pin").value = "";
 };
-function enter(loginVal){
+function enter(loginVal, userObj){
   if (loginVal === "__admin__"){
     CURRENT_USER = null;
     $("roleChip").textContent = "આચાર્ય (એડમિન)";
   } else {
-    var u = (S.settings.users || []).find(function(x){ return x.name === loginVal; });
+    var u = userObj || (S.settings.users || []).find(function(x){ return x.name === loginVal; });
     CURRENT_USER = u || null;
     $("roleChip").textContent = u ? u.name : "—";
   }
-  LOGGED_IN = true;
-  try{ sessionStorage.setItem("shala_login", loginVal); }catch(e){}
+  LOGGED_IN = true; ACT_AT = Date.now();
+  try{ sessionStorage.setItem("shala_login", loginVal); if (CURRENT_USER) sessionStorage.setItem("shala_user", JSON.stringify({name:CURRENT_USER.name, menus:CURRENT_USER.menus||[]})); else sessionStorage.removeItem("shala_user"); }catch(e){}
   $("gate").style.display = "none";
   if (!allowed(cur.m)){
     var first = MENU.find(function(m){ return allowed(m.k); });
@@ -7377,8 +7505,23 @@ function enter(loginVal){
   }
   drawMenu(); render();
 }
-$("lg_go").onclick = function(){
+$("lg_go").onclick = async function(){
   var uv = val("lg_user"), pw = val("lg_pin");
+  if (GAS_READY){
+    var btn = $("lg_go"); btn.disabled = true; var t0 = btn.textContent; btn.textContent = "તપાસી રહ્યા છીએ…";
+    var lr = null;
+    try{ lr = await gasRaw_({action:"login", user:uv, pass:pw}); }catch(e){ lr = null; }
+    btn.disabled = false; btn.textContent = t0;
+    if (!lr){ $("lg_msg").textContent = "સર્વર સાથે જોડાણ ન થયું. ઇન્ટરનેટ તપાસો."; $("lg_msg").style.color = "var(--bad)"; return; }
+    if (!lr.ok){ $("lg_msg").textContent = lr.error || "લોગિન ન થયું."; $("lg_msg").style.color = "var(--bad)"; return; }
+    setToken_(lr.token); LOGIN_CRED = {u: uv, p: pw}; $("lg_msg").textContent = "";
+    var had = !!(S.students.length || S.staff.length || S.exams.length);
+    USER_TOUCHED = false;
+    enter(uv, lr.user ? {name:lr.user.name, menus:lr.user.menus || []} : null);
+    loadData_();
+    if (lr.defaultPin) setTimeout(function(){ toast("⚠ એડમિનનો પાસવર્ડ હજુ ડિફોલ્ટ (1234) છે — સીસ્ટમ › સેટિંગમાં બદલો"); }, 900);
+    return;
+  }
   if (uv === "__admin__"){
     if (pw !== String(S.settings.pin || "1234")){
       $("lg_msg").textContent = "પાસવર્ડ ખોટો છે. ફરી પ્રયત્ન કરો.";
@@ -7396,6 +7539,17 @@ $("lg_go").onclick = function(){
   LOGIN_CRED = {u: uv, p: pw};
   enter(uv);
 };
+
+/* નિષ્ક્રિયતા: 30 મિનિટ કોઈ પ્રવૃત્તિ ન હોય તો આપોઆપ લોગઆઉટ; લોડ દરમ્યાન યુઝરે ફોર્મ ભરવું શરૂ કર્યું હોય તો ફરી-દોરવું નહીં */
+["click","keydown","input","touchstart"].forEach(function(ev){
+  document.addEventListener(ev, function(e){
+    ACT_AT = Date.now();
+    if ((ev === "input" || ev === "keydown") && e.target && /^(INPUT|TEXTAREA|SELECT)$/.test(e.target.tagName) && e.target.id !== "lg_pin" && e.target.id !== "lg_user") USER_TOUCHED = true;
+  }, true);
+});
+setInterval(function(){
+  if (LOGGED_IN && GAS_READY && Date.now() - ACT_AT > 30 * 60 * 1000){ toast("નિષ્ક્રિયતાને કારણે લોગઆઉટ"); $("outBtn").click(); }
+}, 60000);
 $("lg_eye").onclick = function(){ var f = $("lg_pin"); f.type = f.type === "password" ? "text" : "password"; };
 $("lg_pin").onkeydown = function(e){ if (e.key === "Enter") $("lg_go").click(); };
 
@@ -7437,9 +7591,16 @@ function renderPayForm(){
     r.onchange = function(){ PG_STU = (val2(r)==="general") ? "general" : null; renderPayForm(); };
   });
   function val2(r){ return r.checked ? r.value : null; }
-  $("pg_find").onclick = function(){
+  $("pg_find").onclick = async function(){
     var gr = val("pg_gr");
-    var s = S.students.find(function(x){ return String(x.gr)===gr; });
+    var s;
+    if (GAS_READY){
+      $("pg_stuinfo").textContent = "શોધી રહ્યા છીએ…";
+      var fr = null;
+      try{ fr = await gasRaw_({action:"payFind", gr:gr}); }catch(e){}
+      s = fr && fr.ok ? fr.stu : null;
+      if (fr && !fr.ok && fr.error && fr.error !== "notfound"){ $("pg_stuinfo").textContent = fr.error; PG_STU=null; return; }
+    } else s = S.students.find(function(x){ return String(x.gr)===gr; });
     if (!s){ $("pg_stuinfo").textContent = "આ જી.આર. નંબરનો વિદ્યાર્થી મળ્યો નહીં."; PG_STU=null; return; }
     PG_STU = s;
     $("pg_stuinfo").innerHTML = '<b>'+esc(s.name)+'</b> — ધોરણ '+esc(s.std)+'/'+esc(s.div);
@@ -7472,6 +7633,12 @@ function payViaUpi(){
     + '<div style="margin-top:12px"><button class="btn" id="pg_upidone">મેં ચુકવણી કરી — નોંધ કરો</button></div>';
   $("pg_upidone").onclick = async function(){
     var rno = "O" + Date.now().toString(36).toUpperCase();
+    if (GAS_READY){
+      var ur = null;
+      try{ ur = await gasRaw_({action:"payUpi", amt:d.amt, payer:d.payer, mobile:d.mobile, head:d.head, stuId:d.stuId, utr:val("pg_utr")}); }catch(e){}
+      if (!ur || !ur.ok){ $("pg_result").innerHTML += '<p class="hint" style="color:var(--bad)">નોંધ થઈ શકી નહીં: '+esc((ur&&ur.error)||"જોડાણમાં તકલીફ")+'</p>'; return; }
+      rno = ur.rno;
+    } else
     await put("ledger",{date:today(),kind:"આવક",head:d.head,amount:d.amt,stuId:d.stuId,rno:rno,
       detail:d.head+" — "+d.payer+(d.stuId?(" ("+studentName(d.stuId)+")"):""),
       src:"ઓનલાઇન-UPI", status:"ચકાસણી બાકી", payer:d.payer, mobile:d.mobile, payRef:val("pg_utr")});
@@ -7484,7 +7651,7 @@ async function payViaRazorpay(){
   if (typeof Razorpay === "undefined"){ toast("ગેટવે લોડ થયું નથી, ફરી પ્રયત્ન કરો"); return; }
   $("pg_result").innerHTML = '<p class="hint">ઓર્ડર બની રહ્યો છે…</p>';
   var order;
-  try{ order = await gasPost({action:"createOrder", amount:d.amt}); }
+  try{ order = await gasPost({action:"createOrder", amount:d.amt, head:d.head, payer:d.payer, mobile:d.mobile, stuId:d.stuId}); }
   catch(e){ $("pg_result").innerHTML = '<p class="hint" style="color:var(--bad)">જોડાણમાં તકલીફ પડી.</p>'; return; }
   if (!order || !order.ok){ $("pg_result").innerHTML = '<p class="hint" style="color:var(--bad)">ઓર્ડર બનાવવામાં તકલીફ: '+esc((order&&order.error)||"અજ્ઞાત ભૂલ")+'</p>'; return; }
   $("pg_result").innerHTML = "";
@@ -7500,7 +7667,8 @@ async function payViaRazorpay(){
           paymentId:resp.razorpay_payment_id, signature:resp.razorpay_signature});
       }catch(e){ v = {ok:false, error:String(e)}; }
       if (v && v.ok){
-        var rno = "R" + Date.now().toString(36).toUpperCase();
+        var rno = v.rno || ("R" + Date.now().toString(36).toUpperCase());
+        if (!(GAS_READY && v.rno))
         await put("ledger",{date:today(),kind:"આવક",head:d.head,amount:d.amt,stuId:d.stuId,rno:rno,
           detail:d.head+" — "+d.payer+(d.stuId?(" ("+studentName(d.stuId)+")"):""),
           src:"ઓનલાઇન-Razorpay", status:"✓ ચકાસાયેલ", payer:d.payer, mobile:d.mobile, payRef:resp.razorpay_payment_id});
@@ -7650,7 +7818,7 @@ function ptSafeUrl(u){ u = String(u || "").trim(); return /^https?:\/\//i.test(u
 function ptText(s){ return esc(s).replace(/\n/g, "<br>"); }
 
 /* ---------- ફાઇલ અપલોડ (PDF / ફોટો / ડોક્યુમેન્ટ) → Google Drive ---------- */
-var UP_MAX_BYTES = 5 * 1024 * 1024, LOGIN_CRED = null;
+var UP_MAX_BYTES = 5 * 1024 * 1024;
 var UP_ACCEPT = ".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,image/*,application/pdf";
 var UP_MIME = {pdf:"application/pdf", jpg:"image/jpeg", jpeg:"image/jpeg", png:"image/png", webp:"image/webp", doc:"application/msword",
   docx:"application/vnd.openxmlformats-officedocument.wordprocessingml.document", xls:"application/vnd.ms-excel",
@@ -8596,14 +8764,16 @@ if (RES_MODE){
   teBoot();
 } else {
   initStore().then(function(){
+    fetchPublicInfo_();
     $("gateTitle").textContent = S.school.name || "શાળા વ્યવસ્થાપન સિસ્ટમ";
     applyLogo_();
     $("gateSub").textContent = [S.school.village, S.school.taluka ? "તા. " + S.school.taluka : "", S.school.district ? "જિ. " + S.school.district : ""].filter(Boolean).join(", ");
     migrateSubjects_();
     fillLoginUsers();
-    var saved = null;
-    try{ saved = sessionStorage.getItem("shala_login"); }catch(e){}
-    if (saved) enter(saved); else { drawMenu(); render(); }
+    var saved = null, savedUser = null;
+    try{ saved = sessionStorage.getItem("shala_login"); savedUser = JSON.parse(sessionStorage.getItem("shala_user") || "null"); }catch(e){}
+    if (saved && GAS_READY && !TOKEN) saved = null;   /* ટોકન વગર સત્ર માન્ય નથી */
+    if (saved){ enter(saved, savedUser); loadData_(); } else { drawMenu(); render(); }
     try{ if (/[?&]pay=1/.test(location.search)) openPayGate(); }catch(e){}
   });
 }
