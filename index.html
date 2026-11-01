@@ -1176,7 +1176,7 @@ function studentName(id){ var s=S.students.find(function(x){return x.id===id;});
 
 /* ---------- menu ---------- */
 var MENU = [
-  {k:"shala", t:"શાળા", tabs:[["dash","ડેશબોર્ડ"],["profile","શાળાની વિગત"],["days","કામકાજના દિવસો"],["subjects","વિષયની એન્ટ્રી"],["stds","ધોરણની એન્ટ્રી"],["fee","ફી એન્ટ્રી"],["holidays","વાર્ષિક રજાઓ"],["timetable","ટાઈમ ટેબલ"],["rooms","વર્ગ વ્યવસ્થા"],["posts","હોદ્દાની માહિતી"],["heads","હેડ કોડ"],["examtt","પરિક્ષા સમય પત્રક"],["letter","લેટરપેડ"]]},
+  {k:"shala", t:"શાળા", tabs:[["profile","શાળાની વિગત"],["days","કામકાજના દિવસો"],["subjects","વિષયની એન્ટ્રી"],["stds","ધોરણની એન્ટ્રી"],["fee","ફી એન્ટ્રી"],["holidays","વાર્ષિક રજાઓ"],["timetable","ટાઈમ ટેબલ"],["rooms","વર્ગ વ્યવસ્થા"],["posts","હોદ્દાની માહિતી"],["heads","હેડ કોડ"],["examtt","પરિક્ષા સમય પત્રક"],["letter","લેટરપેડ"]]},
   {k:"system", t:"સીસ્ટમ", tabs:[["set","સેટિંગ"],["years","વર્ષની પસંદગી"],["users","યુઝર બનાવવા"],["report","ડેટાબેઝ અહેવાલ"],["backup","બેકઅપ"]]},
   {k:"staff", t:"કર્મચારી", tabs:[["list","કર્મચારીની વિગત"],["add","નવો કર્મચારી"],["leaveopen","ઉઘડતી રજાઓ"],["gpfopen","શરૂઆતના જી.પી.એફ."],["leaveupdate","વાર્ષિક રજાઓ સુધારવી"],["relieve","નોકરી છોડવાની વિગત"],["salary","પગાર માળખું"],["pay","પગાર ચુકવણી"],["gpf","જી.પી.એફ."],["slip","સ્લિપ યાદી"],["f16","ફોર્મ 16"],["f24","ફોર્મ 24"],["master","પે રોલ માસ્ટર ડેટા"],["sheet","સ્ટાફ માહિતી પત્રક"],["payreg","પે-રોલ રજીસ્ટર"],["increment","ઇજાફાની માહિતી"]]},
   {k:"student", t:"વિદ્યાર્થી", tabs:[["list","યાદી / શોધ"],["add","નવો પ્રવેશ"],["subsel","વૈકલ્પિક વિષયની પસંદગી"],["gr","જી.આર. એન્ટ્રી"],["autodiv","ઓટોમેટીક વર્ગ"],["autoroll","ઓટોમેટીક રોલ નંબર"],["promote","ઉપલા ધોરણમાં ચઢાવવા"],["count","સંખ્યા પત્રક"],["att","હાજરી"],["fee","વિદ્યાર્થીની ફી એન્ટ્રી"],["feeclass","ફી એન્ટ્રી (વર્ગ મુજબ)"],["lc","લીવીંગ સર્ટી ઇસ્યુ કરવું"],["lcvarg","વર્ગ મુજબ LC કાઢવા"],["lctrue","એલ.સી. ખરી ફોર્મ"],["sschsc","એસ.એસ.સી-એચ.એસ.સી રજીસ્ટર"],["prevyear","પાછળના વર્ષના વિદ્યાર્થી"]]},
@@ -1240,7 +1240,7 @@ function drawMenu(){
 function goHome_(){
   var g = MENU.find(function(m){ return m.k === "shala" && (!LOGGED_IN || allowed(m.k)); }) || MENU.find(function(m){ return !LOGGED_IN || allowed(m.k); });
   if (!g) return;
-  cur.m = g.k; cur.t = g.tabs[0][0];
+  cur.m = g.k; cur.t = g.k === "shala" ? "dash" : g.tabs[0][0];   /* ડેશબોર્ડ શાળા મેનુની યાદીમાં નથી, ફક્ત 🏠 હોમથી ખૂલે */
   drawMenu(); render(); closeSidebarMobile();
   try{ window.scrollTo(0, 0); }catch(e){}
 }
@@ -1288,6 +1288,24 @@ function autoRefresh_(){
 var VIEWS = {}, WIRE = {};
 
 /* ========== શાળા ========== */
+/* ડેશબોર્ડ: જાતિવાર કુમાર / કન્યા / કુલ (સંખ્યા પત્રકની જ ગણતરી — છોડી ગયેલ અને જાતિ-વગરની નોંધ બાદ) */
+function dashCasteCard_(){
+  if (!S.students.length) return "";
+  var t = cntData_().tot;
+  var rows = [["અનુ. જાતિ (S.C.)","sc"],["અનુ. જનજાતિ (S.T.)","st"],["સા.શૈ.પ.વ. (OBC)","obc"],["સામાન્ય (General)","gen"]];
+  var all = t.b + t.g;
+  var noGender = S.students.filter(function(x){ return !x.relieveDate && x.gender !== "કુમાર" && x.gender !== "કન્યા"; }).length;
+  return '<div class="card"><h3>👥 જાતિવાર કુમાર / કન્યા</h3><div class="tw"><table><thead><tr><th>જાતિ</th><th class="num">કુમાર</th><th class="num">કન્યા</th><th class="num">કુલ</th><th>પ્રમાણ</th></tr></thead><tbody>'
+    + rows.map(function(r){
+        var b = t[r[1]][0], g = t[r[1]][1], n = b + g;
+        return '<tr><td>'+esc(r[0])+'</td><td class="num">'+b+'</td><td class="num">'+g+'</td><td class="num"><b>'+n+'</b></td>'
+          + '<td><div class="bar"><i style="width:'+(all ? Math.round(n / all * 100) : 0)+'%"></i></div></td></tr>';
+      }).join("")
+    + '<tr style="font-weight:700;background:var(--bg2,#f3f4f6)"><td>કુલ</td><td class="num">'+t.b+'</td><td class="num">'+t.g+'</td><td class="num">'+all+'</td><td></td></tr>'
+    + '</tbody></table></div>'
+    + (noGender ? '<p class="hint" style="margin:6px 0 0">'+noGender+' વિદ્યાર્થીનું જાતિ (કુમાર/કન્યા) નોંધાયેલ ન હોવાથી ગણતરીમાં નથી.</p>' : '')
+    + '</div>';
+}
 VIEWS["shala:dash"] = function(){
   var boys = S.students.filter(function(s){return s.gender==="કુમાર";}).length;
   var girls = S.students.filter(function(s){return s.gender==="કન્યા";}).length;
@@ -1324,6 +1342,8 @@ VIEWS["shala:dash"] = function(){
     + stat(money(balance), "ચોખ્ખું બેલેન્સ", balance>=0?"good":"bad")
     + stat(money(feeThisMonth),"આ મહિનાની ફી વસૂલાત","accent")
     + '</div></div>'
+
+    + dashCasteCard_()
 
     + '<div class="dashgrid">'
     + '<div class="card"><h3>📈 ધોરણ પ્રમાણે સંખ્યા</h3>'
@@ -7501,7 +7521,7 @@ function enter(loginVal, userObj){
   if (!allowed(cur.m)){
     var first = MENU.find(function(m){ return allowed(m.k); });
     cur.m = first ? first.k : "shala";
-    cur.t = first ? first.tabs[0][0] : "dash";
+    cur.t = first ? (first.k === "shala" ? "dash" : first.tabs[0][0]) : "dash";
   }
   drawMenu(); render();
 }
