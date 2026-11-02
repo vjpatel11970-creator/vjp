@@ -1306,6 +1306,30 @@ function dashCasteCard_(){
     + (noGender ? '<p class="hint" style="margin:6px 0 0">'+noGender+' વિદ્યાર્થીનું જાતિ (કુમાર/કન્યા) નોંધાયેલ ન હોવાથી ગણતરીમાં નથી.</p>' : '')
     + '</div>';
 }
+/* ડેશબોર્ડ: ધોરણવાર → જાતિવાર કુમાર / કન્યા */
+function dashStdCasteCard_(){
+  if (!S.students.length) return "";
+  var d = cntData_(), C = [["S.C.","sc"],["S.T.","st"],["OBC","obc"],["સામાન્ય","gen"]];
+  var by = {}, order = [];
+  d.rows.forEach(function(r){
+    if (!by[r.std]){ by[r.std] = {std:r.std, b:0, g:0}; C.forEach(function(c){ by[r.std][c[1]] = [0,0]; }); order.push(r.std); }
+    var o = by[r.std]; o.b += r.b; o.g += r.g;
+    C.forEach(function(c){ o[c[1]][0] += r[c[1]][0]; o[c[1]][1] += r[c[1]][1]; });
+  });
+  function cells(o){
+    return C.map(function(c){ return '<td class="num">'+o[c[1]][0]+'</td><td class="num">'+o[c[1]][1]+'</td>'; }).join("")
+      + '<td class="num">'+o.b+'</td><td class="num">'+o.g+'</td><td class="num"><b>'+(o.b+o.g)+'</b></td>';
+  }
+  var tot = d.tot;
+  return '<div class="card"><h3>🏷 ધોરણવાર — જાતિવાર કુમાર / કન્યા</h3><div class="tw"><table><thead><tr><th rowspan="2">ધોરણ</th>'
+    + C.map(function(c){ return '<th colspan="2" class="num" style="text-align:center">'+esc(c[0])+'</th>'; }).join("")
+    + '<th colspan="3" class="num" style="text-align:center">કુલ</th></tr><tr>'
+    + C.map(function(){ return '<th class="num">કુમાર</th><th class="num">કન્યા</th>'; }).join("")
+    + '<th class="num">કુમાર</th><th class="num">કન્યા</th><th class="num">કુલ</th></tr></thead><tbody>'
+    + order.map(function(k){ return '<tr><td>ધોરણ '+esc(k)+'</td>'+cells(by[k])+'</tr>'; }).join("")
+    + '<tr style="font-weight:700;background:var(--bg2,#f3f4f6)"><td>કુલ</td>'+cells(tot)+'</tr>'
+    + '</tbody></table></div></div>';
+}
 VIEWS["shala:dash"] = function(){
   var boys = S.students.filter(function(s){return s.gender==="કુમાર";}).length;
   var girls = S.students.filter(function(s){return s.gender==="કન્યા";}).length;
@@ -1344,6 +1368,7 @@ VIEWS["shala:dash"] = function(){
     + '</div></div>'
 
     + dashCasteCard_()
+    + dashStdCasteCard_()
 
     + '<div class="dashgrid">'
     + '<div class="card"><h3>📈 ધોરણ પ્રમાણે સંખ્યા</h3>'
