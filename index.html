@@ -1386,7 +1386,6 @@ VIEWS["shala:dash"] = function(){
     + stat(money(feeThisMonth),"આ મહિનાની ફી વસૂલાત","accent")
     + '</div></div>'
 
-    + dashCasteCard_()
     + dashStdCasteCard_()
 
     + '<div class="dashgrid">'
@@ -1446,6 +1445,13 @@ VIEWS["shala:profile"] = function(){
     + chk("sc_logoshow","બધા રિપોર્ટ / પ્રિન્ટમાં શાળાના નામ સાથે લોગો બતાવો",k.logoShow !== false)
     + '<div style="font-size:12px;color:var(--muted)">PNG / JPG પસંદ કરો. લોગો આપોઆપ નાનો કરી સચવાશે અને રિપોર્ટ, માર્કશીટ, સર્ટિફિકેટ, ઓળખપત્ર વગેરેમાં નામની આગળ છપાશે.</div></div>'
     + '</div></div>'
+    + '<div class="card"><h3>આચાર્યની સહી</h3><div class="row" style="gap:16px;align-items:center;flex-wrap:wrap">'
+    + '<div id="sc_signprev" style="width:200px;height:80px;border:1.5px dashed #aab;border-radius:10px;display:grid;place-items:center;background:#fff;overflow:hidden;font-size:12px;color:#889;text-align:center">'
+    + (k.principalSign ? '<img src="'+k.principalSign+'" style="max-width:100%;max-height:100%;object-fit:contain">' : 'સહી નથી') + '</div>'
+    + '<div style="display:grid;gap:8px"><input type="file" id="sc_signfile" accept="image/*" style="max-width:260px">'
+    + '<div class="row" style="gap:8px"><button class="btn" id="sc_signup">⬆ સહી અપલોડ કરો</button><button class="btn sec" id="sc_signdel">🗑 સહી કાઢો</button></div>'
+    + '<div style="font-size:12px;color:var(--muted)">સફેદ કાગળ પર સહી કરી ફોટો/સ્કેન અપલોડ કરો (PNG/JPG). સહી માર્કશીટ, મેમો, પરિણામ રિપોર્ટ અને પ્રમાણપત્રોમાં આચાર્યની સહીની જગ્યાએ આપોઆપ છપાશે.</div>'
+    + '</div></div></div>'
     + '<div class="card"><h3>સરનામું</h3><div class="grid">'
     + fld("sc_addr","સરનામું (ગુજરાતી)",k.village)
     + fld("sc_addren","સરનામું (અંગ્રેજી)",k.addressEn)
@@ -1520,6 +1526,23 @@ WIRE["shala:profile"] = function(){
     S.school = Object.assign({}, S.school, {logo:""});
     $("sc_logoprev").textContent = "લોગો નથી"; $("sc_logofile").value = "";
     await saveMeta(); head(); applyLogo_(); toast("લોગો કાઢી નાખ્યો");
+  };
+  $("sc_signup").onclick = function(){
+    var f = $("sc_signfile").files && $("sc_signfile").files[0];
+    if (!f) return toast("પહેલા સહીની ફાઈલ પસંદ કરો");
+    logoResize_(f, async function(data, err){
+      if (!data) return toast(err || "સહી અપલોડ ન થઈ");
+      S.school = Object.assign({}, S.school, {principalSign:data});
+      $("sc_signprev").innerHTML = '<img src="'+data+'" style="max-width:100%;max-height:100%;object-fit:contain">';
+      await saveMeta(); toast("આચાર્યની સહી સચવાઈ");
+    });
+  };
+  $("sc_signdel").onclick = async function(){
+    if (!S.school.principalSign) return toast("સહી નથી");
+    if (!confirm("આચાર્યની સહી કાઢી નાખવી?")) return;
+    S.school = Object.assign({}, S.school, {principalSign:""});
+    $("sc_signprev").textContent = "સહી નથી"; $("sc_signfile").value = "";
+    await saveMeta(); toast("સહી કાઢી નાખી");
   };
   $("sc_logoshow").onchange = async function(){
     S.school = Object.assign({}, S.school, {logoShow:$("sc_logoshow").checked});
@@ -1786,13 +1809,16 @@ VIEWS["shala:rooms"] = function(){
     + fld("rm_room","રૂમ નંબર","")
     + fld("rm_cap","બેઠક ક્ષમતા","","number")
     + fld("rm_teacher","વર્ગ શિક્ષક","")
+    + '<div><label class="f">વર્ગશિક્ષકની સહી (વૈકલ્પિક)</label><input type="file" id="rm_sign" accept="image/*"></div>'
     + '</div><div style="margin-top:14px"><button class="btn" id="rm_add">ઉમેરો</button></div></div>'
     + '<div class="card"><h3>વર્ગ વ્યવસ્થા યાદી</h3>'
     + (S.rooms.length
-      ? '<div class="tw"><table><thead><tr><th>ધોરણ</th><th>વર્ગ</th><th>રૂમ નં.</th><th class="num">ક્ષમતા</th><th>વર્ગ શિક્ષક</th><th></th></tr></thead><tbody>'
+      ? '<div class="tw"><table><thead><tr><th>ધોરણ</th><th>વર્ગ</th><th>રૂમ નં.</th><th class="num">ક્ષમતા</th><th>વર્ગ શિક્ષક</th><th>સહી</th><th></th></tr></thead><tbody>'
         + S.rooms.map(function(r){
             return '<tr><td>'+esc(r.std)+'</td><td>'+esc(r.div)+'</td><td>'+esc(r.room)+'</td>'
               + '<td class="num">'+esc(r.cap)+'</td><td>'+esc(r.teacher)+'</td>'
+              + '<td>'+(r.sign ? '<img src="'+r.sign+'" style="height:34px;max-width:110px;object-fit:contain;vertical-align:middle;mix-blend-mode:multiply"> <button class="btn sm sec" data-signdel="'+r.id+'">✖</button>' : '')
+              + ' <label class="btn sm sec" style="cursor:pointer;margin:0">⬆ સહી<input type="file" accept="image/*" data-signfile="'+r.id+'" style="display:none"></label></td>'
               + '<td><button class="btn sm sec" data-del="'+r.id+'">કાઢો</button></td></tr>';
           }).join("") + '</tbody></table></div>'
       : '<div class="empty">હજુ કોઈ નોંધ નથી.</div>') + '</div>';
@@ -1801,9 +1827,34 @@ WIRE["shala:rooms"] = function(){
   $("rm_add").onclick = async function(){
     var std=val("rm_std"), room=val("rm_room");
     if (!std || !room) return toast("ધોરણ અને રૂમ નંબર જરૂરી છે");
-    await put("rooms", {std:std, div:val("rm_div"), room:room, cap:val("rm_cap"), teacher:val("rm_teacher")});
+    var rec = {std:std, div:val("rm_div"), room:room, cap:val("rm_cap"), teacher:val("rm_teacher")};
+    var f = $("rm_sign").files && $("rm_sign").files[0];
+    if (f){
+      logoResize_(f, async function(data, err){
+        if (!data) return toast(err || "સહી અપલોડ ન થઈ");
+        rec.sign = data; await put("rooms", rec); toast("ઉમેરાયું (સહી સાથે)"); render();
+      });
+      return;
+    }
+    await put("rooms", rec);
     toast("ઉમેરાયું"); render();
   };
+  Array.prototype.forEach.call(document.querySelectorAll("[data-signfile]"), function(inp){
+    inp.onchange = function(){
+      var f = inp.files && inp.files[0]; if (!f) return;
+      var r = S.rooms.find(function(x){ return x.id === inp.dataset.signfile; }); if (!r) return;
+      logoResize_(f, async function(data, err){
+        if (!data) return toast(err || "સહી અપલોડ ન થઈ");
+        await put("rooms", Object.assign({}, r, {sign:data})); toast("વર્ગશિક્ષકની સહી સચવાઈ"); render();
+      });
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-signdel]"), function(b){
+    b.onclick = async function(){
+      var r = S.rooms.find(function(x){ return x.id === b.dataset.signdel; }); if (!r) return;
+      await put("rooms", Object.assign({}, r, {sign:""})); toast("સહી કાઢી નાખી"); render();
+    };
+  });
   Array.prototype.forEach.call(document.querySelectorAll("[data-del]"), function(b){
     b.onclick = async function(){ await drop("rooms", b.dataset.del); toast("કાઢી નાખ્યું"); render(); };
   });
@@ -2604,6 +2655,16 @@ WIRE["staff:add"] = function(){
 var PR_TBL = "width:100%;border-collapse:collapse;font-size:13px";
 var PR_TD = "border:1px solid #333;padding:5px 7px;vertical-align:top";
 /* ---------- શાળાનો લોગો ---------- */
+function signTag_(src, h){
+  return (src && /^data:image\//.test(src)) ? '<img class="sgn" src="'+src+'" alt="" style="height:'+(h||46)+'px;max-width:160px;object-fit:contain;mix-blend-mode:multiply;display:block;margin:0 auto 2px">' : "";
+}
+function princSign_(h){ return signTag_(S.school && S.school.principalSign, h); }
+function classRoom_(std, div){
+  var all = (S.rooms || []).filter(function(r){ return String(r.std) === String(std) && r.sign; });
+  if (div) return all.filter(function(r){ return String(r.div || "") === String(div); })[0] || null;
+  return all.length === 1 ? all[0] : null;
+}
+function classSign_(std, div, h){ var r = classRoom_(std, div); return r ? signTag_(r.sign, h) : ""; }
 function logoSrc_(){ return (S.school && S.school.logo && S.school.logoShow !== false && /^data:image\//.test(S.school.logo)) ? S.school.logo : ""; }
 function lgImg_(h){
   var src = logoSrc_(); if (!src) return "";
@@ -3062,7 +3123,7 @@ function f16HTML(staffId, fy){
     + '<tr><td style="font-weight:700">5. ચોખ્ખી ચૂકવેલ રકમ</td><td style="text-align:right;font-weight:700">'+money(net)+'</td></tr>'
     + '</table>'
     + '<p style="color:#555;font-size:11.5px;margin-top:10px">નોંધ: આ પ્રમાણપત્ર શાળાના પગાર રેકોર્ડ પરથી બનાવેલ સારાંશ છે; આવકવેરા વિભાગનું અધિકૃત ફોર્મ 16 નથી.</p>'
-    + '<div style="margin-top:40px;text-align:left"><b>'+esc(k.principal||"આચાર્યશ્રી")+'</b><br>આચાર્યશ્રી, '+esc(k.name||"")+'</div>'
+    + '<div style="margin-top:30px;text-align:left">'+princSign_()+'<b>'+esc(k.principal||"આચાર્યશ્રી")+'</b><br>આચાર્યશ્રી, '+esc(k.name||"")+'</div>'
     + '</div>';
 }
 WIRE["staff:f16"] = function(){
@@ -4411,7 +4472,7 @@ function lcHTML(d, s){
     + '</table>'
     + '<div style="margin-top:40px;display:flex;justify-content:space-between;font-size:13px">'
       + '<div><div style="font-weight:700">વર્ગ શિક્ષક</div></div>'
-      + '<div style="text-align:left"><div style="font-weight:700">'+esc(k.principal||"આચાર્યશ્રી")+'</div>'
+      + '<div style="text-align:left">'+princSign_()+'<div style="font-weight:700">'+esc(k.principal||"આચાર્યશ્રી")+'</div>'
       + '<div>આચાર્યશ્રી</div><div style="font-size:11.5px;color:#555;margin-top:4px">(શાળાનો સિક્કો)</div></div>'
     + '</div></div>';
 }
@@ -5445,7 +5506,7 @@ function resHeadHTML_(ex, title, extra){
 function resFootHTML_(ranked){
   var p = ranked.filter(function(r){ return r.result === "પાસ"; }).length;
   return '<div style="margin-top:8px;font-size:12.5px">પાસ: <b>'+p+'</b> &nbsp; નાપાસ: <b>'+(ranked.length - p)+'</b> &nbsp; પરિણામ: <b>'+(ranked.length ? (p/ranked.length*100).toFixed(1) : "0.0")+'%</b></div>'
-    + '<div style="display:flex;justify-content:space-between;margin-top:34px;font-size:13px;font-weight:700"><span>વર્ગ શિક્ષક</span><span>આચાર્યશ્રી</span></div>';
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:26px;font-size:13px;font-weight:700"><span style="text-align:center">વર્ગ શિક્ષક</span><span style="text-align:center">'+princSign_()+'આચાર્યશ્રી</span></div>';
 }
 function resTable_(ex, withSubjects){
   var R = examResults_(ex);
@@ -6256,7 +6317,7 @@ function anHead_(title, en){
     + '<div style="text-align:center;font-size:12.5px;margin-bottom:8px">'+(en ? 'Academic Year' : 'શૈક્ષણિક વર્ષ')+': <b>'+esc(AN.year)+'</b> &nbsp; '+(en ? 'Std' : 'ધોરણ')+': <b>'+esc(AN.std)+'</b>'+(AN.div ? ' &nbsp; '+(en ? 'Div' : 'વર્ગ')+': <b>'+esc(AN.div)+'</b>' : '')+'</div>';
 }
 function anSign_(en){
-  return '<div style="display:flex;justify-content:space-between;margin-top:46px;font-size:13px;font-weight:700"><span>'+(en ? "Class Teacher's Sign" : "વર્ગશિક્ષકની સહી")+'</span><span>'+(en ? "Principal's Sign" : "આચાર્યની સહી")+'</span></div>';
+  return '<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:30px;font-size:13px;font-weight:700"><span style="text-align:center">'+(en ? "Class Teacher's Sign" : "વર્ગશિક્ષકની સહી")+'</span><span style="text-align:center">'+princSign_()+(en ? "Principal's Sign" : "આચાર્યની સહી")+'</span></div>';
 }
 var AN_TH = RT_TD + 'background:#eef1f8;font-weight:700;font-size:12px;';
 function anRep_(name){
@@ -6383,7 +6444,7 @@ function anMarksheet_(s, D, en){
     + '<td style="'+td+'">'+(c.any ? c.max : "")+'</td><td style="'+td+'">'+(c.any ? anFmt_(c.got) : "")+'</td><td style="'+td+'">'+esc(c.grade || "")+'</td></tr></tbody></table>'
     + '<p style="margin-top:10px">'+L.pct+': <b>'+(c.any ? c.pct.toFixed(2)+"%" : "—")+'</b> &nbsp;&nbsp; '+L.gr2+': <b>'+esc(c.grade || "—")+'</b> &nbsp;&nbsp; '+L.res+': <b style="color:'+(ok?'#166534':'#b91c1c')+'">'+(c.any ? (ok ? L.pass : L.fail) : "—")+'</b>'
     + (c.rankClass ? ' &nbsp;&nbsp; '+L.rank+': <b>'+c.rankClass+' / '+c.rankStd+'</b>' : '') + '</p>'
-    + '<div style="margin-top:44px;display:flex;justify-content:space-between;font-weight:700"><span>'+L.parent+'</span><span>'+L.teacher+'</span><span>'+L.prin+(k.principal ? '<div style="font-weight:400">'+esc(k.principal)+'</div>' : '')+'</span></div></div>';
+    + '<div style="margin-top:28px;display:flex;justify-content:space-between;align-items:flex-end;font-weight:700"><span>'+L.parent+'</span><span style="text-align:center">'+classSign_(s.std, s.div)+L.teacher+'</span><span style="text-align:center">'+princSign_()+L.prin+(k.principal ? '<div style="font-weight:400">'+esc(k.principal)+'</div>' : '')+'</span></div></div>';
 }
 function anMemo_(s, D){
   var c = D.by[s.id] || anStudentCalc_(s, D.subs, D.exams), k = S.school || {}, ok = c.result === "પાસ";
@@ -6393,7 +6454,7 @@ function anMemo_(s, D){
     + '<table style="width:100%"><tr><td>નામ: <b>'+esc(stuFull_(s))+'</b></td><td>જી.આર.: <b>'+esc(s.gr)+'</b></td><td>ધોરણ/વર્ગ: <b>'+esc(s.std)+'/'+esc(s.div||"")+'</b></td><td>રોલ: <b>'+esc(s.roll||"—")+'</b></td></tr>'
     + '<tr><td>કુલ ગુણ: <b>'+(c.any ? c.max : "—")+'</b></td><td>મેળવેલ: <b>'+(c.any ? anFmt_(c.got) : "—")+'</b></td><td>ટકા: <b>'+(c.any ? c.pct.toFixed(2)+"%" : "—")+'</b></td><td>ગ્રેડ: <b>'+esc(c.grade||"—")+'</b></td></tr>'
     + '<tr><td>પરિણામ: <b style="color:'+(ok?'#166534':'#b91c1c')+'">'+(c.any ? (ok ? "પાસ" : "નાપાસ") : "—")+'</b></td><td colspan="3">વર્ગ ક્રમ: <b>'+(c.rankClass||"—")+'</b> &nbsp; ધોરણ ક્રમ: <b>'+(c.rankStd||"—")+'</b></td></tr></table>'
-    + '<div style="display:flex;justify-content:space-between;margin-top:26px;font-weight:700;font-size:12px"><span>વર્ગશિક્ષકની સહી</span><span>આચાર્યની સહી</span></div></div>';
+    + '<div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:16px;font-weight:700;font-size:12px"><span style="text-align:center">વર્ગશિક્ષકની સહી</span><span style="text-align:center">'+princSign_(34)+'આચાર્યની સહી</span></div></div>';
 }
 function anPaperMM_(){ var L = AN.paper === "Legal"; return AN.orient === "L" ? (L ? 356 : 297) : (L ? 216 : 210); }
 function anPrevUI_(name){
@@ -6522,9 +6583,9 @@ function marksheetHTML(ex, s){
     + '</table>'
     + '<p style="margin-top:10px;font-size:13px">ટકાવારી: <b>'+(r.any ? r.pct.toFixed(1)+'%' : "—")+'</b> &nbsp;&nbsp; પરિણામ: <b style="color:'+(pass?'#166534':'#b91c1c')+'">'+(r.any ? (pass ? "ઉત્તીર્ણ" : "અનુત્તીર્ણ") : "—")+'</b>'
     + (r.rank ? ' &nbsp;&nbsp; રેન્ક: <b>'+r.rank+' / '+R.ranked.length+'</b>' : '')+'</p>'
-    + '<div style="margin-top:40px;display:flex;justify-content:space-between;font-size:13px">'
-      + '<div style="font-weight:700">વર્ગ શિક્ષક</div>'
-      + '<div style="text-align:left;font-weight:700">'+(k.principal ? esc(k.principal)+'<div style="font-weight:400">આચાર્યશ્રી</div>' : 'આચાર્યશ્રી')+'</div>'
+    + '<div style="margin-top:30px;display:flex;justify-content:space-between;align-items:flex-end;font-size:13px">'
+      + '<div style="font-weight:700;text-align:center">'+classSign_(s.std, s.div)+'વર્ગ શિક્ષક</div>'
+      + '<div style="text-align:center;font-weight:700">'+princSign_()+(k.principal ? esc(k.principal)+'<div style="font-weight:400">આચાર્યશ્રી</div>' : 'આચાર્યશ્રી')+'</div>'
     + '</div></div>';
 }
 WIRE["exam:marksheet"] = function(){
@@ -6995,7 +7056,7 @@ function certBodyHTML(title, paragraphs, s){
     + paragraphs.map(function(p){ return '<p style="line-height:2;text-align:justify;font-size:14px">'+p+'</p>'; }).join("")
     + '<div style="margin-top:50px;display:flex;justify-content:space-between;font-size:13px">'
     + '<div>તારીખ : '+today()+'<br>સ્થળ : '+esc(k.village||"—")+'</div>'
-    + '<div style="text-align:right"><b>'+esc(k.principal||"આચાર્યશ્રી")+'</b><br>પ્રિન્સીપાલ</div></div></div>';
+    + '<div style="text-align:right">'+princSign_()+'<b>'+esc(k.principal||"આચાર્યશ્રી")+'</b><br>પ્રિન્સીપાલ</div></div></div>';
 }
 /* ---------- અંગ્રેજી રિપોર્ટ માટે અંગ્રેજી નામ ---------- */
 function titleEn_(t){ return String(t || "").replace(/\s+/g," ").trim().replace(/(^|[\s.\-(])([a-z])/g, function(m,a,b){ return a + b.toUpperCase(); }); }
