@@ -521,7 +521,11 @@ tbody tr:hover td{background:color-mix(in srgb, var(--brand) 8%, var(--panel))}
 .te-act.wa{background:#1fa855}
 @media print{#teGate{display:none !important}}
 
-.an-title{font-size:30px;font-weight:800;text-align:center;letter-spacing:.5px;margin:0 0 12px;color:var(--ink,#111)}
+.an-banner{display:flex;align-items:center;gap:10px;background:linear-gradient(180deg,#a8610f,#8d4f0a);color:#fff;border-radius:8px;padding:10px 16px;margin:0 0 14px}
+.an-banner .an-bh{flex:1;font-size:13px;line-height:1.5;color:#ffe9c9}
+.an-title{font-size:30px;font-weight:800;text-align:center;letter-spacing:.5px;margin:0;color:inherit}
+.an-banner .an-title{color:#fff;flex:0 0 auto}
+@media(max-width:700px){.an-banner{flex-direction:column;text-align:center}.an-banner .an-bh:empty{display:none}}
 .an-wrap{overflow:auto;max-height:70vh;border:1px solid var(--line);border-radius:8px;position:relative}
 .an-grid{border-collapse:separate;border-spacing:0;font-size:13px;min-width:1200px;width:100%}
 .an-grid th,.an-grid td{border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:4px 6px;text-align:center;white-space:nowrap;background:var(--panel)}
@@ -529,7 +533,7 @@ tbody tr:hover td{background:color-mix(in srgb, var(--brand) 8%, var(--panel))}
 .an-grid th.ed{background:#fff3c4}
 .an-grid .stk{position:sticky;z-index:2;background:var(--panel)}
 .an-grid thead .stk{z-index:4;background:#eef1f8}
-.an-grid .s1{left:0;min-width:46px;width:46px}.an-grid .s2{left:46px;min-width:70px;width:70px}.an-grid .s3{left:116px;min-width:200px;text-align:left;box-shadow:2px 0 3px rgba(0,0,0,.12)}
+.an-grid .s1{left:0;min-width:46px;width:46px}.an-grid .s2{left:46px;min-width:70px;width:70px}.an-grid .s3{left:116px;min-width:200px;text-align:left}.an-grid .s4{left:316px;min-width:56px;width:56px;box-shadow:2px 0 3px rgba(0,0,0,.12)}
 .an-grid .sm{font-size:10.5px;font-weight:400;opacity:.8}
 .an-grid .an-in{width:70px;text-align:center;padding:4px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:inherit}
 .an-grid .an-in:focus{outline:2px solid #2563eb;background:#fff;color:#000}
@@ -539,6 +543,13 @@ tbody tr:hover td{background:color-mix(in srgb, var(--brand) 8%, var(--panel))}
 .an-grid tr.an-sum td{background:#f3f6ff;font-weight:700;color:#111}
 .an-grid .na{opacity:.4}.an-grid .bad{color:#dc2626;font-weight:700}
 .an-filters{grid-template-columns:repeat(auto-fit,minmax(160px,1fr))}
+
+.an-modal{position:fixed;inset:0;background:rgba(0,0,0,.55);z-index:600;display:grid;place-items:center;padding:16px}
+.an-mbox{background:var(--panel);color:var(--ink,inherit);border-radius:12px;max-width:980px;width:100%;max-height:90vh;overflow:auto;padding:16px}
+.an-grid .an-x{width:70px;text-align:center;padding:4px;border:1px solid var(--line);border-radius:5px;background:var(--panel);color:inherit}
+.an-grid .an-x:focus{outline:2px solid #2563eb;background:#fff;color:#000}
+.an-grid .an-x.bad{border-color:#dc2626;background:#fee2e2;color:#000}
+.an-grid td.s3{cursor:pointer}
 </style>
 </head>
 <body>
@@ -5872,7 +5883,7 @@ WIRE["exam:register"] = function(){
 /* =====================================================================
    વાર્ષિક પરિણામ પત્રક રજીસ્ટર — ફિલ્ટર + Editable Grid + રિપોર્ટ
    ===================================================================== */
-var AN = {year:"", std:"", div:"", exam:"__all__", sub:"__all__", sort:"roll", q:"", pend:{}, timer:null, saving:false, rep:"", paper:"A4", orient:"L", repStu:"__all__", lang:"gu", editable:[]};
+var AN = {year:"", std:"", div:"", exam:"__all__", sub:"__all__", sort:"roll", q:"", pend:{}, timer:null, saving:false, rep:"", paper:"A4", orient:"L", repStu:"__all__", lang:"gu", editable:[], view:"entry", mode:"all", gradeSec:false, showEx:false, showExGr:false, R:null, xt:null};
 var AN_COLS = [["પ્રથમ પરીક્ષા","પ્રથમ"],["દ્વિતીય પરીક્ષા","દ્વિતીય"],["તૃતીય પરીક્ષા","તૃતીય"],["આંતરિક મૂલ્યાંકન","આંતરિક"]];
 function exYear_(e){ return e.year || S.settings.year || ""; }
 function anYears_(){
@@ -5939,12 +5950,22 @@ function anCell_(ex, sub, id){
   return {has:true, key:key, ex:ex, v:(v == null || v === "" ? null : Number(v)), ab:ab, max:max, w:(Number(ex.weight) > 0 ? Number(ex.weight) : max),
           comps:internalComps_(ex, sub)};
 }
-function anRowCalc_(cells){
+function anScale_(){ return Number(S.settings.annualScale) > 0 ? Number(S.settings.annualScale) : 50; }
+function anExKey_(){ return AN.year + "|" + AN.std; }
+function anExtra_(id){ var m = (S.settings.annualExtra || {})[anExKey_()]; return (m && m[id]) || {}; }
+function anSetExtra_(id, patch){
+  S.settings.annualExtra = Object.assign({}, S.settings.annualExtra || {});
+  var k = anExKey_(), m = Object.assign({}, S.settings.annualExtra[k] || {});
+  m[id] = Object.assign({}, m[id] || {}, patch); S.settings.annualExtra[k] = m;
+  anSetStatus_("● સચવાય છે…");
+  clearTimeout(AN.xt); AN.xt = setTimeout(function(){ Promise.resolve(saveMeta()).then(function(){ anSetStatus_("✓ સચવાયું " + new Date().toLocaleTimeString("en-GB")); }); }, 900);
+}
+function anRowCalc_(cells, exempt){
   var got = 0, max = 0, any = false, lastAb = false, lastIdx = -1;
   cells.forEach(function(c, i){ if (c.has && i < 3) lastIdx = i; });
   cells.forEach(function(c, i){
     if (!c.has) return;
-    if (c.ab){ any = true; max += c.w; if (i === lastIdx) lastAb = true; }
+    if (c.ab){ any = true; if (!exempt){ max += c.w; if (i === lastIdx) lastAb = true; } }
     else if (c.v != null){ any = true; max += c.w; got += c.max ? c.v / c.max * c.w : 0; }
   });
   got = Math.round(got * 100) / 100;
@@ -5953,18 +5974,32 @@ function anRowCalc_(cells){
 }
 /* એક વિદ્યાર્થીનું કુલ + ક્રમ */
 function anStudentCalc_(s, subs, exams){
-  var got = 0, max = 0, pending = 0, fail = false, any = false;
+  var got = 0, max = 0, pending = 0, fail = false, any = false, X = anExtra_(s.id), exempt = !!X.med;
+  var exG = [0,0,0,0], exM = [0,0,0,0];
   subs.forEach(function(sb){
     if (!takesSubject(s, sb) || !anCounted_(sb)) return;
-    var r = anRowCalc_(exams.map(function(ex){ return anCell_(ex, sb, s.id); }));
+    var cells = exams.map(function(ex){ return anCell_(ex, sb, s.id); });
+    var r = anRowCalc_(cells, exempt);
+    cells.forEach(function(c, i){
+      if (!c.has) return;
+      if (!c.ab && c.v != null){ exG[i] += c.v; exM[i] += c.max; } else if (c.ab && !exempt){ exM[i] += c.max; }
+    });
     if (!r.any){ pending++; return; }
     any = true; got += r.got; max += r.max; if (r.result === "નાપાસ") fail = true;
   });
-  var pct = max ? got / max * 100 : 0;
-  return {s:s, got:Math.round(got * 100) / 100, max:max, pct:pct, any:any, pending:pending, grade:any ? grade(pct) : "", result: !any ? "—" : (fail ? "નાપાસ" : "પાસ"), rankClass:null, rankStd:null};
+  var sc = anScale_() / 100, bon = AN.mode !== "marks";
+  var sid = bon ? (Number(X.s) || 0) : 0, kri = bon ? (Number(X.k) || 0) : 0;
+  got = Math.round(got * 100) / 100;
+  var gotS = Math.round(got * sc * 100) / 100, maxS = max * sc, fin = Math.round((gotS + sid + kri) * 100) / 100;
+  var pct = maxS ? Math.min(100, fin / maxS * 100) : 0;
+  if (kri > 0) fail = pct < anPassPct_();
+  else if (any && pct < anPassPct_()) fail = true;
+  return {s:s, got:got, max:max, gotS:gotS, maxS:maxS, sid:sid, kri:kri, fin:fin, pct:pct, any:any, pending:pending,
+    grade: any && AN.mode !== "nograde" ? grade(pct) : "", result: !any ? "—" : (fail ? "નાપાસ" : "પાસ"), rankClass:null, rankStd:null,
+    exPct: exM.map(function(m, i){ return m ? exG[i] / m * 100 : null; }), exGot:exG, exMax:exM, med:!!X.med};
 }
-function anAllCalc_(){
-  var subs = anSubjects_(), exams = anColExams_(), saveDiv = AN.div;
+function anAllCalc_(only){
+  var subs = only || anSubjects_(), exams = anColExams_(), saveDiv = AN.div;
   AN.div = ""; var all = anStudents_(false); AN.div = saveDiv;
   var calcs = all.map(function(s){ return anStudentCalc_(s, subs, exams); });
   var ranked = calcs.filter(function(c){ return c.any && c.max > 0; });
@@ -5995,7 +6030,7 @@ function annualView_(){
   if (!AN.year || years.indexOf(AN.year) < 0) AN.year = S.settings.year || years[0] || "";
   if (!AN.std) AN.std = stdList().filter(function(x){ return S.exams.some(function(e){ return String(e.std) === x; }); })[0] || stdList()[0] || "9";
   var stds = []; for (var i = 1; i <= 12; i++) stds.push(String(i));
-  return '<div class="card"><div class="an-title">પરિણામ પત્રક</div>'
+  return '<div class="card"><div class="an-banner"><div class="an-bh">વિદ્યાર્થીના નામ પર ડબલ ક્લિક કરવાથી<br>દરેક પરીક્ષાના ગુણ જોવા મળશે.</div><div class="an-title">પરિણામ પત્રક</div><div class="an-bh"></div></div>'
     + '<div class="grid an-filters">'
     + '<div><label class="f">શૈક્ષણિક વર્ષ</label><select id="an_year">'+opts(years, AN.year)+'</select></div>'
     + '<div><label class="f">ધોરણ</label><select id="an_std">'+opts(stds, AN.std)+'</select></div>'
@@ -6003,10 +6038,13 @@ function annualView_(){
     + '<div><label class="f">પરીક્ષા</label><select id="an_exam"></select></div>'
     + '<div><label class="f">વિષય</label><select id="an_sub"></select></div>'
     + '<div><label class="f">ગોઠવણી</label><select id="an_sort"><option value="roll"'+(AN.sort==="roll"?" selected":"")+'>રોલ નંબર પ્રમાણે</option><option value="gr"'+(AN.sort==="gr"?" selected":"")+'>જી.આર. નંબર પ્રમાણે</option></select></div>'
+    + '<div><label class="f">ગણતરી</label><select id="an_mode"><option value="all">સિદ્ધિ ગુણ + કૃપા ગુણ + ગ્રેડીંગ ગણવા</option><option value="nograde">સિદ્ધિ + કૃપા ગુણ (ગ્રેડ વગર)</option><option value="marks">ફક્ત મેળવેલ ગુણ (સિદ્ધિ/કૃપા વગર)</option></select></div>'
+    + '<div style="display:flex;align-items:flex-end"><label style="display:flex;gap:6px;align-items:center;font-size:13.5px;padding-bottom:8px"><input type="checkbox" id="an_gsec" style="width:auto"> ગૌણ વિષયમાં ગ્રેડ બતાવવા</label></div>'
     + '<div><label class="f">વિદ્યાર્થીનું નામ શોધો</label><input id="an_q" placeholder="નામ / જી.આર. / રોલ" value="'+esc(AN.q)+'" data-lang="gu"></div>'
     + '</div>'
     + '<details style="margin-top:10px" id="an_cfg"><summary style="cursor:pointer;font-weight:600">⚙ પરીક્ષાની કોલમ ગોઠવણી અને પાસિંગ ટકા</summary>'
     + '<div class="grid" style="margin-top:8px" id="an_map"></div></details>'
+    + '<div class="row" style="margin-top:12px;gap:8px"><button class="btn sm" id="an_v_entry">✏ ગુણ એન્ટ્રી (વિષય મુજબ)</button><button class="btn sm sec" id="an_v_res">📋 પરિણામ (વિદ્યાર્થી મુજબ)</button></div>'
     + '<div class="row an-tools" style="margin-top:12px;gap:8px;flex-wrap:wrap;align-items:center">'
     + '<button class="btn" id="an_save">💾 સેવ</button><span id="an_status" class="hint" style="margin:0"></span>'
     + '<span style="flex:1"></span>'
@@ -6017,11 +6055,12 @@ function annualView_(){
     + '<div id="an_bulk" style="display:none;margin-top:10px"></div>'
     + '<p class="hint" style="margin:8px 0 0">Tab/Enter થી આગળના ખાનામાં જાઓ • ↑ ↓ તીરથી ઉપર-નીચે • ગેરહાજર માટે <b>AB</b> લખો • Excel માંથી કોપી કરી ખાનામાં Paste (Ctrl+V) કરી શકાય • ફેરફાર આપોઆપ સચવાય છે.</p>'
     + '</div>'
-    + '<div class="card"><div id="an_stats" class="hint" style="margin:0 0 8px"></div><div id="an_gridwrap" class="an-wrap"></div></div>'
+    + '<div class="card"><div id="an_stats" class="hint" style="margin:0 0 8px"></div><div id="an_gridwrap" class="an-wrap"></div>'
+    + '<div id="an_opts" class="row" style="justify-content:space-between;margin-top:8px;display:none"><label style="display:flex;gap:6px;align-items:center;font-size:13.5px"><input type="checkbox" id="an_showexg" style="width:auto"> ગ્રેડ પરિણામ (પરીક્ષા વાઇઝ ગ્રેડ)</label><label style="display:flex;gap:6px;align-items:center;font-size:13.5px"><input type="checkbox" id="an_showex" style="width:auto"> પરીક્ષા વાઇઝ ટોટલ ટકા</label></div></div>'
     + '<div class="card"><h3 style="margin-top:0">📑 પત્રક / રિપોર્ટ</h3><div class="row" style="gap:8px;flex-wrap:wrap" id="an_repbar">'
-    + [["cum","સંચિત પત્રક"],["reg","રજિસ્ટર"],["sum","સમરી"],["ms","ગુણ પત્રક (માર્કશીટ)"],["memo","મેમો"],["rep","રિપોર્ટ"]].map(function(r){
+    + [["cum","સંગ્રહીત પત્રક"],["reg","રજિસ્ટર"],["sum","સમરી"],["ms","ગુણ પત્રક (માર્કશીટ)"],["merit","મેરીટ"],["memo","મેમો"],["rep","★ રિપોર્ટ"]].map(function(r){
         return '<button class="btn sm sec" data-rep="'+r[0]+'">'+r[1]+'</button>'; }).join("")
-    + '</div><div id="an_prev" style="margin-top:12px"></div></div>'
+    + '<button class="btn sm sec" id="an_exit">બહાર</button></div><div id="an_prev" style="margin-top:12px"></div></div>'
     + '<div class="card" id="an_hist" style="display:none"></div>';
 }
 function anRender_(){
@@ -6033,13 +6072,17 @@ function anRender_(){
   $("an_sub").innerHTML = '<option value="__all__">બધા વિષય (વિદ્યાર્થી પ્રમાણે)</option>' + D.subs.map(function(sb){ return '<option'+(AN.sub===sb?" selected":"")+'>'+esc(sb)+'</option>'; }).join("");
   if (AN.sub !== "__all__" && D.subs.indexOf(AN.sub) < 0) AN.sub = "__all__";
   $("an_sub").value = AN.sub;
+  $("an_mode").value = AN.mode; $("an_gsec").checked = AN.gradeSec; $("an_showex").checked = AN.showEx; $("an_showexg").checked = AN.showExGr;
+  $("an_v_entry").className = "btn sm" + (AN.view === "entry" ? "" : " sec"); $("an_v_res").className = "btn sm" + (AN.view === "result" ? "" : " sec");
+  $("an_opts").style.display = AN.view === "result" ? "flex" : "none";
   /* કોલમ ગોઠવણી */
   var all = anExams_();
   var map = anMap_();
   $("an_map").innerHTML = AN_COLS.map(function(c, i){
       return '<div><label class="f">'+esc(c[0])+'</label><select data-map="'+i+'"><option value="">— નથી —</option>'
         + all.map(function(e){ return '<option value="'+e.id+'"'+(map[i]===e.id?" selected":"")+'>'+esc(e.name)+' ('+esc(e.kind||"મુખ્ય પરીક્ષા")+')</option>'; }).join("") + '</select></div>';
-    }).join("") + '<div><label class="f">પાસિંગ ટકા (કુલ ગુણના)</label><input id="an_passpct" type="number" min="1" max="100" value="'+anPassPct_()+'"></div>';
+    }).join("") + '<div><label class="f">પાસિંગ ટકા (કુલ ગુણના)</label><input id="an_passpct" type="number" min="1" max="100" value="'+anPassPct_()+'"></div>'
+    + '<div><label class="f">કુલ મેળવેલ ગુણ ગણતરી % (મૂળભૂત 50)</label><input id="an_scale" type="number" min="1" max="100" value="'+anScale_()+'"></div>';
   Array.prototype.forEach.call($("an_map").querySelectorAll("select[data-map]"), function(sel){
     sel.onchange = async function(){
       var cur = anMap_(); cur[Number(sel.dataset.map)] = sel.value;
@@ -6048,9 +6091,11 @@ function anRender_(){
     };
   });
   $("an_passpct").onchange = async function(){ S.settings.annualPassPct = Number($("an_passpct").value) || 33; await saveMeta(); anRender_(); };
+  $("an_scale").onchange = async function(){ S.settings.annualScale = Math.min(100, Number($("an_scale").value) || 50); await saveMeta(); anRender_(); };
   anGrid_(D);
 }
 function anGrid_(D){
+  if (AN.view === "result") return anResGrid_();
   D = D || anAllCalc_();
   var exams = D.exams, subs = AN.sub === "__all__" ? D.subs : [AN.sub];
   var kids = anStudents_(true), rows = [], n = 0;
@@ -6066,23 +6111,23 @@ function anGrid_(D){
   var stk = ' style="left:0"', H = '';
   H += '<table class="an-grid"><thead><tr>'
     + '<th class="stk s1">ક્રમ</th><th class="stk s2">જી.આર.</th><th class="stk s3">વિદ્યાર્થીનું પૂરું નામ</th>'
-    + '<th>રોલ નં.</th><th>હાજરી નં.</th><th>વિષય</th><th>ટોટલમાં ગણવું</th>'
+    + '<th class="stk s4">રોલ નં.</th><th>હાજરી નં.</th><th>વિષય</th><th>ટોટલમાં ગણવું</th>'
     + AN_COLS.map(function(c, i){ return '<th'+(editCol.indexOf(i) > -1 && exams[i] ? ' class="ed"' : '')+'>'+esc(c[0])+(exams[i] ? '<br><span class="sm">'+esc(exams[i].name)+(exams[i].weight ? ' · વેઇટેજ '+esc(exams[i].weight) : '')+'</span>' : '<br><span class="sm">—</span>')+'</th>'; }).join("")
     + '<th>કુલ ગુણ</th><th>મેળવેલ ગુણ</th><th>ટકાવારી</th><th>ગ્રેડ</th><th>પરિણામ</th></tr></thead><tbody>';
   rows.forEach(function(r, ri){
     var s = r.s;
     if (r.sum){
       var c = D.by[s.id] || {};
-      H += '<tr class="an-sum" data-sumof="'+s.id+'"><td class="stk s1"></td><td class="stk s2"></td><td class="stk s3">'+esc(stuFull_(s))+' — કુલ</td><td colspan="4" style="text-align:right">'
+      H += '<tr class="an-sum" data-sumof="'+s.id+'"><td class="stk s1"></td><td class="stk s2"></td><td class="stk s3">'+esc(stuFull_(s))+' — કુલ</td><td class="stk s4"></td><td colspan="3" style="text-align:right">'
         + (c.rankClass ? 'વર્ગ ક્રમ: <b>'+c.rankClass+'</b> &nbsp; ધોરણ ક્રમ: <b>'+c.rankStd+'</b>' : '') + (c.pending ? ' &nbsp; <span class="sm">(બાકી વિષય: '+c.pending+')</span>' : '') + '</td>'
         + '<td colspan="4"></td><td class="v-max">'+(c.any ? c.max : '')+'</td><td class="v-got">'+(c.any ? anFmt_(c.got) : '')+'</td><td class="v-pct">'+(c.any ? c.pct.toFixed(2)+'%' : '')+'</td><td class="v-gr">'+(c.grade || '')+'</td><td class="v-res '+(c.result==="નાપાસ"?"bad":"")+'">'+(c.result||'')+'</td></tr>';
       return;
     }
     var cells = exams.map(function(ex){ return anCell_(ex, r.sub, s.id); });
-    var calc = anRowCalc_(cells);
+    var calc = anRowCalc_(cells, !!anExtra_(s.id).med), hideM = AN.gradeSec && !anCounted_(r.sub);
     H += '<tr data-s="'+s.id+'" data-sub="'+esc(r.sub)+'">'
       + '<td class="stk s1">'+(single || r.first ? r.n : '')+'</td><td class="stk s2">'+(single || r.first ? esc(s.gr) : '')+'</td><td class="stk s3">'+(single || r.first ? esc(stuFull_(s)) : '')+'</td>'
-      + '<td>'+(single || r.first ? esc(s.roll || "") : '')+'</td><td>'+(single || r.first ? esc(s.attNo || s.roll || "") : '')+'</td><td style="text-align:left">'+esc(r.sub)+'</td>'
+      + '<td class="stk s4">'+(single || r.first ? esc(s.roll || "") : '')+'</td><td>'+(single || r.first ? esc(s.attNo || s.roll || "") : '')+'</td><td style="text-align:left">'+esc(r.sub)+'</td>'
       + '<td><input type="checkbox" tabindex="-1" data-cnt="'+esc(r.sub)+'"'+(anCounted_(r.sub) ? " checked" : "")+'></td>';
     cells.forEach(function(c, i){
       if (!c.has){ H += '<td class="na">—</td>'; return; }
@@ -6091,7 +6136,7 @@ function anGrid_(D){
       H += '<td class="cell"><input data-lang="off" class="an-in'+(ro?" ro":"")+(c.ab?" ab":"")+'" data-c="'+i+'" data-key="'+esc(c.key)+'" data-max="'+c.max+'" value="'+esc(disp)+'"'
         + (ro ? ' readonly tabindex="-1"' : '') + ' title="'+(c.comps ? 'આંતરિક ગુણ ઘટકવાર એન્ટ્રીથી ભરાય (ગુણની એન્ટ્રી › આંતરિક ગુણ)' : 'મહત્તમ '+c.max)+'" inputmode="decimal" autocomplete="off"></td>';
     });
-    H += '<td class="v-max">'+(calc.any ? calc.max : '')+'</td><td class="v-got">'+(calc.any ? anFmt_(calc.got) : '')+'</td><td class="v-pct">'+(calc.any ? calc.pct.toFixed(2)+'%' : '')+'</td><td class="v-gr">'+calc.grade+'</td><td class="v-res '+(calc.result==="નાપાસ"?"bad":"")+'">'+calc.result+'</td></tr>';
+    H += '<td class="v-max">'+(calc.any && !hideM ? calc.max : '')+'</td><td class="v-got">'+(calc.any && !hideM ? anFmt_(calc.got) : '')+'</td><td class="v-pct">'+(calc.any && !hideM ? calc.pct.toFixed(2)+'%' : '')+'</td><td class="v-gr">'+calc.grade+'</td><td class="v-res '+(calc.result==="નાપાસ"?"bad":"")+'">'+calc.result+'</td></tr>';
   });
   H += '</tbody></table>';
   $("an_gridwrap").innerHTML = rows.length ? H : '<div class="empty">આ ફિલ્ટર મુજબ કોઈ વિદ્યાર્થી/વિષય નથી.</div>';
@@ -6100,6 +6145,125 @@ function anGrid_(D){
   $("an_stats").innerHTML = 'વિદ્યાર્થી: <b>'+kids.length+'</b> &nbsp; પાસ: <b>'+nn.pass+'</b> &nbsp; નાપાસ: <b>'+nn.fail+'</b> &nbsp; ગુણ બાકી: <b>'+nn.none+'</b>'
     + (exams.every(function(e){ return !e; }) ? ' &nbsp; <b style="color:var(--bad)">⚠ આ ધોરણ/વર્ષની પરીક્ષા નથી — પહેલાં પરીક્ષા ઉમેરો અથવા ઉપરની કોલમ ગોઠવણી કરો.</b>' : '');
   anWireGrid_(D);
+}
+
+/* ---------------- વિદ્યાર્થી મુજબ પરિણામ ---------------- */
+function anResStats_(D, kids){
+  var nn = {pass:0, fail:0, none:0};
+  kids.forEach(function(s){ var c = D.by[s.id]; if (!c || !c.any) nn.none++; else if (c.result === "પાસ") nn.pass++; else nn.fail++; });
+  $("an_stats").innerHTML = 'વિદ્યાર્થી: <b>'+kids.length+'</b> &nbsp; પાસ: <b>'+nn.pass+'</b> &nbsp; નાપાસ: <b>'+nn.fail+'</b> &nbsp; ગુણ બાકી: <b>'+nn.none+'</b>'
+    + (D.exams.every(function(e){ return !e; }) ? ' &nbsp; <b style="color:var(--bad)">⚠ આ ધોરણ/વર્ષની પરીક્ષા નથી — પહેલાં પરીક્ષા ઉમેરો અથવા ઉપરની કોલમ ગોઠવણી કરો.</b>' : '');
+}
+function anResGrid_(){
+  var D = anAllCalc_(AN.sub === "__all__" ? null : [AN.sub]); AN.R = D;
+  var kids = anStudents_(true), sc = anScale_(), H = "";
+  var bon = AN.mode !== "marks";
+  H += '<table class="an-grid an-res"><thead><tr><th class="stk s1">ક્રમ</th><th class="stk s2">જી.આર.</th><th class="stk s3">વિદ્યાર્થીનું નામ</th><th class="stk s4">રોલ નં.</th><th>કુલ ગુણ</th><th>કુલ મેળવેલ ગુણ</th><th>કુલ મેળવેલ ગુણ '+sc+'%</th>'
+    + (bon ? '<th class="ed">સિદ્ધિ ગુણ</th><th class="ed">કૃપા ગુણ</th>' : '') + '<th>અંતિમ ગુણ</th><th>ટકા</th><th>ક્રમાંક<br><span class="sm">વર્ગ (ધોરણ)</span></th>'
+    + (AN.mode !== "nograde" ? '<th>ગ્રેડ</th>' : '') + '<th>પરિણામ</th><th>વિકલાંગ</th><th>મેડીકલ સર્ટી</th>';
+  if (AN.showEx) D.exams.forEach(function(e, i){ if (e) H += '<th>'+esc(AN_COLS[i][1])+' ટોટલ ટકા</th>'; });
+  if (AN.showExGr) D.exams.forEach(function(e, i){ if (e) H += '<th>'+esc(AN_COLS[i][1])+' ગ્રેડ</th>'; });
+  H += '</tr></thead><tbody>';
+  kids.forEach(function(s, i){
+    var X = anExtra_(s.id);
+    H += '<tr data-rs="'+s.id+'"><td class="stk s1">'+(i+1)+'</td><td class="stk s2">'+esc(s.gr)+'</td><td class="stk s3" title="ડબલ ક્લિક કરો — દરેક પરીક્ષાના ગુણ">'+esc(stuFull_(s))+'</td><td class="stk s4">'+esc(s.roll || "")+'</td>'
+      + '<td class="r-max"></td><td class="r-got"></td><td class="r-gs"></td>'
+      + (bon ? '<td class="cell"><input data-lang="off" class="an-x" data-id="'+s.id+'" data-f="s" value="'+esc(X.s == null ? "" : X.s)+'" inputmode="decimal" autocomplete="off"></td>'
+        + '<td class="cell"><input data-lang="off" class="an-x" data-id="'+s.id+'" data-f="k" value="'+esc(X.k == null ? "" : X.k)+'" inputmode="decimal" autocomplete="off"></td>' : '')
+      + '<td class="r-fin"></td><td class="r-pct"></td><td class="r-rank"></td>' + (AN.mode !== "nograde" ? '<td class="r-gr"></td>' : '') + '<td class="r-res"></td>'
+      + '<td><input type="checkbox" tabindex="-1" data-dis="'+s.id+'"'+(s.disable === "Yes" ? " checked" : "")+'></td>'
+      + '<td><input type="checkbox" tabindex="-1" data-med="'+s.id+'"'+(X.med ? " checked" : "")+'></td>';
+    if (AN.showEx) D.exams.forEach(function(e, k){ if (e) H += '<td class="r-ex'+k+'"></td>'; });
+    if (AN.showExGr) D.exams.forEach(function(e, k){ if (e) H += '<td class="r-eg'+k+'"></td>'; });
+    H += '</tr>';
+  });
+  H += '</tbody></table>';
+  $("an_gridwrap").innerHTML = kids.length ? H : '<div class="empty">આ ફિલ્ટર મુજબ કોઈ વિદ્યાર્થી નથી.</div>';
+  anResWire_();
+  anResUpdate_();
+}
+function anResUpdate_(){
+  var D = anAllCalc_(AN.sub === "__all__" ? null : [AN.sub]); AN.R = D;
+  var kids = anStudents_(true);
+  Array.prototype.forEach.call($("an_gridwrap").querySelectorAll("tr[data-rs]"), function(tr){
+    var c = D.by[tr.dataset.rs]; if (!c) return;
+    function set(cls, t){ var e = tr.querySelector("."+cls); if (e) e.textContent = t; }
+    set("r-max", c.any ? c.max : ""); set("r-got", c.any ? anFmt_(c.got) : ""); set("r-gs", c.any ? anFmt_(c.gotS) : "");
+    set("r-fin", c.any ? anFmt_(c.fin) : ""); set("r-pct", c.any ? c.pct.toFixed(2)+"%" : ""); set("r-rank", c.rankClass ? c.rankClass+" ("+c.rankStd+")" : "");
+    set("r-gr", c.grade || "");
+    var rr = tr.querySelector(".r-res"); if (rr){ rr.textContent = c.result; rr.className = "r-res " + (c.result === "નાપાસ" ? "bad" : ""); }
+    c.exPct.forEach(function(v, i){ set("r-ex"+i, v == null ? "" : v.toFixed(1)+"%"); set("r-eg"+i, v == null || AN.mode === "nograde" ? "" : grade(v)); });
+  });
+  anResStats_(D, kids);
+}
+function anResWire_(){
+  var wrap = $("an_gridwrap");
+  var ins = Array.prototype.slice.call(wrap.querySelectorAll("input.an-x"));
+  ins.forEach(function(inp){
+    inp.onfocus = function(){ inp.select(); };
+    inp.oninput = function(){
+      var t = inp.value.trim().replace(",", "."), c = AN.R && AN.R.by[inp.dataset.id];
+      if (t !== "" && !/^\d+(\.\d{1,2})?$/.test(t)){ inp.classList.add("bad"); inp.title = "ફક્ત આંકડા લખો"; return; }
+      var n = t === "" ? null : Number(t), lim = c ? Math.max(c.maxS || 0, 0) : 100;
+      if (n != null && lim && n > lim){ inp.classList.add("bad"); inp.title = "કુલ ગુણ (" + anFmt_(lim) + ") થી વધુ ન ચાલે"; return; }
+      inp.classList.remove("bad"); inp.title = "";
+      var patch = {}; patch[inp.dataset.f] = n; anSetExtra_(inp.dataset.id, patch); anResUpdate_();
+    };
+    inp.onkeydown = function(e){
+      var col = ins.filter(function(x){ return x.dataset.f === inp.dataset.f; }), k = col.indexOf(inp), go = null;
+      if (e.key === "Enter" || e.key === "ArrowDown"){ e.preventDefault(); go = col[k + (e.shiftKey ? -1 : 1)]; }
+      else if (e.key === "ArrowUp"){ e.preventDefault(); go = col[k - 1]; }
+      if (go) go.focus();
+    };
+  });
+  Array.prototype.forEach.call(wrap.querySelectorAll("input[data-med]"), function(cb){
+    cb.onchange = function(){ anSetExtra_(cb.dataset.med, {med:cb.checked}); anResUpdate_(); };
+  });
+  Array.prototype.forEach.call(wrap.querySelectorAll("input[data-dis]"), function(cb){
+    cb.onchange = async function(){
+      var st = S.students.find(function(x){ return x.id === cb.dataset.dis; }); if (!st) return;
+      await put("students", Object.assign({}, st, {disable: cb.checked ? "Yes" : "No"}));
+      toast(cb.checked ? "વિકલાંગ તરીકે નોંધાયું" : "વિકલાંગ નોંધ કાઢી");
+    };
+  });
+}
+function anDetail_(id){
+  var st = S.students.find(function(x){ return x.id === id; }); if (!st) return;
+  var D = anAllCalc_(), c = D.by[id]; if (!c) return;
+  var X = anExtra_(id), exempt = !!X.med;
+  var th = 'border:1px solid #888;padding:4px 7px;background:#eef1f8;color:#111;font-weight:700;font-size:12.5px;text-align:center', td = 'border:1px solid #888;padding:4px 7px;text-align:center;font-size:13px';
+  var head = '<tr><th style="'+th+'">વિષય</th>' + D.exams.map(function(e, i){ return e ? '<th style="'+th+'">'+esc(AN_COLS[i][0])+'<br><span style="font-weight:400;font-size:11px">'+esc(e.name)+'</span></th>' : ""; }).join("")
+    + '<th style="'+th+'">કુલ</th><th style="'+th+'">મેળવેલ</th><th style="'+th+'">ટકા</th><th style="'+th+'">ગ્રેડ</th><th style="'+th+'">પરિણામ</th></tr>';
+  var body = D.subs.filter(function(sb){ return takesSubject(st, sb); }).map(function(sb){
+    var cells = D.exams.map(function(ex){ return anCell_(ex, sb, id); }), r = anRowCalc_(cells, exempt), gs = AN.gradeSec && !anCounted_(sb);
+    return '<tr><td style="'+td+';text-align:left">'+esc(sb)+(anCounted_(sb) ? "" : ' <span style="font-size:11px">(ટોટલમાં નહીં)</span>')+'</td>'
+      + cells.map(function(cc, i){ return D.exams[i] ? '<td style="'+td+'">'+(!cc.has ? "—" : cc.ab ? '<b style="color:#b45309">AB</b>' : (cc.v == null ? "" : anFmt_(cc.v)+' <span style="font-size:11px;opacity:.7">/'+cc.max+'</span>'))+'</td>' : ""; }).join("")
+      + '<td style="'+td+'">'+(r.any && !gs ? r.max : "")+'</td><td style="'+td+'">'+(r.any && !gs ? anFmt_(r.got) : "")+'</td><td style="'+td+'">'+(r.any && !gs ? r.pct.toFixed(1)+"%" : "")+'</td><td style="'+td+'">'+esc(r.grade)+'</td>'
+      + '<td style="'+td+(r.result === "નાપાસ" ? ';color:#b91c1c;font-weight:700' : '')+'">'+esc(r.result)+'</td></tr>';
+  }).join("");
+  var foot = '<tr style="font-weight:700;background:#f3f6ff;color:#111"><td style="'+td+';text-align:left">પરીક્ષા વાઇઝ ટોટલ</td>'
+    + D.exams.map(function(e, i){ return e ? '<td style="'+td+'">'+anFmt_(c.exGot[i])+' / '+c.exMax[i]+(c.exPct[i] == null ? "" : '<br><span style="font-weight:400">'+c.exPct[i].toFixed(1)+'%</span>')+'</td>' : ""; }).join("")
+    + '<td style="'+td+'">'+(c.any ? c.max : "")+'</td><td style="'+td+'">'+(c.any ? anFmt_(c.got) : "")+'</td><td style="'+td+'">'+(c.any ? c.pct.toFixed(1)+"%" : "")+'</td><td style="'+td+'">'+esc(c.grade)+'</td><td style="'+td+'">'+esc(c.result)+'</td></tr>';
+  var box = document.createElement("div"); box.className = "an-modal"; box.id = "an_modal";
+  box.innerHTML = '<div class="an-mbox"><div class="row" style="justify-content:space-between;align-items:center"><h3 style="margin:0">'+esc(stuFull_(st))+' <span style="font-weight:400;font-size:13px">— જી.આર. '+esc(st.gr)+' • ધોરણ '+esc(st.std)+'/'+esc(st.div || "")+' • રોલ '+esc(st.roll || "—")+'</span></h3><button class="btn sm sec" id="an_mx">✖ બંધ</button></div>'
+    + '<div class="tw" style="margin-top:10px"><table style="border-collapse:collapse;width:100%"><thead>'+head+'</thead><tbody>'+body+foot+'</tbody></table></div>'
+    + '<p style="margin:10px 0 0;font-size:13px">કુલ મેળવેલ ગુણ '+anScale_()+'%: <b>'+anFmt_(c.gotS)+'</b> &nbsp; સિદ્ધિ ગુણ: <b>'+anFmt_(c.sid)+'</b> &nbsp; કૃપા ગુણ: <b>'+anFmt_(c.kri)+'</b> &nbsp; અંતિમ ગુણ: <b>'+anFmt_(c.fin)+' / '+anFmt_(c.maxS)+'</b> &nbsp; ટકા: <b>'+(c.any ? c.pct.toFixed(2)+"%" : "—")+'</b> &nbsp; ક્રમાંક (વર્ગ/ધોરણ): <b>'+(c.rankClass ? c.rankClass+" / "+c.rankStd : "—")+'</b></p></div>';
+  document.body.appendChild(box);
+  function close(){ var m = $("an_modal"); if (m) m.remove(); document.removeEventListener("keydown", esc_); }
+  function esc_(e){ if (e.key === "Escape") close(); }
+  document.addEventListener("keydown", esc_);
+  $("an_mx").onclick = close; box.onclick = function(e){ if (e.target === box) close(); };
+}
+function anTableRows_(){
+  var heads = Array.prototype.map.call($("an_gridwrap").querySelectorAll("thead th"), function(t){ return t.innerText.replace(/\s+/g, " ").trim(); });
+  var out = [];
+  Array.prototype.forEach.call($("an_gridwrap").querySelectorAll("tbody tr"), function(tr){
+    var o = {}; Array.prototype.forEach.call(tr.children, function(td, i){
+      var inp = td.querySelector("input.an-x, input.an-in"), cb = td.querySelector("input[type=checkbox]");
+      o[heads[i] || ("કોલમ" + i)] = inp ? inp.value : cb ? (cb.checked ? "હા" : "ના") : td.innerText.replace(/\s+/g, " ").trim();
+    }); out.push(o);
+  });
+  return out;
 }
 function anSetStatus_(t, bad){ var e = $("an_status"); if (e){ e.textContent = t; e.style.color = bad ? "var(--bad)" : ""; } }
 function anSchedule_(){
@@ -6111,9 +6275,9 @@ function anRefreshRow_(tr){
   var s = S.students.find(function(x){ return x.id === tr.dataset.s; }); if (!s) return;
   var D = AN.D || (AN.D = anAllCalc_());
   var cells = D.exams.map(function(ex){ return anCell_(ex, tr.dataset.sub, s.id); });
-  var c = anRowCalc_(cells);
+  var c = anRowCalc_(cells, !!anExtra_(s.id).med), hm = AN.gradeSec && !anCounted_(tr.dataset.sub);
   function set(cls, t){ var e = tr.querySelector("."+cls); if (e) e.textContent = t; }
-  set("v-max", c.any ? c.max : ""); set("v-got", c.any ? anFmt_(c.got) : ""); set("v-pct", c.any ? c.pct.toFixed(2)+"%" : ""); set("v-gr", c.grade);
+  set("v-max", c.any && !hm ? c.max : ""); set("v-got", c.any && !hm ? anFmt_(c.got) : ""); set("v-pct", c.any && !hm ? c.pct.toFixed(2)+"%" : ""); set("v-gr", c.grade);
   var r = tr.querySelector(".v-res"); if (r){ r.textContent = c.result; r.className = "v-res " + (c.result === "નાપાસ" ? "bad" : ""); }
   /* વિદ્યાર્થીનો કુલ (બધા વિષય મોડમાં) */
   var sumTr = $("an_gridwrap").querySelector('tr[data-sumof="'+s.id+'"]');
@@ -6231,7 +6395,7 @@ async function anSave_(manual){
 function anCopyText_(){
   var lines = [];
   Array.prototype.forEach.call($("an_gridwrap").querySelectorAll("tr"), function(tr){
-    var cells = Array.prototype.map.call(tr.children, function(td){ var i = td.querySelector("input.an-in"); var c = td.querySelector("input[data-cnt]"); return i ? i.value : c ? (c.checked ? "હા" : "ના") : td.innerText.replace(/\s+/g, " ").trim(); });
+    var cells = Array.prototype.map.call(tr.children, function(td){ var i = td.querySelector("input.an-in, input.an-x"); var c = td.querySelector("input[data-cnt], input[data-med], input[data-dis]"); return i ? i.value : c ? (c.checked ? "હા" : "ના") : td.innerText.replace(/\s+/g, " ").trim(); });
     lines.push(cells.join("\t"));
   });
   return lines.join("\n");
@@ -6327,22 +6491,22 @@ function anRep_(name){
   function sname(s){ return esc(stuFull_(s)); }
   if (name === "cum"){
     var mySubs = subs;
-    html = anHead_("સંચિત પત્રક") + '<div style="font-size:12px;margin-bottom:6px">પરીક્ષાઓ: <b>'+esc(exTitle || "—")+'</b></div>'
+    html = anHead_("સંગ્રહીત પત્રક") + '<div style="font-size:12px;margin-bottom:6px">પરીક્ષાઓ: <b>'+esc(exTitle || "—")+'</b></div>'
       + '<table style="border-collapse:collapse;width:100%;font-size:11.5px"><thead><tr><th style="'+th+'">ક્રમ</th><th style="'+th+'">રોલ</th><th style="'+th+'">જી.આર.</th><th style="'+th+'text-align:left">નામ</th>'
       + mySubs.map(function(sb){ return '<th style="'+th+'">'+esc(sb)+'</th>'; }).join("")
-      + '<th style="'+th+'">કુલ</th><th style="'+th+'">મેળવેલ</th><th style="'+th+'">ટકા</th><th style="'+th+'">ગ્રેડ</th><th style="'+th+'">પરિણામ</th><th style="'+th+'">વર્ગ ક્રમ</th><th style="'+th+'">ધોરણ ક્રમ</th></tr></thead><tbody>'
+      + '<th style="'+th+'">કુલ</th><th style="'+th+'">મેળવેલ</th><th style="'+th+'">અંતિમ ગુણ</th><th style="'+th+'">ટકા</th><th style="'+th+'">ગ્રેડ</th><th style="'+th+'">પરિણામ</th><th style="'+th+'">વર્ગ ક્રમ</th><th style="'+th+'">ધોરણ ક્રમ</th></tr></thead><tbody>'
       + kids.map(function(s, i){
           var c = D.by[s.id];
           var o = {"ક્રમ":i+1, "રોલ":s.roll||"", "જી.આર.":s.gr, "નામ":stuFull_(s)};
           var tds = mySubs.map(function(sb){
             if (!takesSubject(s, sb)) { o[sb] = "·"; return '<td style="'+td+'">·</td>'; }
-            var r = anRowCalc_(exams.map(function(ex){ return anCell_(ex, sb, s.id); }));
-            o[sb] = r.any ? r.got : ""; return '<td style="'+td+(r.result==="નાપાસ"?'color:#b91c1c;':'')+'">'+(r.any ? anFmt_(r.got) : "—")+'</td>';
+            var r = anRowCalc_(exams.map(function(ex){ return anCell_(ex, sb, s.id); }), !!anExtra_(s.id).med), gsm = AN.gradeSec && !anCounted_(sb);
+            o[sb] = gsm ? r.grade : (r.any ? r.got : ""); return '<td style="'+td+(r.result==="નાપાસ"?'color:#b91c1c;':'')+'">'+(gsm ? esc(r.grade || "—") : (r.any ? anFmt_(r.got) : "—"))+'</td>';
           }).join("");
-          o["કુલ"] = c.any ? c.max : ""; o["મેળવેલ"] = c.any ? c.got : ""; o["ટકા"] = c.any ? Number(c.pct.toFixed(2)) : ""; o["ગ્રેડ"] = c.grade; o["પરિણામ"] = c.result; o["વર્ગ ક્રમ"] = c.rankClass||""; o["ધોરણ ક્રમ"] = c.rankStd||"";
+          o["કુલ"] = c.any ? c.max : ""; o["મેળવેલ"] = c.any ? c.got : ""; o["અંતિમ ગુણ"] = c.any ? c.fin : ""; o["ટકા"] = c.any ? Number(c.pct.toFixed(2)) : ""; o["ગ્રેડ"] = c.grade; o["પરિણામ"] = c.result; o["વર્ગ ક્રમ"] = c.rankClass||""; o["ધોરણ ક્રમ"] = c.rankStd||"";
           xl.push(o);
           return '<tr><td style="'+td+'">'+(i+1)+'</td><td style="'+td+'">'+esc(s.roll||"")+'</td><td style="'+td+'">'+esc(s.gr)+'</td><td style="'+td+'text-align:left">'+sname(s)+'</td>'+tds
-            + '<td style="'+td+'">'+(c.any ? c.max : "—")+'</td><td style="'+td+'">'+(c.any ? anFmt_(c.got) : "—")+'</td><td style="'+td+'">'+(c.any ? c.pct.toFixed(1)+"%" : "—")+'</td><td style="'+td+'">'+esc(c.grade||"—")+'</td>'
+            + '<td style="'+td+'">'+(c.any ? c.max : "—")+'</td><td style="'+td+'">'+(c.any ? anFmt_(c.got) : "—")+'</td><td style="'+td+'">'+(c.any ? anFmt_(c.fin) : "—")+'</td><td style="'+td+'">'+(c.any ? c.pct.toFixed(1)+"%" : "—")+'</td><td style="'+td+'">'+esc(c.grade||"—")+'</td>'
             + '<td style="'+td+(c.result==="નાપાસ"?'color:#b91c1c;font-weight:700;':'')+'">'+esc(c.result)+'</td><td style="'+td+'font-weight:700">'+(c.rankClass||"—")+'</td><td style="'+td+'font-weight:700">'+(c.rankStd||"—")+'</td></tr>';
         }).join("") + '</tbody></table>' + anSign_();
   } else if (name === "reg"){
@@ -6377,6 +6541,16 @@ function anRep_(name){
       + '<div style="margin-top:12px;font-size:13px">કુલ વિદ્યાર્થી (ગુણ ભરાયેલા): <b>'+tot.length+'</b> &nbsp; પાસ: <b>'+pp+'</b> &nbsp; નાપાસ: <b>'+(tot.length-pp)+'</b> &nbsp; પરિણામ: <b>'+(tot.length ? (pp/tot.length*100).toFixed(1) : "0.0")+'%</b></div>'
       + '<div style="margin-top:6px;font-size:13px">ગ્રેડ પ્રમાણે: '+Object.keys(gd).sort().map(function(g){ return '<b>'+esc(g)+'</b>: '+gd[g]; }).join(" &nbsp; ")+'</div>'
       + '<div style="margin-top:10px;font-size:13px"><b>ટોપર્સ:</b> '+tot.slice().sort(function(a, b){ return D.by[b.id].pct - D.by[a.id].pct; }).slice(0, 5).map(function(s){ return esc(stuFull_(s))+' ('+D.by[s.id].pct.toFixed(1)+'%)'; }).join(" &nbsp;•&nbsp; ")+'</div>' + anSign_();
+  } else if (name === "merit"){
+    var ml = kids.filter(function(s){ var c = D.by[s.id]; return c && c.any && c.max > 0; }).sort(function(a, b){ return D.by[b.id].pct - D.by[a.id].pct; });
+    html = anHead_("મેરીટ યાદી") + '<table style="border-collapse:collapse;width:100%;font-size:12.5px"><thead><tr>'
+      + ["મેરીટ ક્રમ","વર્ગ ક્રમ","જી.આર.","રોલ","નામ","વર્ગ","કુલ ગુણ","મેળવેલ ગુણ","અંતિમ ગુણ","ટકા","ગ્રેડ","પરિણામ"].map(function(h){ return '<th style="'+th+'">'+h+'</th>'; }).join("") + '</tr></thead><tbody>'
+      + ml.map(function(s, i){
+          var c = D.by[s.id];
+          xl.push({"મેરીટ ક્રમ":c.rankStd,"વર્ગ ક્રમ":c.rankClass,"જી.આર.":s.gr,"રોલ":s.roll||"","નામ":stuFull_(s),"વર્ગ":s.div||"","કુલ ગુણ":c.max,"મેળવેલ ગુણ":c.got,"અંતિમ ગુણ":c.fin,"ટકા":Number(c.pct.toFixed(2)),"ગ્રેડ":c.grade,"પરિણામ":c.result});
+          return '<tr><td style="'+td+'font-weight:700">'+c.rankStd+'</td><td style="'+td+'">'+c.rankClass+'</td><td style="'+td+'">'+esc(s.gr)+'</td><td style="'+td+'">'+esc(s.roll||"")+'</td><td style="'+td+'text-align:left">'+sname(s)+'</td><td style="'+td+'">'+esc(s.div||"")+'</td>'
+            + '<td style="'+td+'">'+c.max+'</td><td style="'+td+'">'+anFmt_(c.got)+'</td><td style="'+td+'">'+anFmt_(c.fin)+'</td><td style="'+td+'">'+c.pct.toFixed(2)+'%</td><td style="'+td+'">'+esc(c.grade||"—")+'</td><td style="'+td+(c.result==="નાપાસ"?'color:#b91c1c;font-weight:700':'')+'">'+esc(c.result)+'</td></tr>';
+        }).join("") + '</tbody></table>' + anSign_();
   } else if (name === "rep"){
     html = anHead_("પરીક્ષા અને વિષયવાર રિપોર્ટ") + '<table style="border-collapse:collapse;width:100%;font-size:12px"><thead><tr><th style="'+th+'" rowspan="2">વિષય</th>'
       + AN_COLS.map(function(c, i){ return exams[i] ? '<th style="'+th+'" colspan="5">'+esc(c[0])+'<br><span style="font-weight:400">'+esc(exams[i].name)+'</span></th>' : ""; }).join("")
@@ -6425,14 +6599,15 @@ function anMarksheet_(s, D, en){
   var rowsH = "", no = 0;
   D.subs.forEach(function(sb){
     if (!takesSubject(s, sb)) return;
-    var cells = D.exams.map(function(ex){ return anCell_(ex, sb, s.id); }), r = anRowCalc_(cells);
+    var cells = D.exams.map(function(ex){ return anCell_(ex, sb, s.id); }), r = anRowCalc_(cells, !!anExtra_(s.id).med), gs = AN.gradeSec && !anCounted_(sb);
     no++;
     rowsH += '<tr><td style="'+td+'">'+no+'</td><td style="'+td+';text-align:left">'+esc(en ? anSubEn_(sb) : sb)+(anCounted_(sb) ? "" : " *")+'</td>'
-      + cells.map(function(cc){ return '<td style="'+td+'">'+(!cc.has ? "—" : cc.ab ? L.abs : (cc.v == null ? "" : anFmt_(cc.v)))+'</td>'; }).join("")
-      + '<td style="'+td+'">'+(r.any ? r.max : "")+'</td><td style="'+td+'">'+(r.any ? anFmt_(r.got) : "")+'</td><td style="'+td+'">'+esc(r.grade)+'</td></tr>';
+      + cells.map(function(cc){ return '<td style="'+td+'">'+(gs ? "" : !cc.has ? "—" : cc.ab ? L.abs : (cc.v == null ? "" : anFmt_(cc.v)))+'</td>'; }).join("")
+      + '<td style="'+td+'">'+(r.any && !gs ? r.max : "")+'</td><td style="'+td+'">'+(r.any && !gs ? anFmt_(r.got) : "")+'</td><td style="'+td+'">'+esc(r.grade)+'</td></tr>';
   });
   var colH = D.exams.map(function(ex, i){ return '<th style="'+th+'">'+esc(en ? ["1st Exam","2nd Exam","3rd/Annual","Internal"][i] : AN_COLS[i][0])+(ex && !en ? '<br><span style="font-weight:400;font-size:10.5px">'+esc(ex.name)+'</span>' : "")+'</th>'; }).join("");
   var ok = c.result === "પાસ";
+  var bonusLine = (c.sid || c.kri) ? '<p style="margin:8px 0 0">'+(en ? "Achievement marks" : "સિદ્ધિ ગુણ")+': <b>'+anFmt_(c.sid)+'</b> &nbsp; '+(en ? "Grace marks" : "કૃપા ગુણ")+': <b>'+anFmt_(c.kri)+'</b> &nbsp; '+(en ? "Final marks" : "અંતિમ ગુણ")+': <b>'+anFmt_(c.fin)+' / '+anFmt_(c.maxS)+'</b></p>' : '';
   return '<div class="anms" style="background:#fff;color:#111;padding:20px 24px;border:1.5px solid #111;font-size:13px;line-height:1.55;'+(en ? 'font-family:Georgia,serif' : '')+'">'
     + '<div style="text-align:center;border-bottom:2.5px solid #111;padding-bottom:8px"><div style="font-size:21px;font-weight:700">'+lgImg_()+esc(name)+'</div>'
     + (addr ? '<div style="font-size:12.5px">'+esc(addr)+'</div>' : '') + '<div style="font-size:12.5px">'+L.yr+': <b>'+esc(AN.year)+'</b></div>'
@@ -6442,7 +6617,7 @@ function anMarksheet_(s, D, en){
     + '<table style="border-collapse:collapse;width:100%;font-size:12.5px"><thead><tr><th style="'+th+'">'+L.no+'</th><th style="'+th+';text-align:left">'+L.sub+'</th>'+colH+'<th style="'+th+'">'+L.tot+'</th><th style="'+th+'">'+L.got+'</th><th style="'+th+'">'+L.gr2+'</th></tr></thead><tbody>'
     + rowsH + '<tr style="font-weight:700"><td style="'+td+'"></td><td style="'+td+';text-align:left">'+L.all+'</td>'+D.exams.map(function(){ return '<td style="'+td+'"></td>'; }).join("")
     + '<td style="'+td+'">'+(c.any ? c.max : "")+'</td><td style="'+td+'">'+(c.any ? anFmt_(c.got) : "")+'</td><td style="'+td+'">'+esc(c.grade || "")+'</td></tr></tbody></table>'
-    + '<p style="margin-top:10px">'+L.pct+': <b>'+(c.any ? c.pct.toFixed(2)+"%" : "—")+'</b> &nbsp;&nbsp; '+L.gr2+': <b>'+esc(c.grade || "—")+'</b> &nbsp;&nbsp; '+L.res+': <b style="color:'+(ok?'#166534':'#b91c1c')+'">'+(c.any ? (ok ? L.pass : L.fail) : "—")+'</b>'
+    + bonusLine + '<p style="margin-top:10px">'+L.pct+': <b>'+(c.any ? c.pct.toFixed(2)+"%" : "—")+'</b> &nbsp;&nbsp; '+L.gr2+': <b>'+esc(c.grade || "—")+'</b> &nbsp;&nbsp; '+L.res+': <b style="color:'+(ok?'#166534':'#b91c1c')+'">'+(c.any ? (ok ? L.pass : L.fail) : "—")+'</b>'
     + (c.rankClass ? ' &nbsp;&nbsp; '+L.rank+': <b>'+c.rankClass+' / '+c.rankStd+'</b>' : '') + '</p>'
     + '<div style="margin-top:28px;display:flex;justify-content:space-between;align-items:flex-end;font-weight:700"><span>'+L.parent+'</span><span style="text-align:center">'+classSign_(s.std, s.div)+L.teacher+'</span><span style="text-align:center">'+princSign_()+L.prin+(k.principal ? '<div style="font-weight:400">'+esc(k.principal)+'</div>' : '')+'</span></div></div>';
 }
@@ -6461,7 +6636,7 @@ function anPrevUI_(name){
   AN.rep = name;
   var box = $("an_prev"); if (!name){ box.innerHTML = ""; return; }
   var D = anAllCalc_(), kids = anStudents_(false);
-  var titles = {cum:"સંચિત પત્રક", reg:"રજિસ્ટર", sum:"સમરી", ms:"ગુણ પત્રક (માર્કશીટ)", memo:"મેમો", rep:"રિપોર્ટ"};
+  var titles = {cum:"સંગ્રહીત પત્રક", reg:"રજિસ્ટર", sum:"સમરી", ms:"ગુણ પત્રક (માર્કશીટ)", merit:"મેરીટ", memo:"મેમો", rep:"રિપોર્ટ"};
   var need = (name === "ms" || name === "memo");
   var bar = '<div class="row" style="gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:10px"><b style="font-size:15px">'+esc(titles[name])+'</b>'
     + '<div><label class="f">કાગળ</label><select id="rp_paper"><option'+(AN.paper==="A4"?" selected":"")+'>A4</option><option'+(AN.paper==="Legal"?" selected":"")+'>Legal</option></select></div>'
@@ -6505,6 +6680,16 @@ function annualWire_(){
   $("an_sub").onchange = function(){ AN.sub = $("an_sub").value; AN.D = null; anGrid_(); };
   $("an_sort").onchange = function(){ AN.sort = $("an_sort").value; AN.D = null; anGrid_(); };
   var qt; $("an_q").oninput = function(){ AN.q = $("an_q").value; clearTimeout(qt); qt = setTimeout(function(){ AN.D = null; anGrid_(); }, 200); };
+  $("an_mode").onchange = function(){ AN.mode = $("an_mode").value; AN.D = null; anRender_(); };
+  $("an_gsec").onchange = function(){ AN.gradeSec = $("an_gsec").checked; AN.D = null; anGrid_(); };
+  $("an_showex").onchange = function(){ AN.showEx = $("an_showex").checked; anGrid_(); };
+  $("an_showexg").onchange = function(){ AN.showExGr = $("an_showexg").checked; anGrid_(); };
+  $("an_v_entry").onclick = function(){ AN.view = "entry"; AN.D = null; anRender_(); };
+  $("an_v_res").onclick = function(){ anSave_(false).then(function(){ AN.view = "result"; AN.D = null; anRender_(); }); };
+  $("an_gridwrap").ondblclick = function(e){
+    var td = e.target.closest ? e.target.closest("td.s3") : null; if (!td) return;
+    var tr = td.parentNode, id = tr.dataset.s || tr.dataset.rs || tr.dataset.sumof; if (id) anDetail_(id);
+  };
   $("an_save").onclick = function(){ anSave_(true); };
   $("an_bulkbtn").onclick = anBulkUI_;
   $("an_histbtn").onclick = anHistory_;
@@ -6513,7 +6698,7 @@ function annualWire_(){
     if (navigator.clipboard && navigator.clipboard.writeText) navigator.clipboard.writeText(t).then(function(){ toast("કોપી થયું — Excel માં Paste કરો"); }, function(){ toast("કોપી ન થયું"); });
     else { var ta = document.createElement("textarea"); ta.value = t; document.body.appendChild(ta); ta.select(); try{ document.execCommand("copy"); toast("કોપી થયું"); }catch(e){} ta.remove(); }
   };
-  $("an_xls").onclick = function(){ anXls_(anFlatRows_(AN.D || anAllCalc_()), "પરિણામ-પત્રક-ધોરણ" + AN.std); };
+  $("an_xls").onclick = function(){ anXls_(AN.view === "result" ? anTableRows_() : anFlatRows_(AN.D || anAllCalc_()), "પરિણામ-પત્રક-ધોરણ" + AN.std); };
   Array.prototype.forEach.call(document.querySelectorAll("[data-rep]"), function(b){ b.onclick = function(){ anSave_(false).then(function(){ anPrevUI_(b.dataset.rep); }); }; });
   anRender_();
 }
