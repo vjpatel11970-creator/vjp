@@ -7386,7 +7386,7 @@ function certFrame_(o){
   var k = S.school || {}, en = !!o.en, s = o.s || {};
   var L = en ? {no:"Certificate No.", gr:"G.R. No.", uid:"UID No.", date:"Date", place:"Place", forS:"For, ", prin:"Principal", photo:"PHOTO", dise:"DISE Code", ph:"Phone", em:"E-mail", stamp:"SCHOOL SEAL"}
              : {no:"પ્રમાણપત્ર નં.", gr:"જી.આર. નં.", uid:"યુ.આઇ.ડી. નં.", date:"તારીખ", place:"સ્થળ", forS:"વતી, ", prin:"પ્રિન્સીપાલ", photo:"ફોટો", dise:"ડાયસ કોડ", ph:"ફોન", em:"ઈ-મેલ", stamp:"શાળાની મહોર"};
-  var NV = "#12306e", TL = "#0e9aa7", OR = "#f08a24";
+  var NV = "#2c4f8f", TL = "#3c9fae", OR = "#f7b36b";
   var name = en ? schEn_().toUpperCase() : (k.name || "શાળાનું નામ");
   var addr = en ? schAddrEn_() : (esc(k.village||"")+(k.taluka?", તા. "+esc(k.taluka):"")+(k.district?", જિ. "+esc(k.district):""));
   if (en) addr = esc(addr);
@@ -7403,14 +7403,14 @@ function certFrame_(o){
     ? '<img src="'+s.photo+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block">'
     : '<span style="font-size:11px;color:#8a94a8;font-weight:600">'+L.photo+'</span>';
   var gr = (s.gr ? '<div>'+L.gr+' : <b>'+esc(s.gr)+'</b></div>' : '') + (s.suid ? '<div>'+L.uid+' : <b>'+esc(s.suid)+'</b></div>' : '');
-  return '<div class="cxb" style="max-width:690px;margin:0 auto;border:2px solid '+NV+';border-radius:10px;overflow:hidden;background:#fff;color:#1b2333;'
+  return '<div class="cxb" style="max-width:690px;margin:0 auto;border:2px solid #8fb0dd;border-radius:10px;overflow:hidden;background:#fff;color:#1b2333;'
     + (en ? 'font-family:Georgia,serif;' : '') + '-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box">'
     + '<style>.cxb b{text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px;font-weight:700}.cxb p{margin:0 0 6px}</style>'
     // header banner
-    + '<div style="position:relative;background:linear-gradient(100deg,'+NV+',#1a5fa8 55%,'+TL+');color:#fff;padding:14px 20px 40px;display:flex;align-items:center;gap:14px;-webkit-print-color-adjust:exact;print-color-adjust:exact">'
+    + '<div style="position:relative;background:linear-gradient(100deg,#dce9fb,#d5f0f3 60%,#fdeedb);color:'+NV+';padding:14px 20px 40px;display:flex;align-items:center;gap:14px;-webkit-print-color-adjust:exact;print-color-adjust:exact">'
     +   '<div style="width:68px;height:68px;border-radius:50%;background:#fff;border:3px solid '+OR+';display:flex;align-items:center;justify-content:center;flex:none;overflow:hidden">'+crest+'</div>'
     +   '<div style="flex:1;text-align:center;min-width:0">'
-    +     '<div style="font-size:'+(en?'20':'23')+'px;font-weight:800;line-height:1.25;text-shadow:0 1px 2px rgba(0,0,0,.35)">'+esc(name)+'</div>'
+    +     '<div style="font-size:'+(en?'20':'23')+'px;font-weight:800;line-height:1.25;">'+esc(name)+'</div>'
     +     '<div style="font-size:12px;margin-top:3px;opacity:.95">'+addr+'</div>'
     +     (contact ? '<div style="font-size:11px;margin-top:2px;opacity:.9">'+contact+'</div>' : '')
     +   '</div>'
@@ -7420,7 +7420,7 @@ function certFrame_(o){
     // body
     + '<div style="padding:6px 28px 14px">'
     +   '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">'
-    +     '<div style="font-size:13px;line-height:1.9;color:'+NV+'"><div>'+L.no+' : <span style="display:inline-block;min-width:90px;border-bottom:1px solid '+NV+'">&nbsp;</span></div>'+gr+'</div>'
+    +     '<div style="font-size:13px;line-height:1.9;color:'+NV+'">'+gr+'</div>'
     +     '<div style="width:84px;height:104px;border:2px solid '+NV+';border-radius:4px;background:#f4f6fb;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:none">'+photo+'</div>'
     +   '</div>'
     +   '<div style="text-align:center;margin:-34px 100px 14px">'
@@ -7435,17 +7435,14 @@ function certFrame_(o){
     +   '<div style="margin-top:34px;display:flex;justify-content:space-between;align-items:flex-end;font-size:13px">'
     +     '<div style="line-height:1.9"><div>'+L.date+' : <b>'+today()+'</b></div><div>'+L.place+' : <b>'+esc(place)+'</b></div></div>'
     +     '<div style="width:92px;height:92px;border:1.5px dashed #b6bfd2;border-radius:50%;display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;color:#aab3c7;line-height:1.3;padding:8px;box-sizing:border-box">'+L.stamp+'</div>'
-    +     '<div style="text-align:center;min-width:190px;border:1.5px solid '+NV+';border-radius:6px;padding:6px 10px 6px">'
-    +       '<div style="font-size:12px;font-weight:700;color:'+NV+'">'+L.forS+esc(name)+'</div>'
-    +       '<div style="min-height:46px;display:flex;align-items:flex-end;justify-content:center">'+princSign_()+'</div>'
-    +       '<div style="border-top:1px solid #8a94a8;margin-top:2px;padding-top:2px"><b style="text-decoration:none">'+(en ? L.prin : esc(k.principal||"આચાર્યશ્રી"))+'</b>'+(en ? '' : '<br><span style="font-size:12px">'+L.prin+'</span>')+'</div>'
+    +     '<div style="text-align:center;min-width:170px">'
+    +       '<div style="min-height:50px;display:flex;align-items:flex-end;justify-content:center">'+princSign_()+'</div>'
+    +       '<div style="border-top:1px solid #9aa5bd;margin-top:2px;padding-top:3px;font-weight:700;color:'+NV+'">'+L.prin+'</div>'
     +     '</div>'
     +   '</div>'
     + '</div>'
     // footer band
-    + '<div style="border-top:4px solid '+OR+';background:linear-gradient(100deg,'+TL+',#1a5fa8 45%,'+NV+');color:#fff;text-align:center;font-size:11.5px;padding:7px 14px;-webkit-print-color-adjust:exact;print-color-adjust:exact">'
-    +   (contact || esc(name))
-    + '</div>'
+    + '<div style="border-top:3px solid '+OR+';background:linear-gradient(100deg,#d5f0f3,#dce9fb 55%,#fdeedb);color:'+NV+';text-align:center;font-size:13px;font-weight:700;letter-spacing:1px;padding:7px 14px;-webkit-print-color-adjust:exact;print-color-adjust:exact">Knowledge is Wealth</div>'
     + '</div>';
 }
 function certBodyHTML(title, paragraphs, s){ return certFrame_({title:title, paras:paragraphs, s:s, en:false}); }
