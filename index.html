@@ -2759,7 +2759,7 @@ function printPage(title, bodyHtml, opts){
     + 'body{font-family:"Noto Sans Gujarati",sans-serif;margin:0;padding:0;width:'+pw+';'
     + (blk ? '' : 'min-height:'+ph+';display:flex;flex-direction:column;') + 'box-sizing:border-box}'
     + '@media screen{body{padding:16px;max-width:'+pw+';' + (blk ? '' : 'min-height:calc('+ph+' + 32px);') + 'margin:0 auto}}'
-    + 'table{width:100%}thead{display:table-header-group}'
+    + '*{-webkit-print-color-adjust:exact;print-color-adjust:exact}table{width:100%}thead{display:table-header-group}'
     + (opts && opts.pageNums ? '@page{@top-right{content:"Page " counter(page) " of " counter(pages);font-size:10px;font-family:sans-serif}}' : '')
     + '</style></head><body>'
     + bodyHtml + '</body></html>');
@@ -6552,40 +6552,92 @@ function anFlatRowsAll_(D, kids){
   return out;
 }
 /* વાર્ષિક માર્કશીટ (ગુજરાતી / English) */
-function anMarksheet_(s, D, en){
-  var k = S.school || {}, c = D.by[s.id] || anStudentCalc_(s, D.subs, D.exams);
-  var th = 'border:1px solid #333;padding:5px 6px;background:#eee;text-align:center', td = 'border:1px solid #333;padding:5px 6px;text-align:center';
-  var L = en ? {title:"MARKSHEET — ANNUAL RESULT", name:"Name of Student", gr:"G.R. No.", std:"Std / Div", roll:"Roll No.", yr:"Academic Year", no:"No.", sub:"Subject", tot:"Total", got:"Obtained", gr2:"Grade", pct:"Percentage", res:"Result", rank:"Rank (Class / Std)", pass:"PASS", fail:"FAIL", teacher:"Class Teacher", prin:"Principal", parent:"Parent's Sign", abs:"AB", date:"Date", all:"Total", cnt:"Subject"} :
-    {title:"ગુણ પત્રક — વાર્ષિક પરિણામ", name:"વિદ્યાર્થીનું નામ", gr:"જી.આર. નં.", std:"ધોરણ / વર્ગ", roll:"રોલ નં.", yr:"શૈક્ષણિક વર્ષ", no:"ક્રમ", sub:"વિષય", tot:"કુલ ગુણ", got:"મેળવેલ ગુણ", gr2:"ગ્રેડ", pct:"ટકાવારી", res:"પરિણામ", rank:"ક્રમ (વર્ગ / ધોરણ)", pass:"પાસ", fail:"નાપાસ", teacher:"વર્ગશિક્ષકની સહી", prin:"આચાર્યની સહી", parent:"વાલીની સહી", abs:"AB", date:"તારીખ", all:"કુલ"};
-  var nm = en ? stuEn_(s) : stuFull_(s), name = en ? schEn_() : (k.name || "શાળાનું નામ");
-  var addr = en ? schAddrEn_() : [k.village, k.city, k.taluka ? "તા. "+k.taluka : "", k.district ? "જિ. "+k.district : ""].filter(Boolean).join(", ");
-  var rowsH = "", no = 0;
+/* ---------- વાર્ષિક ગુણ પત્રક (માર્કશીટ) — રંગીન, લેટરપેડ જેવો દેખાવ ---------- */
+function anGraceAlloc_(s, D){
+  var sc = anScale_() / 100, c = D.by[s.id] || anStudentCalc_(s, D.subs, D.exams), ex0 = !!anExtra_(s.id).med, pp = anPassPct_();
+  var list = [];
   D.subs.forEach(function(sb){
     if (!takesSubject(s, sb)) return;
-    var cells = D.exams.map(function(ex){ return anCell_(ex, sb, s.id); }), r = anRowCalc_(cells, !!anExtra_(s.id).med), gs = AN.gradeSec && !anCounted_(sb);
-    no++;
-    rowsH += '<tr><td style="'+td+'">'+no+'</td><td style="'+td+';text-align:left">'+esc(en ? anSubEn_(sb) : sb)+(anCounted_(sb) ? "" : " *")+'</td>'
-      + cells.map(function(cc){ return '<td style="'+td+'">'+(gs ? "" : !cc.has ? "—" : cc.ab ? L.abs : (cc.v == null ? "" : anFmt_(cc.v)))+'</td>'; }).join("")
-      + '<td style="'+td+'">'+(r.any && !gs ? r.max : "")+'</td><td style="'+td+'">'+(r.any && !gs ? anFmt_(r.got) : "")+'</td><td style="'+td+'">'+esc(r.grade)+'</td></tr>';
+    var r = anRowCalc_(D.exams.map(function(ex){ return anCell_(ex, sb, s.id); }), ex0), counted = anCounted_(sb), ws = 0;
+    D.exams.forEach(function(ex){ if (ex && exHasSub_(ex, sb)) ws += Number(ex.weight) > 0 ? Number(ex.weight) : subjectMax(ex, sb); });
+    var mx = Math.round(ws * sc * 100) / 100, got = r.any ? Math.round(r.got * sc * 100) / 100 : 0;
+    list.push({sb:sb, r:r, counted:counted, mx:mx, ps:Math.ceil(mx * pp / 100 - 1e-9), got:got, gr:0, sec:!counted});
   });
-  var colH = D.exams.map(function(ex, i){ return '<th style="'+th+'">'+esc(en ? ["1st Exam","2nd Exam","3rd/Annual","Internal"][i] : AN_COLS[i][0])+(ex && !en ? '<br><span style="font-weight:400;font-size:10.5px">'+esc(ex.name)+'</span>' : "")+'</th>'; }).join("");
-  var ok = c.result === "પાસ";
-  var bonusLine = (c.sid || c.kri || c.vis) ? '<p style="margin:8px 0 0">'+(en ? "Achievement marks" : "સિદ્ધિ ગુણ")+': <b>'+anFmt_(c.sid)+'</b> &nbsp; '+(en ? "Distinction marks" : "વિશિષ્ટ ગુણ")+': <b>'+anFmt_(c.vis)+'</b> &nbsp; '+(en ? "Grace marks" : "કૃપા ગુણ")+': <b>'+anFmt_(c.kri)+'</b> &nbsp; '+(en ? "Final marks" : "અંતિમ ગુણ")+': <b>'+anFmt_(c.fin)+' / '+anFmt_(c.maxS)+'</b></p>' : '';
-  return '<div class="anms" style="background:#fff;color:#111;padding:20px 24px;border:1.5px solid #111;font-size:13px;line-height:1.55;'+(en ? 'font-family:Georgia,serif' : '')+'">'
-    + '<div style="text-align:center;border-bottom:2.5px solid #111;padding-bottom:8px"><div style="font-size:21px;font-weight:700">'+lgImg_()+esc(name)+'</div>'
-    + (addr ? '<div style="font-size:12.5px">'+esc(addr)+'</div>' : '') + '<div style="font-size:12.5px">'+L.yr+': <b>'+esc(AN.year)+'</b></div>'
-    + '<div style="font-size:16px;font-weight:700;margin-top:6px;text-decoration:underline">'+L.title+'</div></div>'
-    + '<table style="width:100%;margin:10px 0;font-size:13px"><tr><td style="vertical-align:top"><div>'+L.name+': <b>'+esc(nm)+'</b></div><div>'+L.gr+': <b>'+esc(s.gr)+'</b> &nbsp; '+L.roll+': <b>'+esc(s.roll || "—")+'</b></div><div>'+L.std+': <b>'+esc(s.std)+' / '+esc(en ? guLat_(s.div || "").toUpperCase() : (s.div || ""))+'</b></div></td>'
-    + (s.photo ? '<td style="width:90px;text-align:right"><img src="'+s.photo+'" style="width:78px;height:92px;object-fit:cover;border:1px solid #333"></td>' : '') + '</tr></table>'
-    + '<table style="border-collapse:collapse;width:100%;font-size:12.5px"><thead><tr><th style="'+th+'">'+L.no+'</th><th style="'+th+';text-align:left">'+L.sub+'</th>'+colH+'<th style="'+th+'">'+L.tot+'</th><th style="'+th+'">'+L.got+'</th><th style="'+th+'">'+L.gr2+'</th></tr></thead><tbody>'
-    + rowsH + '<tr style="font-weight:700"><td style="'+td+'"></td><td style="'+td+';text-align:left">'+L.all+'</td>'+D.exams.map(function(){ return '<td style="'+td+'"></td>'; }).join("")
-    + '<td style="'+td+'">'+(c.any ? c.max : "")+'</td><td style="'+td+'">'+(c.any ? anFmt_(c.got) : "")+'</td><td style="'+td+'">'+esc(c.grade || "")+'</td></tr></tbody></table>'
-    + bonusLine + '<p style="margin-top:10px">'+L.pct+': <b>'+(c.any ? c.pct.toFixed(2)+"%" : "—")+'</b> &nbsp;&nbsp; '+L.gr2+': <b>'+esc(c.grade || "—")+'</b> &nbsp;&nbsp; '+L.res+': <b style="color:'+(ok?'#166534':'#b91c1c')+'">'+(c.any ? (ok ? L.pass : L.fail) : "—")+'</b>'
-    + (c.rankClass ? ' &nbsp;&nbsp; '+L.rank+': <b>'+c.rankClass+' / '+c.rankStd+'</b>' : '') + '</p>'
-    + '<div style="margin-top:28px;display:flex;justify-content:space-between;align-items:flex-end;font-weight:700"><span>'+L.parent+'</span><span style="text-align:center">'+classSign_(s.std, s.div)+L.teacher+'</span><span style="text-align:center">'+princSign_()+L.prin+(k.principal ? '<div style="font-weight:400">'+esc(k.principal)+'</div>' : '')+'</span></div></div>';
+  var rem = c.kri || 0;
+  list.forEach(function(x){ if (!x.counted || !x.r.any || rem <= 0) return; var need = Math.max(0, x.ps - x.got), g = Math.min(Math.ceil(need - 1e-9), rem); if (g > 0){ x.gr = g; rem -= g; } });
+  list.forEach(function(x){ if (!x.counted || !x.r.any || rem <= 0) return; var cap = Math.max(0, x.mx - x.got - x.gr), g = Math.min(cap, rem); if (g > 0){ x.gr += g; rem -= g; } });
+  list.forEach(function(x){ x.fin = Math.round((x.got + x.gr) * 100) / 100; });
+  return {rows:list, c:c};
 }
-
-/* ---------- સંગ્રહિત પરિણામ પત્રક (વિદ્યાર્થી મુજબ બ્લોક) ---------- */
+function anAtt_(s){
+  var y = parseInt(String(AN.year).slice(0, 4), 10); if (!y) return {p:"", t:""};
+  var from = y + "-06-01", to = (y + 1) + "-05-31", p = 0, t = 0;
+  (S.attendance || []).forEach(function(a){
+    if (String(a.std) !== String(s.std) || String(a.div || "") !== String(s.div || "") || !a.date || a.date < from || a.date > to) return;
+    if (!a.marks || !Object.prototype.hasOwnProperty.call(a.marks, s.id)) return;
+    t++; if (a.marks[s.id] !== false) p++;
+  });
+  return t ? {p:p, t:t} : {p:"", t:""};
+}
+function anReopen_(){ return ((S.settings.annualReopen || {})[AN.year]) || ""; }
+function anMarksheet_(s, D, en){
+  var k = S.school || {}, G = anGraceAlloc_(s, D), c = G.c, sc = anScale_() / 100;
+  var P = '#6b2c91', LB = 'color:#7a1fa0;font-weight:700', VL = 'font-weight:700;color:#111';
+  var L = en ? {t1:"ANNUAL RESULT SHEET", yr:"YEAR", nm:"Name of Student", std:"Std", dv:"Div", gr:"G.R. No.", dob:"Date of Birth", seat:"Seat No.", att:"Attendance days", of:"out of",
+      no:"No.", sub:"Subject", tot:"Total Marks", pm:"Passing Marks", ob:"Marks Obtained", ach:"Achievement Marks", gc:"Grace Marks", fin:"Final Marks", all:"Total Marks",
+      res:"Result", pc:"Percentage", rk:"Rank", rd:"Result Date", ro:"School Reopens", ct:"Class Teacher", pr:"Principal", pass:"PASS", fail:"FAIL", promo:"PROMOTED"} :
+    {t1:"વાર્ષિક પરિણામ પત્રક", yr:"વર્ષ", nm:"વિદ્યાર્થીનું નામ", std:"ધોરણ", dv:"વર્ગ", gr:"જી. આર.નં.", dob:"જન્મ તારીખ", seat:"બેઠક નં.", att:"હાજરીના દિવસો", of:"માંથી",
+      no:"ક્રમ", sub:"વિષય", tot:"કુલ ગુણ", pm:"મેળવવાના ગુણ", ob:"મેળવેલ ગુણ", ach:"સિદ્ધિ ગુણ", gc:"કૃપા ગુણ", fin:"અંતિમ ગુણ", all:"કુલ ગુણ",
+      res:"પરિણામ", pc:"ટકા", rk:"રેન્ક", rd:"પરિણામ તારીખ", ro:"શાળા શરૂઆતની તારીખ", ct:"વર્ગ શિક્ષક", pr:"આચાર્ય", pass:"પાસ", fail:"નાપાસ", promo:"પ્રમોશન"};
+  var nm = en ? stuEn_(s) : [s.name, s.father, s.surname].filter(Boolean).join(" "), name = en ? schEn_() : (k.name || "શાળાનું નામ") + (k.village ? " , " + k.village : "");
+  if (en) name = schEn_();
+  var addr = en ? schAddrEn_() : ["મુ.પો-" + (k.village || ""), k.taluka ? "તા-" + k.taluka : "", k.district ? "જિ-" + k.district : ""].filter(function(x){ return x && !/^[^-]+-$/.test(x); }).join(" , ");
+  var yr = String(AN.year).replace(/^(\d{4})-(\d{2})$/, function(m, a, b){ return a + "-" + a.slice(0, 2) + b; });
+  var dd = function(v){ return v ? String(dmy(v)).replace(/\//g, "-") : ""; };
+  var at = anAtt_(s);
+  var th = 'border:1px solid '+P+';padding:5px 4px;text-align:center;color:'+P+';font-weight:700;font-size:12px;background:linear-gradient(#f6ecff,#e9d6fb)';
+  var td = 'border:1px solid #8a6aa8;padding:5px 5px;text-align:center;font-size:12.5px';
+  var no = 0, rowsH = "", totMax = 0, totGot = 0, totGr = 0;
+  G.rows.forEach(function(x, ri){
+    no++;
+    var gs = x.sec && AN.gradeSec, grd = x.r.grade || "";
+    if (x.counted){ totMax += x.mx; totGot += x.got; totGr += x.gr; }
+    var obt = !x.r.any ? "" : gs ? grd : (x.gr > 0 ? "*" : "") + anFmt_(x.got);
+    var fin = !x.r.any ? "" : gs ? grd : anFmt_(x.fin);
+    rowsH += '<tr style="background:'+(ri % 2 ? '#fbf7ff' : '#fff')+'"><td style="'+td+'">'+no+'</td><td style="'+td+';text-align:left">'+(x.sec ? '<span style="color:'+P+'">▪</span> ' : '')+esc(en ? anSubEn_(x.sb) : x.sb)+'</td>'
+      + '<td style="'+td+'">'+anFmt_(x.mx)+'</td><td style="'+td+'">'+x.ps+'</td><td style="'+td+'">'+esc(obt)+'</td><td style="'+td+'"></td>'
+      + '<td style="'+td+'">'+(x.gr > 0 ? "+"+anFmt_(x.gr) : "")+'</td><td style="'+td+';font-weight:700;'+(x.r.any && !gs && x.fin < x.ps ? 'color:#b91c1c' : '')+'">'+esc(fin)+'</td></tr>';
+  });
+  var bonus = (c.sid || 0) + (c.vis || 0);
+  var totRow = '<tr style="background:linear-gradient(#fff8dc,#ffefb0);font-weight:700"><td style="'+td+'"></td><td style="'+td+';text-align:left;color:'+P+'">'+L.all+'</td><td style="'+td+'">'+(c.any ? anFmt_(totMax) : "")+'</td><td style="'+td+'"></td>'
+    + '<td style="'+td+'">'+(c.any ? anFmt_(totGot) : "")+'</td><td style="'+td+'">'+(bonus ? anFmt_(bonus) : "")+'</td><td style="'+td+'">'+(c.kri ? anFmt_(c.kri) : "")+'</td><td style="'+td+'">'+(c.any ? anFmt_(c.fin) : "")+'</td></tr>';
+  var resTxt = !c.any ? "—" : c.result === "નાપાસ" ? L.fail : (c.kri > 0 ? L.promo : L.pass);
+  var resCol = !c.any ? '#444' : c.result === "નાપાસ" ? '#b91c1c' : (c.kri > 0 ? '#1a2fb0' : '#166534');
+  var line = 'border-bottom:1.5px solid #444;display:inline-block;min-width:';
+  var photo = s.photo ? '<img src="'+s.photo+'" alt="" style="width:74px;height:90px;object-fit:cover;border:2px solid '+P+';border-radius:6px">' : '';
+  return '<div class="anms" style="background:#fff;color:#111;padding:6px;border:3px double '+P+';border-radius:14px;font-size:13px;line-height:1.5'+(en ? ';font-family:Georgia,serif' : '')+'">'
+    + '<div style="border:1.5px solid '+P+';border-radius:10px;padding:0 0 10px;overflow:hidden">'
+    + '<div style="height:7px;background:linear-gradient(90deg,#d62828,#f77f00,#7b2cbf,#1d4ed8,#15803d)"></div>'
+    + '<div style="display:flex;align-items:center;justify-content:center;gap:14px;padding:10px 12px 0">'+lgImg_(70)
+    + '<div style="text-align:center"><div style="font-size:27px;font-weight:800;color:#d00000;line-height:1.25;text-shadow:1px 1px 0 #f3c6c6">'+esc(name)+'</div>'
+    + (addr ? '<div style="font-size:13px;color:#333;margin-top:2px">'+esc(addr)+'</div>' : '')+'</div></div>'
+    + '<div style="text-align:center;margin:12px 0 4px"><span style="display:inline-block;padding:5px 26px;border:2px solid '+P+';border-radius:12px;background:linear-gradient(#f6ecff,#e3cdfa);color:'+P+';font-weight:800;font-size:16px;box-shadow:2px 2px 0 #c9a8e6">'+L.t1+' &nbsp;'+L.yr+' '+esc(yr)+'</span></div></div>'
+    + '<div style="border:1.5px solid '+P+';border-radius:12px;margin:12px 4px 10px;padding:9px 12px;background:linear-gradient(#fff,#faf5ff)"><div style="display:flex;align-items:flex-end;gap:10px">'
+    + '<div style="flex:1"><span style="'+LB+'">'+L.nm+'</span> <span style="'+line+'60%;'+VL+';padding:0 6px;font-size:14px">'+esc(nm)+'</span></div>'
+    + '<div><span style="'+LB+'">'+L.std+' :</span> <span style="display:inline-block;min-width:34px;text-align:center;border:1.5px solid '+P+';border-radius:12px;padding:0 8px;'+VL+'">'+esc(s.std)+'</span></div>'
+    + '<div><span style="'+LB+'">'+L.dv+' :</span> <span style="display:inline-block;min-width:34px;text-align:center;border:1.5px solid '+P+';border-radius:12px;padding:0 8px;'+VL+'">'+esc(en ? guLat_(s.div || "").toUpperCase() : (s.div || ""))+'</span></div>'+(photo ? '<div style="margin:-4px 0 -6px 6px">'+photo+'</div>' : '')+'</div>'
+    + '<div style="display:flex;flex-wrap:wrap;gap:6px 18px;margin-top:9px"><span><span style="'+LB+'">'+L.gr+' :</span> <span style="'+VL+'">'+esc(s.gr)+'</span></span>'
+    + '<span><span style="'+LB+'">'+L.dob+' :</span> <span style="'+VL+'">'+esc(dd(s.dob))+'</span></span>'
+    + '<span><span style="'+LB+'">'+L.seat+' :</span> <span style="'+VL+'">'+esc(s.seat || "")+'</span></span>'
+    + '<span><span style="'+LB+'">'+L.att+'</span> <span style="'+line+'42px;text-align:center;'+VL+'">'+esc(at.p)+'</span> <span style="'+LB+'">'+L.of+'</span> <span style="'+line+'42px;text-align:center;'+VL+'">'+esc(at.t)+'</span></span></div></div>'
+    + '<div style="margin:0 4px"><table style="border-collapse:collapse;width:100%"><thead><tr><th style="'+th+'">'+L.no+'</th><th style="'+th+'">'+L.sub+'</th><th style="'+th+'">'+L.tot+'</th><th style="'+th+'">'+L.pm+'</th><th style="'+th+'">'+L.ob+'</th><th style="'+th+'">'+L.ach+'</th><th style="'+th+'">'+L.gc+'</th><th style="'+th+'">'+L.fin+'</th></tr></thead><tbody>'
+    + rowsH + totRow + '</tbody></table></div>'
+    + '<div style="margin:12px 4px 0"><table style="border-collapse:collapse;width:100%"><thead><tr><th style="'+th+'">'+L.res+'</th><th style="'+th+'">'+L.pc+'</th><th style="'+th+'">'+L.rk+'</th><th style="'+th+'">'+L.rd+'</th><th style="'+th+'">'+L.ro+'</th></tr></thead><tbody><tr style="height:34px">'
+    + '<td style="'+td+';font-weight:800;font-size:14px;color:'+resCol+'">'+esc(resTxt)+'</td><td style="'+td+';font-weight:700">'+(c.any ? c.pct.toFixed(2)+"%" : "")+'</td><td style="'+td+';font-weight:700">'+esc(c.rankClass || "")+'</td>'
+    + '<td style="'+td+';font-weight:700">'+esc(dd(anRDate_()))+'</td><td style="'+td+';font-weight:700">'+esc(dd(anReopen_()))+'</td></tr></tbody></table></div>'
+    + '<div style="margin:46px 22px 14px;display:flex;justify-content:space-between;align-items:flex-end;font-weight:800;color:'+P+';font-size:14px"><span style="text-align:center">'+classSign_(s.std, s.div)+L.ct+'</span><span style="text-align:center">'+princSign_()+L.pr+'</span></div>'
+    + '<div style="height:6px;background:linear-gradient(90deg,#15803d,#1d4ed8,#7b2cbf,#f77f00,#d62828);border-radius:0 0 8px 8px"></div></div>';
+}
 function anPresentDays_(s){
   var y = parseInt(String(AN.year).slice(0, 4), 10); if (!y) return "";
   var from = y + "-06-01", to = (y + 1) + "-05-31", n = 0, any = false;
@@ -6717,14 +6769,15 @@ function anPrevUI_(name){
   AN.rep = name;
   var box = $("an_prev"); if (!name){ box.innerHTML = ""; return; }
   var D = anAllCalc_(), kids = anStudents_(false);
-  if (!AN.orientUser) AN.orient = (name === "cum") ? "P" : "L";
+  if (!AN.orientUser) AN.orient = (name === "cum" || name === "ms") ? "P" : "L";
   var titles = {cum:"સંગ્રહિત પત્રક", reg:"રજિસ્ટર", sum:"સમરી", ms:"ગુણ પત્રક (માર્કશીટ)", merit:"મેરીટ", memo:"મેમો", rep:"રિપોર્ટ"};
   var need = (name === "ms" || name === "memo");
   var bar = '<div class="row" style="gap:10px;flex-wrap:wrap;align-items:end;margin-bottom:10px"><b style="font-size:15px">'+esc(titles[name])+'</b>'
     + '<div><label class="f">કાગળ</label><select id="rp_paper"><option'+(AN.paper==="A4"?" selected":"")+'>A4</option><option'+(AN.paper==="Legal"?" selected":"")+'>Legal</option></select></div>'
     + '<div><label class="f">દિશા</label><select id="rp_orient"><option value="P"'+(AN.orient==="P"?" selected":"")+'>Portrait</option><option value="L"'+(AN.orient==="L"?" selected":"")+'>Landscape</option></select></div>'
     + (need ? '<div><label class="f">વિદ્યાર્થી</label><select id="rp_stu"><option value="__all__">આખો વર્ગ (બધા)</option>'+kids.map(function(s){ return '<option value="'+s.id+'"'+(AN.repStu===s.id?" selected":"")+'>'+esc((s.roll||"")+" — "+stuFull_(s))+'</option>'; }).join("")+'</select></div>' : '')
-    + (name === "sum" ? '<div><label class="f">પરિણામની તારીખ</label><input type="date" id="rp_rdate" value="'+esc(anRDate_())+'"></div>' : '')
+    + ((name === "sum" || name === "ms") ? '<div><label class="f">પરિણામની તારીખ</label><input type="date" id="rp_rdate" value="'+esc(anRDate_())+'"></div>' : '')
+    + (name === "ms" ? '<div><label class="f">શાળા શરૂઆતની તારીખ</label><input type="date" id="rp_reopen" value="'+esc(anReopen_())+'"></div>' : '')
     + (name === "ms" ? '<div><label class="f">ભાષા</label><select id="rp_lang"><option value="gu"'+(AN.lang==="gu"?" selected":"")+'>ગુજરાતી</option><option value="en"'+(AN.lang==="en"?" selected":"")+'>English</option></select></div>' : '')
     + '<button class="btn" id="rp_print">🖨 પ્રિન્ટ</button><button class="btn sec" id="rp_pdf">📄 PDF</button>'
     + (name !== "ms" && name !== "memo" ? '<button class="btn sec" id="rp_xls">📊 Excel</button>' : '')
@@ -6747,6 +6800,7 @@ function anPrevUI_(name){
   }
   build();
   ["rp_paper","rp_orient","rp_stu","rp_lang"].forEach(function(id){ if ($(id)) $(id).onchange = function(){ if (id === "rp_orient") AN.orientUser = true; build(); }; });
+  if ($("rp_reopen")) $("rp_reopen").onchange = async function(){ S.settings.annualReopen = Object.assign({}, S.settings.annualReopen || {}); S.settings.annualReopen[AN.year] = $("rp_reopen").value; await saveMeta(); build(); };
   if ($("rp_rdate")) $("rp_rdate").onchange = async function(){ S.settings.annualRDate = Object.assign({}, S.settings.annualRDate || {}); S.settings.annualRDate[AN.year] = $("rp_rdate").value; await saveMeta(); build(); };
   function doPrint(){ build(); printPage(titles[name] + " — ધોરણ " + AN.std, content.html, {landscape:AN.orient === "L", paper:AN.paper, block:true, pageNums:name === "cum"}); }
   $("rp_print").onclick = doPrint;
@@ -7309,7 +7363,7 @@ WIRE["account:paygw"] = function(){
 };
 
 /* ========== રીપોર્ટસ ========== */
-function certBodyHTML(title, paragraphs, s){
+function letterBodyHTML_(title, paragraphs, s){
   var k = S.school;
   return '<div style="max-width:650px;border:3px double #111;border-radius:4px;padding:18px 24px">'
     + '<div style="border:1px solid #111;padding:8px;text-align:center;margin-bottom:4px">'
@@ -7327,6 +7381,74 @@ function certBodyHTML(title, paragraphs, s){
     + '<div>તારીખ : '+today()+'<br>સ્થળ : '+esc(k.village||"—")+'</div>'
     + '<div style="text-align:right">'+princSign_()+'<b>'+esc(k.principal||"આચાર્યશ્રી")+'</b><br>પ્રિન્સીપાલ</div></div></div>';
 }
+/* ---------- સુંદર પ્રમાણપત્ર ફ્રેમ (બધા પ્રમાણપત્રો માટે સહિયારી) ---------- */
+function certFrame_(o){
+  var k = S.school || {}, en = !!o.en, s = o.s || {};
+  var L = en ? {no:"Certificate No.", gr:"G.R. No.", uid:"UID No.", date:"Date", place:"Place", forS:"For, ", prin:"Principal", photo:"PHOTO", dise:"DISE Code", ph:"Phone", em:"E-mail", stamp:"SCHOOL SEAL"}
+             : {no:"પ્રમાણપત્ર નં.", gr:"જી.આર. નં.", uid:"યુ.આઇ.ડી. નં.", date:"તારીખ", place:"સ્થળ", forS:"વતી, ", prin:"પ્રિન્સીપાલ", photo:"ફોટો", dise:"ડાયસ કોડ", ph:"ફોન", em:"ઈ-મેલ", stamp:"શાળાની મહોર"};
+  var NV = "#12306e", TL = "#0e9aa7", OR = "#f08a24";
+  var name = en ? schEn_().toUpperCase() : (k.name || "શાળાનું નામ");
+  var addr = en ? schAddrEn_() : (esc(k.village||"")+(k.taluka?", તા. "+esc(k.taluka):"")+(k.district?", જિ. "+esc(k.district):""));
+  if (en) addr = esc(addr);
+  var place = en ? placeEn_() : (k.village || "—");
+  var contact = [k.udise ? (L.dise+" : "+k.udise) : "", k.phone ? (L.ph+" : "+k.phone) : "", k.email ? (L.em+" : "+k.email) : ""].filter(Boolean).map(esc).join("&nbsp;&nbsp;|&nbsp;&nbsp;");
+  var tt = String(o.title || ""), main = tt, sub = "";
+  var m = tt.match(/^(.*?)\s*\((.+)\)\s*$/);
+  if (m){ main = m[1]; sub = m[2]; }
+  if (en) main = main.toUpperCase();
+  var src = logoSrc_();
+  var crest = src ? '<img src="'+src+'" alt="" style="max-width:54px;max-height:54px;object-fit:contain">'
+                  : '<span style="font-size:30px;font-weight:800;color:'+NV+'">'+esc(String(name).charAt(0))+'</span>';
+  var photo = (s.photo && /^data:image\//.test(s.photo))
+    ? '<img src="'+s.photo+'" alt="" style="width:100%;height:100%;object-fit:cover;display:block">'
+    : '<span style="font-size:11px;color:#8a94a8;font-weight:600">'+L.photo+'</span>';
+  var gr = (s.gr ? '<div>'+L.gr+' : <b>'+esc(s.gr)+'</b></div>' : '') + (s.suid ? '<div>'+L.uid+' : <b>'+esc(s.suid)+'</b></div>' : '');
+  return '<div class="cxb" style="max-width:690px;margin:0 auto;border:2px solid '+NV+';border-radius:10px;overflow:hidden;background:#fff;color:#1b2333;'
+    + (en ? 'font-family:Georgia,serif;' : '') + '-webkit-print-color-adjust:exact;print-color-adjust:exact;box-sizing:border-box">'
+    + '<style>.cxb b{text-decoration:underline;text-underline-offset:4px;text-decoration-thickness:1px;font-weight:700}.cxb p{margin:0 0 6px}</style>'
+    // header banner
+    + '<div style="position:relative;background:linear-gradient(100deg,'+NV+',#1a5fa8 55%,'+TL+');color:#fff;padding:14px 20px 40px;display:flex;align-items:center;gap:14px;-webkit-print-color-adjust:exact;print-color-adjust:exact">'
+    +   '<div style="width:68px;height:68px;border-radius:50%;background:#fff;border:3px solid '+OR+';display:flex;align-items:center;justify-content:center;flex:none;overflow:hidden">'+crest+'</div>'
+    +   '<div style="flex:1;text-align:center;min-width:0">'
+    +     '<div style="font-size:'+(en?'20':'23')+'px;font-weight:800;line-height:1.25;text-shadow:0 1px 2px rgba(0,0,0,.35)">'+esc(name)+'</div>'
+    +     '<div style="font-size:12px;margin-top:3px;opacity:.95">'+addr+'</div>'
+    +     (contact ? '<div style="font-size:11px;margin-top:2px;opacity:.9">'+contact+'</div>' : '')
+    +   '</div>'
+    +   '<div style="width:68px;flex:none"></div>'
+    +   '<svg viewBox="0 0 700 36" preserveAspectRatio="none" style="position:absolute;left:0;bottom:-1px;width:100%;height:34px"><path d="M0 14 C110 40 230 -6 360 16 S600 38 700 8 L700 36 L0 36Z" fill="'+OR+'"/><path d="M0 22 C120 44 250 4 380 24 S610 40 700 18 L700 36 L0 36Z" fill="#fff"/></svg>'
+    + '</div>'
+    // body
+    + '<div style="padding:6px 28px 14px">'
+    +   '<div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px">'
+    +     '<div style="font-size:13px;line-height:1.9;color:'+NV+'"><div>'+L.no+' : <span style="display:inline-block;min-width:90px;border-bottom:1px solid '+NV+'">&nbsp;</span></div>'+gr+'</div>'
+    +     '<div style="width:84px;height:104px;border:2px solid '+NV+';border-radius:4px;background:#f4f6fb;display:flex;align-items:center;justify-content:center;overflow:hidden;flex:none">'+photo+'</div>'
+    +   '</div>'
+    +   '<div style="text-align:center;margin:-34px 100px 14px">'
+    +     '<div style="display:inline-block;font-size:21px;font-weight:800;color:'+NV+';border-bottom:3px solid '+OR+';padding:0 10px 2px;line-height:1.4">'+esc(main)+'</div>'
+    +     (sub ? '<div style="font-size:11.5px;letter-spacing:1.5px;color:'+TL+';font-weight:700;margin-top:3px">'+esc(sub)+'</div>' : '')
+    +   '</div>'
+    +   (o.extra || '')
+    +   '<div style="margin-top:6px;text-align:center;font-size:15px;line-height:2.2">'
+    +     o.paras.map(function(x){ return '<p>'+x+'</p>'; }).join("")
+    +   '</div>'
+    // bottom
+    +   '<div style="margin-top:34px;display:flex;justify-content:space-between;align-items:flex-end;font-size:13px">'
+    +     '<div style="line-height:1.9"><div>'+L.date+' : <b>'+today()+'</b></div><div>'+L.place+' : <b>'+esc(place)+'</b></div></div>'
+    +     '<div style="width:92px;height:92px;border:1.5px dashed #b6bfd2;border-radius:50%;display:flex;align-items:center;justify-content:center;text-align:center;font-size:10px;color:#aab3c7;line-height:1.3;padding:8px;box-sizing:border-box">'+L.stamp+'</div>'
+    +     '<div style="text-align:center;min-width:190px;border:1.5px solid '+NV+';border-radius:6px;padding:6px 10px 6px">'
+    +       '<div style="font-size:12px;font-weight:700;color:'+NV+'">'+L.forS+esc(name)+'</div>'
+    +       '<div style="min-height:46px;display:flex;align-items:flex-end;justify-content:center">'+princSign_()+'</div>'
+    +       '<div style="border-top:1px solid #8a94a8;margin-top:2px;padding-top:2px"><b style="text-decoration:none">'+(en ? L.prin : esc(k.principal||"આચાર્યશ્રી"))+'</b>'+(en ? '' : '<br><span style="font-size:12px">'+L.prin+'</span>')+'</div>'
+    +     '</div>'
+    +   '</div>'
+    + '</div>'
+    // footer band
+    + '<div style="border-top:4px solid '+OR+';background:linear-gradient(100deg,'+TL+',#1a5fa8 45%,'+NV+');color:#fff;text-align:center;font-size:11.5px;padding:7px 14px;-webkit-print-color-adjust:exact;print-color-adjust:exact">'
+    +   (contact || esc(name))
+    + '</div>'
+    + '</div>';
+}
+function certBodyHTML(title, paragraphs, s){ return certFrame_({title:title, paras:paragraphs, s:s, en:false}); }
 /* ---------- અંગ્રેજી રિપોર્ટ માટે અંગ્રેજી નામ ---------- */
 function titleEn_(t){ return String(t || "").replace(/\s+/g," ").trim().replace(/(^|[\s.\-(])([a-z])/g, function(m,a,b){ return a + b.toUpperCase(); }); }
 function stuEn_(s){
@@ -7355,24 +7477,7 @@ function placeEn_(){
   var k = S.school || {};
   return k.cityEn || (k.addressEn ? String(k.addressEn).split(",")[0].trim() : "") || titleEn_(guLat_(k.village || k.city || "")) || "—";
 }
-function certBodyHTMLEn(title, paragraphs, s){
-  var k = S.school;
-  return '<div style="max-width:650px;border:3px double #111;border-radius:4px;padding:18px 24px;font-family:Georgia,serif">'
-    + '<div style="border:1px solid #111;padding:8px;text-align:center;margin-bottom:4px">'
-    + '<div style="font-size:19px;font-weight:700;color:#1a2f6b">'+lgImg_()+esc(schEn_().toUpperCase())+'</div></div>'
-    + '<div style="text-align:center;font-size:12px;color:#1a2f6b;font-weight:600;margin-bottom:2px">'
-    + esc(schAddrEn_())+'</div>'
-    + (k.udise ? '<div style="text-align:center;font-size:12px;font-weight:700">DISE Code : '+esc(k.udise)+'</div>' : "")
-    + '<div style="text-align:center;margin:14px 0"><span style="display:inline-block;border:1px solid #111;padding:5px 22px;font-weight:700;font-size:15px;color:#1a2f6b">'+esc(title.toUpperCase())+'</span></div>'
-    + '<div style="text-align:right;font-size:13px;font-weight:700;color:#1a2f6b;margin-bottom:8px">'
-    + (s && s.gr ? 'G.R. No. : '+esc(s.gr)+'<br>' : "")
-    + (s && s.suid ? 'UID NO. : '+esc(s.suid) : "")
-    + '</div>'
-    + paragraphs.map(function(p){ return '<p style="line-height:2;text-align:justify;font-size:14px">'+p+'</p>'; }).join("")
-    + '<div style="margin-top:50px;display:flex;justify-content:space-between;font-size:13px">'
-    + '<div>Date : '+today()+'<br>Place : '+esc(placeEn_())+'</div>'
-    + '<div style="text-align:right"><b>Principal</b></div></div></div>';
-}
+function certBodyHTMLEn(title, paragraphs, s){ return certFrame_({title:title, paras:paragraphs, s:s, en:true}); }
 var CERT_DEFS = {
   character:{title:"ચારિત્ર્ય પ્રમાણપત્ર (CHARACTER CERTIFICATE)", titleEn:"Character Certificate", make:function(s){ return [
     'આથી પ્રમાણિત કરવામાં આવે છે કે <b>'+esc(s.name)+'</b>, પિતા <b>'+esc(s.father)+'</b>, જી.આર. નંબર <b>'+esc(s.gr)+'</b>, આ શાળામાં ધોરણ <b>'+esc(s.std)+'</b> માં અભ્યાસ કરે છે / કરેલ છે.',
@@ -7454,39 +7559,18 @@ WIRE["reports:trialcert"] = function(){
     var s = S.students.find(function(x){return x.id===val("tr_stu");});
     if (!s) return;
     var k = S.school, en = val("tr_lang")==="English";
-    if (en){
-      $("tr_body").innerHTML = '<div style="max-width:650px;border:3px double #111;border-radius:4px;padding:18px 24px;font-family:Georgia,serif">'
-        + '<div style="border:1px solid #111;padding:8px;text-align:center;margin-bottom:4px">'
-        + '<div style="font-size:19px;font-weight:700;color:#1a2f6b">'+lgImg_()+esc(schEn_().toUpperCase())+'</div></div>'
-        + '<div style="text-align:center;margin:14px 0"><span style="display:inline-block;border:1px solid #111;padding:5px 22px;font-weight:700;font-size:15px;color:#1a2f6b">TRIAL CERTIFICATE</span></div>'
-        + '<table style="width:100%;font-size:13.5px;margin-bottom:14px"><tr>'
-        + '<td>Gr.No. : <b>'+esc(s.gr)+'</b><br>Seat No. : <b>'+esc(s.seat||"—")+'</b><br>UID No. : <b>'+esc(s.suid||"—")+'</b></td>'
-        + '<td style="text-align:right">'+esc(TR_BOARD_EN[val("tr_board")])+' Index No. : <b>'+esc(k.index||"—")+'</b><br>Stream : <b>'+esc((s.stream||"GENERAL").toUpperCase())+'</b></td>'
-        + '</tr></table>'
-        + '<p style="font-style:italic">This is to certify that</p>'
-        + '<p style="text-align:center;font-weight:700;border-bottom:1px solid #111;padding-bottom:6px">'+esc(stuEn_(s))+'</p>'
-        + '<p style="font-style:italic">has passed the <b><u>'+esc(TR_BOARD_EN[val("tr_board")])+'</u></b> examination held in <b><u>'+esc(val("tr_exam")||"—")+'</u></b> at <b><u>'+esc(TR_ATTEMPT_EN[val("tr_attempt")])+'</u></b> attempt.</p>'
-        + '<div style="margin-top:50px;display:flex;justify-content:space-between;font-size:13px">'
-        + '<div>Date : '+today()+'<br>Place : '+esc(placeEn_())+'</div>'
-        + '<div style="text-align:right"><b>Principal</b></div></div></div>';
-    } else {
-      $("tr_body").innerHTML = '<div style="max-width:650px;border:3px double #111;border-radius:4px;padding:18px 24px">'
-        + '<div style="border:1px solid #111;padding:8px;text-align:center;margin-bottom:4px">'
-        + '<div style="font-size:19px;font-weight:700;color:#1a2f6b">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div></div>'
-        + '<div style="text-align:center;font-size:12px;color:#1a2f6b;font-weight:600">'+esc(k.village||"")+(k.taluka?", તા. "+esc(k.taluka):"")+(k.district?", જિ. "+esc(k.district):"")+'</div>'
-        + (k.udise ? '<div style="text-align:center;font-size:12px;font-weight:700">DISE Code : '+esc(k.udise)+'</div>' : "")
-        + '<div style="text-align:center;margin:14px 0"><span style="display:inline-block;border:1px solid #111;padding:5px 22px;font-weight:700;font-size:15px;color:#1a2f6b">પ્રયાસ પ્રમાણપત્ર</span></div>'
-        + '<table style="width:100%;font-size:13.5px;margin-bottom:14px"><tr>'
-        + '<td>જી.આર. નં. : <b>'+esc(s.gr)+'</b><br>બેઠક નં. : <b>'+esc(s.seat||"—")+'</b><br>યુ.આઇ.ડી. નં. : <b>'+esc(s.suid||"—")+'</b></td>'
-        + '<td style="text-align:right">'+esc(val("tr_board"))+' ઇન્ડેક્સ નં. : <b>'+esc(k.index||"—")+'</b><br>પ્રવાહ : <b>'+esc(s.stream||"—")+'</b></td>'
-        + '</tr></table>'
-        + '<p style="line-height:2;font-size:14px">આથી પ્રમાણપત્ર આપવામાં આવે છે કે,</p>'
-        + '<p style="text-align:center;font-weight:700;border-bottom:1px solid #111;padding-bottom:6px">'+esc(s.name)+'</p>'
-        + '<p style="line-height:2;font-size:14px">એ માટે <b><u>'+esc(val("tr_exam")||"—")+'</u></b> માં લેવાયેલ <b><u>'+esc(val("tr_board"))+'</u></b> પરીક્ષા <b><u>'+esc(val("tr_attempt"))+'</u></b> પ્રયાસે પાસ કરેલ છે.</p>'
-        + '<div style="margin-top:50px;display:flex;justify-content:space-between;font-size:13px">'
-        + '<div>તારીખ : '+today()+'<br>સ્થળ : '+esc(k.village||"—")+'</div>'
-        + '<div style="text-align:right"><b>પ્રિન્સીપાલ</b></div></div></div>';
-    }
+    var en = val("tr_lang")==="English", k = S.school || {};
+    var row_ = function(a, b){ return '<div style="display:flex;justify-content:space-between;font-size:13px;line-height:1.9;color:#12306e"><span>'+a+'</span><span>'+b+'</span></div>'; };
+    var info = '<div style="margin:0 0 8px;padding:4px 10px;background:#f1f5fb;border-radius:6px">' + (en
+      ? row_('Seat No. : <b>'+esc(s.seat||"—")+'</b>', esc(TR_BOARD_EN[val("tr_board")])+' Index No. : <b>'+esc(k.index||"—")+'</b>') + row_('', 'Stream : <b>'+esc((s.stream||"GENERAL").toUpperCase())+'</b>')
+      : row_('બેઠક નં. : <b>'+esc(s.seat||"—")+'</b>', esc(val("tr_board"))+' ઇન્ડેક્સ નં. : <b>'+esc(k.index||"—")+'</b>') + row_('', 'પ્રવાહ : <b>'+esc(s.stream||"—")+'</b>')) + '</div>';
+    $("tr_body").innerHTML = en
+      ? certFrame_({en:true, s:s, title:"TRIAL CERTIFICATE", extra:info, paras:[
+          'This is to certify that <b>'+esc(stuEn_(s))+'</b>',
+          'has passed the <b>'+esc(TR_BOARD_EN[val("tr_board")])+'</b> examination held in <b>'+esc(val("tr_exam")||"—")+'</b> at <b>'+esc(TR_ATTEMPT_EN[val("tr_attempt")])+'</b> attempt.' ]})
+      : certFrame_({en:false, s:s, title:"પ્રયાસ પ્રમાણપત્ર", extra:info, paras:[
+          'આથી પ્રમાણપત્ર આપવામાં આવે છે કે, <b>'+esc(s.name)+'</b>',
+          'એ <b>'+esc(val("tr_exam")||"—")+'</b> માં લેવાયેલ <b>'+esc(val("tr_board"))+'</b> પરીક્ષા <b>'+esc(val("tr_attempt"))+'</b> પ્રયાસે પાસ કરેલ છે.' ]});
   }
   ["tr_stu","tr_lang","tr_board","tr_exam","tr_attempt"].forEach(function(id){
     var el = $(id); el.oninput = draw; el.onchange = draw;
@@ -7539,7 +7623,7 @@ WIRE["reports:parentletter"] = function(){
     var s = S.students.find(function(x){return x.id===val("pl_stu");});
     if (!s) return;
     var para = [esc(val("pl_msg")).replace(/__/, "<b>"+esc(s.name)+"</b>")];
-    $("pl_body").innerHTML = certBodyHTML(val("pl_sub")||"પત્ર", ['પ્રતિ,<br>શ્રી/શ્રીમતી '+esc(s.father||"વાલીશ્રી")+',<br>વાલી શ્રી '+esc(s.name)+' (જી.આર. '+esc(s.gr)+', ધો. '+esc(s.std)+')'].concat(para));
+    $("pl_body").innerHTML = letterBodyHTML_(val("pl_sub")||"પત્ર", ['પ્રતિ,<br>શ્રી/શ્રીમતી '+esc(s.father||"વાલીશ્રી")+',<br>વાલી શ્રી '+esc(s.name)+' (જી.આર. '+esc(s.gr)+', ધો. '+esc(s.std)+')'].concat(para));
   }
   $("pl_stu").onchange = draw; $("pl_sub").oninput = draw; $("pl_msg").oninput = draw;
   $("pl_prev").onclick = draw; draw();
