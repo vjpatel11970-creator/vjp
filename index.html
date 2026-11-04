@@ -1128,7 +1128,7 @@ function toast(msg){
   document.body.appendChild(t); setTimeout(function(){ t.remove(); }, 1900);
 }
 function opts(arr, sel){
-  return arr.map(function(v){ return '<option'+(String(v)===String(sel)?" selected":"")+'>'+esc(v)+'</option>'; }).join("");
+  return arr.map(function(v){ return '<option value="'+esc(v)+'"'+(String(v)===String(sel)?" selected":"")+'>'+esc(v)+'</option>'; }).join("");
 }
 function stdList(){ return list(S.settings.stds); }
 function divList(){ return list(S.settings.divs); }
@@ -5570,15 +5570,20 @@ function periodicConv_(pex, sub, sid, compMarks){
   return Math.round(Number(raw) / mx * Number(compMarks) * 2) / 2;
 }
 function marksKindWire(){
-  function draw(){
+  var lastSubs = [], curSub = "";
+  function draw(fromSel){
     var ex = S.exams.find(function(e){ return e.id === val("mk_exam"); });
     if (!ex) return;
     var allKids = S.students.filter(function(s){ return String(s.std) === String(ex.std); });
     if (!allKids.length){ $("mk_body").innerHTML = '<div class="empty">ધોરણ '+esc(ex.std)+' માં કોઈ વિદ્યાર્થી નથી.</div>'; return; }
     var exSubs = (ex.subjects && ex.subjects.length) ? ex.subjects.map(function(x){ return x.name; }) : subList();
-    var prevSub = val("mk_sub");
-    $("mk_sub").innerHTML = opts(exSubs, exSubs.indexOf(prevSub) > -1 ? prevSub : "");
-    var sub = val("mk_sub");
+    /* વિષય પસંદગી ક્રમાંક (index) થી — નામમાં વધારાની ખાલી જગ્યા હોય તો પણ પસંદગી બદલાય નહીં */
+    var mkSel = $("mk_sub");
+    if (fromSel === true && mkSel.selectedIndex > -1 && lastSubs[mkSel.selectedIndex] != null) curSub = lastSubs[mkSel.selectedIndex];
+    var six = exSubs.indexOf(curSub); if (six < 0) six = 0;
+    lastSubs = exSubs;
+    mkSel.innerHTML = exSubs.map(function(n, i){ return '<option value="'+i+'"'+(i === six ? ' selected' : '')+'>'+esc(n)+'</option>'; }).join("");
+    var sub = curSub = exSubs[six] || "";
     var kids = allKids.filter(function(s){ return takesSubject(s, sub); });
     var notSet = subjCompulsoryFor_(ex.std, sub) ? 0 : kids.filter(function(s){ return !Array.isArray(s.electives); }).length;
     var maxM = subjectMax(ex, sub);
@@ -5752,7 +5757,7 @@ function marksKindWire(){
       XLSX.writeFile(wb, sub+"-marks.xlsx");
     };
   }
-  $("mk_exam").onchange = draw; $("mk_sub").onchange = draw; draw();
+  $("mk_exam").onchange = function(){ draw(); }; $("mk_sub").onchange = function(){ draw(true); }; draw();
 }
 VIEWS["exam:marks"] = function(){
   var items = [["periodic","સામાયિક કસોટી ગુણ એન્ટ્રી"],["main","મુખ્ય પરીક્ષા ગુણ એન્ટ્રી"],
