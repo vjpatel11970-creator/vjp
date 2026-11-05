@@ -750,7 +750,7 @@ function pwaInstall(){
 }
 
 /* ---------- app data ---------- */
-var COLLS =["students","staff","books","issues","ledger","exams","attendance","letters","lcs","payslips","holidays","rooms","heads","feeMaster","timetable","examtt","leaves","scholarships","increments","payM1","payM3","payM10","payM12","smsLog","assignments","materials","notices","messages","markLog"];
+var COLLS =["students","staff","books","issues","ledger","exams","attendance","letters","lcs","payslips","holidays","rooms","heads","feeMaster","timetable","examtt","leaves","scholarships","increments","payM1","payM3","payM10","payM12","smsLog","assignments","materials","notices","messages","markLog","questions","papers"];
 var S = {
   school:{name:"",udise:"",index:"",village:"",taluka:"",district:"",principal:"",
           medium:"ગુજરાતી",type:"માધ્યમિક",board:"ગુજરાત માધ્યમિક અને ઉચ્ચતર માધ્યમિક શિક્ષણ બોર્ડ, ગાંધીનગર",
@@ -764,7 +764,7 @@ var S = {
   students:[], staff:[], books:[], issues:[], ledger:[], exams:[], attendance:[], letters:[], lcs:[], payslips:[],
   holidays:[], rooms:[], heads:[], feeMaster:[], timetable:[], examtt:[], leaves:[], scholarships:[], increments:[],
   payM1:[], payM3:[], payM10:[], payM12:[], smsLog:[],
-  assignments:[], materials:[], notices:[], markLog:[]
+  assignments:[], materials:[], notices:[], markLog:[], questions:[], papers:[]
 };
 
 var DEFAULT_SUBJECTS_STR = S.settings.subjects;
@@ -1214,13 +1214,14 @@ var MENU = [
   {k:"portal", t:"વિદ્યાર્થી પોર્ટલ", tabs:[["assign","સોંપણી / ગૃહકાર્ય"],["material","અભ્યાસ સામગ્રી"],["notice","સૂચના / કાર્યક્રમ"],["link","પોર્ટલ / એપ લિંક"]]},
   {k:"library", t:"પુસ્તકાલય", tabs:[["books","પુસ્તક યાદી"],["issue","ઇશ્યુ / પરત"]]},
   {k:"account", t:"એકાઉન્ટ", tabs:[["sum","સરવૈયું"],["entry","નવી નોંધ"],["fee","ફી ભરપાઈ"],["paygw","ઓનલાઇન પેમેન્ટ ગેટવે"]]},
+  {k:"paper", t:"પેપર જનરેશન", tabs:[["bank","પ્રશ્ન બેંક"],["make","પેપર બનાવો"],["saved","સાચવેલા પેપર"]]},
   {k:"reports", t:"રીપોર્ટસ", tabs:[["idcard","આઈ કાર્ડ"],["parentletter","વાલી-પિતાને લેટર"],["grreg","જી.આર.રજીસ્ટર"],["genreg","જનરલ રજીસ્ટર"],["leavereg","લીવીંગ રજીસ્ટર"],["namekami","નામ કમી રજીસ્ટર"],["stdwise","વર્ગ પ્રમાણે માહિતી"],["truecopy","માહિતી ખરાઈ ફોર્મ"],["feereg","ફી રજીસ્ટર"],["character","કેરેક્ટર સર્ટી"],["bonafide","બોનાફાઈડ સર્ટી"],["caste","જ્ઞાતિ પ્રમાણપત્ર"],["utaro","વયપત્રકનો ઉતારો"],["transfer","બદલી પ્રમાણપત્ર"],["trialcert","ટ્રાયલ સર્ટી"],["birth","જન્મ પ્રમાણપત્ર"],["bday","જન્મ તારીખની શુભેચ્છા"],["avgatt","સરાસરી હાજરી પત્રક"],["attmatrix","માસવાર હાજરી પત્રક"],["sms","એસ.એમ.એસ"],["smsapi","API સેટિંગ (WhatsApp/SMS)"],["scholarship","શિષ્યવૃત્તિ"],["newadm","નવા દાખલ રીપોર્ટ"],["leftrpt","છોડી ગયેલ રીપોર્ટ"],["datewise","માહિતી (તારીખ વાઈઝ)"]]}
 ];
 var cur = {m:"shala", t:"dash"};
 
 function drawMenu(){
   var groups = MENU.filter(function(m){ return !LOGGED_IN || allowed(m.k); });
-  var NAV_ICON = {shala:"🏫", system:"⚙️", staff:"👨‍🏫", student:"🎓", exam:"📝", portal:"📲", library:"📚", account:"💰", reports:"📊"};
+  var NAV_ICON = {shala:"🏫", system:"⚙️", staff:"👨‍🏫", student:"🎓", exam:"📝", portal:"📲", library:"📚", account:"💰", reports:"📊", paper:"📄"};
   $("sidebar").innerHTML = '<div class="sbrand"><div class="lg">શા</div><div><b>' + esc((S.school && S.school.name) || "શાળા વ્યવસ્થાપન") + '</b><small>શૈક્ષણિક વર્ષ ' + esc((S.settings && S.settings.year) || "—") + '</small></div></div>'
     + '<button class="navhead" id="navHome"><span><i class="ni">🏠</i>ડેશબોર્ડ (હોમ)</span></button>' + groups.map(function(m){
     var isCur = cur.m === m.k;
@@ -7582,6 +7583,435 @@ WIRE["account:paygw"] = function(){
     await saveApiSettings();
     toast("પેમેન્ટ ગેટવે સેટિંગ સાચવાયું");
   };
+};
+
+/* ========== પેપર જનરેશન (પ્રશ્ન બેંક + ઓટો પેપર + ઉકેલ) ========== */
+var PQ_TYPES = [
+  {k:"MCQ",   n:"બહુવિકલ્પી (MCQ)",    ins:"નીચેના પ્રશ્નોમાં આપેલા વિકલ્પોમાંથી સાચો વિકલ્પ પસંદ કરી ઉત્તર લખો.", m:1},
+  {k:"FIB",   n:"ખાલી જગ્યા પૂરો",      ins:"નીચેની ખાલી જગ્યાઓ પૂરો.", m:1},
+  {k:"TF",    n:"સાચું / ખોટું",        ins:"નીચેના વિધાનો સાચાં છે કે ખોટાં તે જણાવો.", m:1},
+  {k:"ONE",   n:"એક વાક્યમાં જવાબ",    ins:"નીચેના પ્રશ્નોના એક વાક્યમાં ઉત્તર આપો.", m:1},
+  {k:"SHORT", n:"ટૂંકા પ્રશ્ન",         ins:"નીચેના પ્રશ્નોના ટૂંકમાં ઉત્તર આપો.", m:2},
+  {k:"LONG",  n:"લાંબા પ્રશ્ન",         ins:"નીચેના પ્રશ્નોના વિગતવાર ઉત્તર લખો.", m:5}
+];
+var PQ_LEVELS = ["સરળ","મધ્યમ","અઘરું"];
+var PG_PRESETS = {
+  "25 ગુણ": [["A","MCQ",10,1],["B","FIB",5,1],["C","SHORT",3,2],["D","LONG",1,4]],
+  "50 ગુણ": [["A","MCQ",20,1],["B","SHORT",5,2],["C","SHORT",4,3],["D","LONG",2,4]],
+  "80 ગુણ": [["A","MCQ",20,1],["B","SHORT",8,2],["C","SHORT",8,3],["D","LONG",4,5]]
+};
+var PG_INS = "બધા પ્રશ્નો ફરજિયાત છે.\nજમણી બાજુ દર્શાવેલ અંક પ્રશ્નના ગુણ દર્શાવે છે.\nઉત્તરવહીમાં સ્વચ્છ અને સુવાચ્ય અક્ષરોમાં લખો.";
+var PG = {
+  bank:{std:"", sub:"", chap:"", type:"", q:"", edit:""},
+  paper:null
+};
+function pgType_(k){ return PQ_TYPES.filter(function(t){ return t.k === k; })[0] || PQ_TYPES[0]; }
+function pgTypeOpts_(sel){ return PQ_TYPES.map(function(t){ return '<option value="'+t.k+'"'+(t.k===sel?' selected':'')+'>'+esc(t.n)+'</option>'; }).join(""); }
+function pgTypeKey_(v){
+  v = String(v == null ? "" : v).trim(); if (!v) return "";
+  var up = v.toUpperCase();
+  for (var i = 0; i < PQ_TYPES.length; i++){ if (PQ_TYPES[i].k === up || PQ_TYPES[i].n === v) return PQ_TYPES[i].k; }
+  if (/MCQ|બહુ|વિકલ્પ/i.test(v)) return "MCQ";
+  if (/ખાલી|FILL/i.test(v)) return "FIB";
+  if (/સાચું|ખોટું|TRUE/i.test(v)) return "TF";
+  if (/એક વાક્ય|ONE/i.test(v)) return "ONE";
+  if (/ટૂંકા|SHORT/i.test(v)) return "SHORT";
+  if (/લાંબા|LONG|વિગત/i.test(v)) return "LONG";
+  return "";
+}
+function pgNl_(t){ return esc(t).replace(/\n/g, "<br>"); }
+function pgShuffle_(a){ a = a.slice(); for (var i = a.length - 1; i > 0; i--){ var j = Math.floor(Math.random() * (i + 1)), t = a[i]; a[i] = a[j]; a[j] = t; } return a; }
+function pgChapters_(std, sub){
+  var m = {};
+  S.questions.forEach(function(q){ if (String(q.std) === String(std) && q.subject === sub && q.chapter){ m[q.chapter] = (m[q.chapter] || 0) + 1; } });
+  return Object.keys(m).sort().map(function(k){ return {name:k, n:m[k]}; });
+}
+function pgSubjectsOfBank_(){
+  var seen = {}, out = subList().slice();
+  out.forEach(function(x){ seen[x] = 1; });
+  S.questions.forEach(function(q){ if (q.subject && !seen[q.subject]){ seen[q.subject] = 1; out.push(q.subject); } });
+  return out;
+}
+function pgStdsOfBank_(){
+  var seen = {}, out = stdList().slice();
+  out.forEach(function(x){ seen[String(x)] = 1; });
+  S.questions.forEach(function(q){ if (q.std && !seen[String(q.std)]){ seen[String(q.std)] = 1; out.push(String(q.std)); } });
+  return out;
+}
+
+/* ---------- પ્રશ્ન બેંક ---------- */
+VIEWS["paper:bank"] = function(){
+  var B = PG.bank, e = S.questions.filter(function(q){ return q.id === B.edit; })[0] || {};
+  var stds = pgStdsOfBank_(), subs = pgSubjectsOfBank_();
+  var f = {std: e.std || B.std || stds[0] || "", sub: e.subject || B.sub || subs[0] || ""};
+  var chs = pgChapters_(f.std, f.sub);
+  var cnt = {}; S.questions.forEach(function(q){ cnt[q.std+"|"+q.subject] = (cnt[q.std+"|"+q.subject]||0) + 1; });
+  var list = S.questions.filter(function(q){
+    return (!B.std || String(q.std) === String(B.std)) && (!B.sub || q.subject === B.sub) && (!B.chap || q.chapter === B.chap)
+      && (!B.type || q.type === B.type) && (!B.q || String(q.q).indexOf(B.q) > -1 || String(q.chapter||"").indexOf(B.q) > -1);
+  });
+  var fchs = (B.std && B.sub) ? pgChapters_(B.std, B.sub) : [];
+  return '<div class="card pgc"><h3>'+(e.id ? "પ્રશ્ન સુધારો" : "નવો પ્રશ્ન ઉમેરો")+'</h3>'
+    + '<div class="grid">'
+    + '<div><label class="f">ધોરણ</label><select id="pq_std">'+opts(stds, f.std)+'</select></div>'
+    + '<div><label class="f">વિષય</label><select id="pq_sub">'+opts(subs, f.sub)+'</select></div>'
+    + '<div><label class="f">પ્રકરણ</label><input id="pq_chap" list="pq_chaps" value="'+esc(e.chapter||"")+'" placeholder="પ્રકરણનું નામ / નંબર"><datalist id="pq_chaps">'+chs.map(function(c){ return '<option value="'+esc(c.name)+'">'; }).join("")+'</datalist></div>'
+    + '<div><label class="f">પ્રકાર</label><select id="pq_type">'+pgTypeOpts_(e.type || "MCQ")+'</select></div>'
+    + '<div><label class="f">ગુણ</label><input id="pq_marks" type="number" min="0" step="any" value="'+esc(e.marks != null ? e.marks : pgType_(e.type||"MCQ").m)+'"></div>'
+    + '<div><label class="f">કઠિનતા</label><select id="pq_level">'+opts(PQ_LEVELS, e.level || "મધ્યમ")+'</select></div>'
+    + '</div>'
+    + '<div style="margin-top:10px"><label class="f">પ્રશ્ન</label><textarea id="pq_q" rows="3" style="width:100%">'+esc(e.q||"")+'</textarea></div>'
+    + '<div id="pq_mcq" class="grid" style="margin-top:8px">'
+    +   ["A","B","C","D"].map(function(L, i){ return '<div><label class="f">વિકલ્પ ('+L+')</label><input id="pq_o'+i+'" value="'+esc((e.o||[])[i]||"")+'"></div>'; }).join("")
+    + '</div>'
+    + '<div class="grid" style="margin-top:8px"><div id="pq_answ"><label class="f" id="pq_anslab">સાચો જવાબ</label><select id="pq_ans"></select></div></div>'
+    + '<div style="margin-top:8px"><label class="f">ઉકેલ / જવાબ (ઉકેલ પત્રકમાં છપાશે)</label><textarea id="pq_sol" rows="2" style="width:100%">'+esc(e.sol||"")+'</textarea></div>'
+    + '<div class="row" style="margin-top:12px;gap:8px;flex-wrap:wrap"><button class="btn" id="pq_save">'+(e.id ? "સુધારો સાચવો" : "સાચવો")+'</button>'
+    + '<button class="btn sec" id="pq_new">નવો / સાફ કરો</button>'
+    + '<span style="flex:1"></span><button class="btn sec" id="pq_tpl">📄 નમૂના Excel</button><button class="btn sec" id="pq_exp">⬇ Excel Export</button>'
+    + '<label class="btn sec" style="cursor:pointer;margin:0">⬆ Excel Import<input type="file" id="pq_imp" accept=".xlsx,.xls" style="display:none"></label></div>'
+    + '<p class="hint" style="margin:8px 0 0">ટિપ: અંગ્રેજી/સંખ્યા લખવા Ctrl+Space થી ગુજરાતી ટાઈપિંગ બંધ કરો. ઘણા પ્રશ્નો એકસાથે ઉમેરવા Excel Import વાપરો (નમૂના Excel ડાઉનલોડ કરો).</p></div>'
+    + '<div class="card pgc"><div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><h3 style="margin:0">પ્રશ્ન બેંક — '+S.questions.length+' પ્રશ્નો</h3><span class="hint">બતાવેલા: '+list.length+'</span></div>'
+    + '<div class="row" style="gap:8px;flex-wrap:wrap;margin:10px 0">'
+    + '<select id="pf_std" style="width:auto"><option value="">બધા ધોરણ</option>'+opts(stds, B.std)+'</select>'
+    + '<select id="pf_sub" style="width:auto"><option value="">બધા વિષય</option>'+opts(subs, B.sub)+'</select>'
+    + '<select id="pf_chap" style="width:auto"><option value="">બધા પ્રકરણ</option>'+opts(fchs.map(function(c){return c.name;}), B.chap)+'</select>'
+    + '<select id="pf_type" style="width:auto"><option value="">બધા પ્રકાર</option>'+PQ_TYPES.map(function(t){ return '<option value="'+t.k+'"'+(t.k===B.type?' selected':'')+'>'+esc(t.n)+'</option>'; }).join("")+'</select>'
+    + '<input id="pf_q" placeholder="શોધો…" value="'+esc(B.q)+'" style="width:180px"></div>'
+    + (list.length ? '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th>ધોરણ</th><th>વિષય</th><th>પ્રકરણ</th><th>પ્રકાર</th><th class="num">ગુણ</th><th>કઠિનતા</th><th style="white-space:normal;min-width:260px">પ્રશ્ન</th><th></th></tr></thead><tbody>'
+      + list.slice(0, 300).map(function(q, i){
+          return '<tr><td class="num">'+(i+1)+'</td><td>'+esc(q.std)+'</td><td>'+esc(q.subject)+'</td><td>'+esc(q.chapter||"")+'</td><td>'+esc(pgType_(q.type).n)+'</td><td class="num">'+esc(q.marks)+'</td><td>'+esc(q.level||"")+'</td>'
+            + '<td style="white-space:normal">'+esc(String(q.q).slice(0, 110))+(String(q.q).length > 110 ? '…' : '')+'</td>'
+            + '<td style="white-space:nowrap"><button class="btn sm sec" data-pqe="'+q.id+'">સુધારો</button> <button class="btn sm sec" data-pqd="'+q.id+'">કાઢો</button></td></tr>';
+        }).join("") + '</tbody></table></div>' + (list.length > 300 ? '<p class="hint">પહેલા 300 પ્રશ્નો બતાવ્યા છે; ફિલ્ટર વાપરો.</p>' : '')
+      : '<div class="empty">'+(S.questions.length ? 'આ ફિલ્ટરમાં પ્રશ્ન નથી.' : 'હજુ કોઈ પ્રશ્ન નથી. ઉપર પ્રશ્ન ઉમેરો અથવા Excel Import કરો.')+'</div>')
+    + '</div>';
+};
+function pgFormSync_(){
+  var t = val("pq_type"), mcq = t === "MCQ";
+  $("pq_mcq").style.display = mcq ? "" : "none";
+  var sl = $("pq_ans"), cur = sl.value, e = S.questions.filter(function(q){ return q.id === PG.bank.edit; })[0] || {};
+  if (mcq){ sl.innerHTML = ["A","B","C","D"].map(function(L){ return '<option>'+L+'</option>'; }).join(""); $("pq_anslab").textContent = "સાચો વિકલ્પ"; }
+  else if (t === "TF"){ sl.innerHTML = '<option>સાચું</option><option>ખોટું</option>'; $("pq_anslab").textContent = "સાચો જવાબ"; }
+  $("pq_answ").style.display = (mcq || t === "TF") ? "" : "none";
+  var want = cur || e.ans; if (want) sl.value = want;
+  if (e.id && e.ans && sl.querySelector('option') && !cur) sl.value = e.ans;
+}
+WIRE["paper:bank"] = function(){
+  pgFormSync_();
+  var e0 = S.questions.filter(function(q){ return q.id === PG.bank.edit; })[0];
+  if (e0 && e0.ans) $("pq_ans").value = e0.ans;
+  $("pq_type").onchange = function(){ var t = pgType_(val("pq_type")); if (!PG.bank.edit) $("pq_marks").value = t.m; pgFormSync_(); };
+  $("pq_std").onchange = $("pq_sub").onchange = function(){
+    var chs = pgChapters_(val("pq_std"), val("pq_sub"));
+    $("pq_chaps").innerHTML = chs.map(function(c){ return '<option value="'+esc(c.name)+'">'; }).join("");
+  };
+  $("pq_new").onclick = function(){ PG.bank.edit = ""; render(); };
+  $("pq_save").onclick = async function(){
+    var q = val("pq_q"), type = val("pq_type");
+    if (!q) return toast("પ્રશ્ન લખો");
+    var o = [0,1,2,3].map(function(i){ return val("pq_o"+i); });
+    if (type === "MCQ" && o.filter(Boolean).length < 2) return toast("MCQ માટે ઓછામાં ઓછા 2 વિકલ્પ ભરો");
+    var rec = {id: PG.bank.edit || undefined, std:val("pq_std"), subject:val("pq_sub"), chapter:val("pq_chap"), type:type,
+      marks:Number(val("pq_marks")) || pgType_(type).m, level:val("pq_level") || "મધ્યમ", q:q, o: type === "MCQ" ? o : [],
+      ans:(type === "MCQ" || type === "TF") ? val("pq_ans") : "", sol:val("pq_sol")};
+    if (!rec.id) delete rec.id;
+    var wasEdit = !!PG.bank.edit;
+    await put("questions", rec);
+    PG.bank.edit = ""; PG.bank.std = rec.std; PG.bank.sub = rec.subject;
+    toast(wasEdit ? "પ્રશ્ન સુધારાયો" : "પ્રશ્ન ઉમેરાયો"); render();
+  };
+  function flt(){ PG.bank.std = val("pf_std"); PG.bank.sub = val("pf_sub"); PG.bank.chap = val("pf_chap"); PG.bank.type = val("pf_type"); PG.bank.q = val("pf_q"); }
+  ["pf_std","pf_sub","pf_type"].forEach(function(id){ $(id).onchange = function(){ flt(); PG.bank.chap = ""; render(); }; });
+  $("pf_chap").onchange = function(){ flt(); render(); };
+  $("pf_q").onchange = function(){ flt(); render(); };
+  Array.prototype.forEach.call(document.querySelectorAll("[data-pqe]"), function(b){ b.onclick = function(){ PG.bank.edit = b.dataset.pqe; render(); window.scrollTo(0,0); }; });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-pqd]"), function(b){ b.onclick = async function(){ if (!confirm("આ પ્રશ્ન કાઢી નાખવો છે?")) return; await drop("questions", b.dataset.pqd); toast("કાઢી નાખ્યો"); render(); }; });
+  var HEAD = ["ધોરણ","વિષય","પ્રકરણ","પ્રકાર","ગુણ","કઠિનતા","પ્રશ્ન","A","B","C","D","સાચો જવાબ","ઉકેલ"];
+  $("pq_tpl").onclick = async function(){
+    if (!(await ensureXLSX_())) return alert("Excel લાયબ્રેરી લોડ થઈ નથી. ઇન્ટરનેટ ચકાસો.");
+    var rows = [HEAD,
+      ["10","ગણિત","1 વાસ્તવિક સંખ્યાઓ","MCQ",1,"સરળ","2 અને 3 નો ગુ.સા.અ. કેટલો થાય?","1","5","6","12","C","2 અને 3 અવિભાજ્ય છે, માટે ગુ.સા.અ. = 6"],
+      ["10","ગણિત","1 વાસ્તવિક સંખ્યાઓ","ટૂંકા પ્રશ્ન",2,"મધ્યમ","યુક્લિડની ભાગાકાર પ્રમેયિકા લખો.","","","","","","a = bq + r, 0 ≤ r < b"],
+      ["10","વિજ્ઞાન અને ટેકનોલોજી","2 રાસાયણિક પ્રક્રિયાઓ","સાચું / ખોટું",1,"સરળ","મેગ્નેશિયમ હવામાં સળગે ત્યારે MgO બને છે.","","","","","સાચું",""]];
+    var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), "questions");
+    XLSX.writeFile(wb, "prashna-bank-namuno.xlsx");
+  };
+  $("pq_exp").onclick = async function(){
+    if (!S.questions.length) return toast("નિકાસ માટે પ્રશ્ન નથી");
+    if (!(await ensureXLSX_())) return alert("Excel લાયબ્રેરી લોડ થઈ નથી.");
+    var rows = [HEAD].concat(S.questions.map(function(q){ var o = q.o || []; return [q.std,q.subject,q.chapter||"",pgType_(q.type).n,q.marks,q.level||"",q.q,o[0]||"",o[1]||"",o[2]||"",o[3]||"",q.ans||"",q.sol||""]; }));
+    var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), "questions");
+    XLSX.writeFile(wb, "prashna-bank.xlsx");
+  };
+  $("pq_imp").onchange = async function(ev){
+    var f = ev.target.files[0]; if (!f) return; ev.target.value = "";
+    if (!(await ensureXLSX_())) return alert("Excel લાયબ્રેરી લોડ થઈ નથી. ઇન્ટરનેટ ચકાસો.");
+    var buf = await new Promise(function(res, rej){ var fr = new FileReader(); fr.onload = function(){ res(fr.result); }; fr.onerror = rej; fr.readAsArrayBuffer(f); }).catch(function(){ return null; });
+    if (!buf) return alert("ફાઇલ ખોલી શકાઈ નહીં.");
+    var recs = [], bad = 0;
+    try{
+      var wb = XLSX.read(new Uint8Array(buf), {type:"array"});
+      wb.SheetNames.forEach(function(sn){
+        var rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], {header:1, defval:""}), hi = -1;
+        for (var i = 0; i < Math.min(rows.length, 15); i++){ if (rows[i].some(function(c){ return /^(પ્રશ્ન|question)$/i.test(String(c).trim()); })){ hi = i; break; } }
+        if (hi < 0) return;
+        var H = rows[hi].map(function(c){ return String(c).trim().toLowerCase(); });
+        function col(names){ for (var k = 0; k < names.length; k++){ var ix = H.indexOf(names[k]); if (ix > -1) return ix; } return -1; }
+        var C = {std:col(["ધોરણ","std","class"]), sub:col(["વિષય","subject"]), chap:col(["પ્રકરણ","chapter"]), type:col(["પ્રકાર","type"]), marks:col(["ગુણ","marks"]), level:col(["કઠિનતા","level"]),
+                 q:col(["પ્રશ્ન","question"]), a:col(["a"]), b:col(["b"]), c:col(["c"]), d:col(["d"]), ans:col(["સાચો જવાબ","જવાબ","answer","ans"]), sol:col(["ઉકેલ","solution"])};
+        for (var r = hi + 1; r < rows.length; r++){
+          var R = rows[r], g = function(ix){ return ix > -1 ? String(R[ix] == null ? "" : R[ix]).trim() : ""; };
+          var q = g(C.q); if (!q) continue;
+          var type = pgTypeKey_(g(C.type)) || "SHORT", std = g(C.std), sub = g(C.sub);
+          if (!std || !sub){ bad++; continue; }
+          var ans = g(C.ans).toUpperCase();
+          if (type === "TF") ans = /સાચું|TRUE|T$/i.test(g(C.ans)) ? "સાચું" : /ખોટું|FALSE|F$/i.test(g(C.ans)) ? "ખોટું" : "";
+          if (type !== "MCQ" && type !== "TF") ans = "";
+          var lv = g(C.level); if (PQ_LEVELS.indexOf(lv) < 0) lv = "મધ્યમ";
+          recs.push({std:std, subject:sub, chapter:g(C.chap), type:type, marks:Number(g(C.marks)) || pgType_(type).m, level:lv, q:q,
+            o: type === "MCQ" ? [g(C.a), g(C.b), g(C.c), g(C.d)] : [], ans:ans, sol:g(C.sol)});
+        }
+      });
+    }catch(err){ return alert("ફાઇલ વાંચી શકાઈ નહીં. .xlsx ફોર્મેટ અને નમૂના મુજબના હેડર જરૂરી છે.\n\n" + err.message); }
+    var seenQ = {}; S.questions.forEach(function(x){ seenQ[[x.std, x.subject, x.type, x.q].join("|")] = 1; });
+    var dup = 0; recs = recs.filter(function(x){ var k = [x.std, x.subject, x.type, x.q].join("|"); if (seenQ[k]){ dup++; return false; } seenQ[k] = 1; return true; });
+    if (!recs.length) return alert(dup ? "બધા પ્રશ્નો બેંકમાં પહેલેથી છે (" + dup + " ડુપ્લિકેટ)." : "કોઈ પ્રશ્ન મળ્યો નહીં. 'પ્રશ્ન' નામનો હેડર અને ધોરણ/વિષય ભરેલા હોવા જોઈએ. નમૂના Excel જુઓ.");
+    if (!confirm(recs.length + " પ્રશ્નો ઉમેરવા છે?" + (bad ? "\n(ધોરણ/વિષય વગરની " + bad + " હરોળ છોડી દેવાઈ)" : "") + (dup ? "\n(" + dup + " ડુપ્લિકેટ છોડી દેવાયા)" : ""))) return;
+    toast("સાચવી રહ્યા છીએ…");
+    if (typeof putMany === "function") await putMany("questions", recs); else for (var i = 0; i < recs.length; i++) await put("questions", recs[i]);
+    toast(recs.length + " પ્રશ્નો ઉમેરાયા"); render();
+  };
+};
+
+/* ---------- પેપર બનાવો ---------- */
+function pgNewPaper_(){
+  var std = pgStdsOfBank_()[0] || "", subs = pgSubjectsOfBank_();
+  return {id:undefined, name:"પ્રથમ પરીક્ષા", std:std, subject:(S.questions.filter(function(q){ return String(q.std)===String(std); })[0] || {}).subject || subs[0] || "",
+    date:today(), time:"2 કલાક", level:"", chaps:[], ins:PG_INS,
+    secs:PG_PRESETS["50 ગુણ"].map(function(x){ return {name:x[0], type:x[1], count:x[2], marks:x[3], qids:[]}; })};
+}
+function pgTotal_(P, actual){ return P.secs.reduce(function(a, s){ return a + (Number(s.marks) || 0) * (actual ? (s.qids || []).length : (Number(s.count) || 0)); }, 0); }
+function pgPool_(P, type){
+  return S.questions.filter(function(q){
+    return String(q.std) === String(P.std) && q.subject === P.subject && q.type === type
+      && (!P.chaps.length || P.chaps.indexOf(q.chapter) > -1) && (!P.level || q.level === P.level);
+  });
+}
+function pgPick_(pool, n, marks){
+  var by = {}, order = [];
+  pgShuffle_(pool).sort(function(a, b){ return (Number(b.marks) === Number(marks) ? 1 : 0) - (Number(a.marks) === Number(marks) ? 1 : 0); }).forEach(function(q){
+    var k = q.chapter || ""; if (!by[k]){ by[k] = []; order.push(k); } by[k].push(q);
+  });
+  order = pgShuffle_(order);
+  var out = [];
+  while (out.length < n){
+    var any = false;
+    for (var i = 0; i < order.length && out.length < n; i++){ var g = by[order[i]]; if (g.length){ out.push(g.shift()); any = true; } }
+    if (!any) break;
+  }
+  return out;
+}
+function pgGenerate_(P){
+  var used = {}, short = [];
+  P.secs.forEach(function(s){
+    var pool = pgPool_(P, s.type).filter(function(q){ return !used[q.id]; });
+    var got = pgPick_(pool, Number(s.count) || 0, s.marks);
+    s.qids = got.map(function(q){ used[q.id] = 1; return q.id; });
+    if (got.length < (Number(s.count) || 0)) short.push("વિભાગ " + s.name + " ("+pgType_(s.type).n+"): " + (Number(s.count) - got.length) + " ઓછા");
+  });
+  return short;
+}
+function pgQ_(id){ return S.questions.filter(function(q){ return q.id === id; })[0]; }
+function pgQHTML_(q, no, marks, sol){
+  var h = '<div style="display:flex;gap:8px;margin:7px 0;page-break-inside:avoid"><b style="min-width:26px">'+no+'.</b><div style="flex:1">'+pgNl_(q.q);
+  if (q.type === "MCQ"){
+    h += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:2px 18px;margin-top:4px">'
+      + (q.o || []).map(function(t, i){ return t ? '<div>('+["A","B","C","D"][i]+') '+esc(t)+'</div>' : ""; }).join("") + '</div>';
+  }
+  if (sol){
+    var a = "";
+    if (q.type === "MCQ"){ var ix = ["A","B","C","D"].indexOf(q.ans); a = q.ans ? 'સાચો વિકલ્પ: <b>('+esc(q.ans)+')</b>'+(ix > -1 && (q.o||[])[ix] ? ' '+esc(q.o[ix]) : '') : ''; }
+    else if (q.type === "TF"){ a = q.ans ? 'ઉત્તર: <b>'+esc(q.ans)+'</b>' : ''; }
+    var extra = q.sol ? '<div style="margin-top:2px">'+(a ? 'સમજૂતી: ' : 'ઉત્તર: ')+pgNl_(q.sol)+'</div>' : '';
+    h += '<div style="margin-top:4px;padding:4px 8px;border-left:3px solid #15803d;background:#f0fdf4;font-size:13px">'+(a || '')+extra+(!a && !extra ? '<i>ઉત્તર નોંધાયેલ નથી</i>' : '')+'</div>';
+  }
+  return h + '</div><b style="white-space:nowrap">['+esc(marks)+']</b></div>';
+}
+function pgPaperHTML_(P, sol){
+  var k = S.school || {}, NV = sol ? "#14532d" : "#1a2f6b";
+  var addr = [k.village, k.taluka ? "તા. "+k.taluka : "", k.district ? "જિ. "+k.district : ""].filter(Boolean).join(", ");
+  var no = 0, tot = pgTotal_(P, true);
+  var html = '<div class="pgpaper" style="font-size:14px;line-height:1.5;color:#000;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact">'
+    + '<div style="border:2px solid '+NV+';border-radius:8px;text-align:center;padding:8px 10px'+lgBox_(60)+'">'
+    +   (k.trustName ? '<div style="font-size:12px;font-weight:700;color:'+NV+'">'+esc(k.trustName)+'</div>' : '')
+    +   '<div style="font-size:22px;font-weight:800;color:'+NV+'">'+lgImg_(60)+esc(k.name || "શાળાનું નામ")+'</div>'
+    +   (addr ? '<div style="font-size:12px">'+esc(addr)+'</div>' : '') + '</div>'
+    + '<div style="text-align:center;margin:10px 0 8px"><span style="display:inline-block;border:2px solid '+NV+';border-radius:20px;padding:3px 24px;font-weight:800;font-size:16px;color:'+NV+';background:'+(sol ? '#ecfdf5' : '#eef2ff')+'">'
+    +   (sol ? 'ઉકેલ / જવાબવહી — ' : '')+esc(P.name || "પરીક્ષા")+(sol ? '' : ' — પ્રશ્નપત્ર')+'</span></div>'
+    + '<div style="display:flex;justify-content:space-between;flex-wrap:wrap;gap:6px 16px;border-top:1px solid #000;border-bottom:1px solid #000;padding:5px 4px;font-size:13.5px;font-weight:700">'
+    +   '<span>ધોરણ: '+esc(P.std)+'</span><span>વિષય: '+esc(P.subject)+'</span><span>સમય: '+esc(P.time||"")+'</span><span>કુલ ગુણ: '+tot+'</span><span>તારીખ: '+esc(dmy(P.date)||"")+'</span></div>';
+  var ins = String(P.ins || "").split("\n").map(function(x){ return x.trim(); }).filter(Boolean);
+  if (!sol && ins.length) html += '<div style="margin:6px 2px;font-size:12.5px"><b>સૂચનાઓ:</b> '+ins.map(function(x, i){ return (i+1)+'. '+esc(x); }).join(" &nbsp; ")+'</div>';
+  P.secs.forEach(function(s){
+    var t = pgType_(s.type), qs = (s.qids || []).map(pgQ_).filter(Boolean);
+    if (!qs.length) return;
+    html += '<div style="display:flex;justify-content:space-between;align-items:baseline;margin:12px 0 4px;padding:3px 8px;background:'+(sol ? '#dcfce7' : '#e0e7ff')+';border-radius:4px;font-weight:800">'
+      + '<span>વિભાગ '+esc(s.name)+' — '+esc(t.n)+'</span><span style="font-size:12.5px">'+qs.length+' × '+esc(s.marks)+' = '+(qs.length * (Number(s.marks)||0))+'</span></div>';
+    if (!sol) html += '<div style="font-size:12.5px;font-style:italic;margin:0 2px 2px">'+esc(s.ins || t.ins)+'</div>';
+    qs.forEach(function(q){ no++; html += pgQHTML_(q, no, s.marks, sol); });
+  });
+  if (!no) html += '<div style="text-align:center;color:#888;padding:30px">હજુ કોઈ પ્રશ્ન પસંદ થયો નથી. "ઓટો પેપર બનાવો" દબાવો.</div>';
+  return html + '<div style="text-align:center;margin-top:16px;font-weight:700;letter-spacing:2px">— સમાપ્ત —</div></div>';
+}
+VIEWS["paper:make"] = function(){
+  if (!PG.paper) PG.paper = pgNewPaper_();
+  var P = PG.paper, stds = pgStdsOfBank_(), subs = pgSubjectsOfBank_(), chs = pgChapters_(P.std, P.subject);
+  var short = PG.short || [];
+  var h = '<div class="card pgc"><h3>પેપર બનાવો</h3><div class="grid">'
+    + '<div><label class="f">પરીક્ષા / કસોટીનું નામ</label><input id="pm_name" value="'+esc(P.name)+'"></div>'
+    + '<div><label class="f">ધોરણ</label><select id="pm_std">'+opts(stds, P.std)+'</select></div>'
+    + '<div><label class="f">વિષય</label><select id="pm_sub">'+opts(subs, P.subject)+'</select></div>'
+    + '<div><label class="f">તારીખ</label><input id="pm_date" type="date" value="'+esc(P.date)+'"></div>'
+    + '<div><label class="f">સમય</label><input id="pm_time" value="'+esc(P.time)+'"></div>'
+    + '<div><label class="f">કઠિનતા</label><select id="pm_level"><option value="">મિશ્ર (બધા)</option>'+opts(PQ_LEVELS, P.level)+'</select></div></div>'
+    + '<div style="margin-top:12px"><label class="f">પ્રકરણ પસંદ કરો <span class="hint">(કોઈ ન ટિક કરો તો બધા પ્રકરણમાંથી)</span></label>'
+    + (chs.length ? '<div class="row" style="gap:6px 14px;flex-wrap:wrap">'+chs.map(function(c){ return '<label style="display:flex;gap:5px;align-items:center;font-size:13px;cursor:pointer"><input type="checkbox" style="width:auto" data-pmch="'+esc(c.name)+'"'+(P.chaps.indexOf(c.name)>-1?' checked':'')+'>'+esc(c.name)+' <span class="hint">('+c.n+')</span></label>'; }).join("")+'</div>'
+        : '<div class="hint">આ ધોરણ/વિષય માટે બેંકમાં પ્રશ્ન નથી — પહેલા "પ્રશ્ન બેંક" માં ઉમેરો.</div>')
+    + '</div>'
+    + '<div style="margin-top:14px"><label class="f">પ્રશ્નપત્રનું માળખું (બ્લુપ્રિન્ટ)</label>'
+    + '<div class="row" style="gap:6px;margin-bottom:6px;flex-wrap:wrap">'+Object.keys(PG_PRESETS).map(function(k){ return '<button class="btn sm sec" data-pmpre="'+esc(k)+'">'+esc(k)+' નમૂનો</button>'; }).join("")+'</div>'
+    + '<div class="tw"><table><thead><tr><th>વિભાગ</th><th>પ્રકાર</th><th class="num">પ્રશ્ન સંખ્યા</th><th class="num">ગુણ (દરેક)</th><th class="num">પૂલમાં</th><th class="num">કુલ</th><th></th></tr></thead><tbody>'
+    + P.secs.map(function(s, i){
+        var pool = pgPool_(P, s.type).length, need = Number(s.count) || 0;
+        return '<tr><td><input data-pms="'+i+'|name" value="'+esc(s.name)+'" style="width:60px"></td>'
+          + '<td><select data-pms="'+i+'|type">'+pgTypeOpts_(s.type)+'</select></td>'
+          + '<td class="num"><input type="number" min="0" data-pms="'+i+'|count" value="'+esc(s.count)+'" style="width:70px"></td>'
+          + '<td class="num"><input type="number" min="0" step="any" data-pms="'+i+'|marks" value="'+esc(s.marks)+'" style="width:70px"></td>'
+          + '<td class="num" style="'+(pool < need ? 'color:#b91c1c;font-weight:700' : '')+'">'+pool+'</td>'
+          + '<td class="num">'+(need * (Number(s.marks)||0))+'</td>'
+          + '<td><button class="btn sm sec" data-pmdel="'+i+'">✕</button></td></tr>';
+      }).join("")
+    + '<tr><td colspan="5" style="text-align:right;font-weight:700">કુલ ગુણ</td><td class="num"><b>'+pgTotal_(P)+'</b></td><td></td></tr></tbody></table></div>'
+    + '<div class="row" style="margin-top:8px;gap:8px"><button class="btn sm sec" id="pm_addsec">＋ વિભાગ ઉમેરો</button></div></div>'
+    + '<div style="margin-top:12px"><label class="f">સૂચનાઓ (દરેક લીટીમાં એક)</label><textarea id="pm_ins" rows="3" style="width:100%">'+esc(P.ins)+'</textarea></div>'
+    + '<div class="row" style="margin-top:14px;gap:8px;flex-wrap:wrap"><button class="btn" id="pm_gen">✨ ઓટો પેપર બનાવો</button>'
+    + '<button class="btn sec" id="pm_save">💾 પેપર સાચવો</button><button class="btn sec" id="pm_new">નવું પેપર</button>'
+    + '<span style="flex:1"></span><button class="btn sec" id="pm_pq">🖨 પ્રશ્નપત્ર</button><button class="btn sec" id="pm_ps">🖨 ઉકેલ</button><button class="btn sec" id="pm_pb">🖨 બંને</button></div>'
+    + (short.length ? '<div style="margin-top:10px;padding:8px 12px;border-radius:8px;background:#fef2f2;color:#991b1b;font-size:13px"><b>પ્રશ્નો ઓછા પડ્યા:</b> '+short.map(esc).join(" · ")+' — બેંકમાં વધુ પ્રશ્ન ઉમેરો અથવા સંખ્યા ઘટાડો.</div>' : '')
+    + '</div>';
+  /* પસંદ થયેલા પ્રશ્નો: બદલો / કાઢો / ઉમેરો */
+  var no = 0;
+  if (P.secs.some(function(s){ return (s.qids || []).length; })){
+    h += '<div class="card pgc"><h3>પસંદ થયેલા પ્રશ્નો <span class="hint" style="font-weight:400">(↻ બદલો · ✕ કાઢો)</span></h3>';
+    P.secs.forEach(function(s, si){
+      var qs = (s.qids || []).map(pgQ_).filter(Boolean), t = pgType_(s.type);
+      var free = pgPool_(P, s.type).filter(function(q){ return P.secs.every(function(x){ return (x.qids||[]).indexOf(q.id) < 0; }); });
+      h += '<div style="margin:8px 0 4px;font-weight:800;color:var(--brand)">વિભાગ '+esc(s.name)+' — '+esc(t.n)+' ('+qs.length+'/'+(Number(s.count)||0)+')</div>';
+      qs.forEach(function(q){
+        no++;
+        h += '<div class="row" style="gap:8px;align-items:flex-start;padding:5px 0;border-bottom:1px dashed var(--line)"><b>'+no+'.</b><div style="flex:1;font-size:13.5px">'+esc(String(q.q).slice(0,160))+(String(q.q).length>160?'…':'')+' <span class="hint">['+esc(q.chapter||"")+' · '+esc(q.level||"")+']</span></div>'
+          + '<button class="btn sm sec" data-pmrep="'+si+'|'+q.id+'" title="બદલો">↻</button><button class="btn sm sec" data-pmrm="'+si+'|'+q.id+'" title="કાઢો">✕</button></div>';
+      });
+      if (free.length) h += '<div class="row" style="gap:6px;margin-top:6px"><select data-pmaddsel="'+si+'" style="max-width:420px">'+free.map(function(q){ return '<option value="'+q.id+'">'+esc(String(q.q).slice(0,70))+'</option>'; }).join("")+'</select><button class="btn sm sec" data-pmadd="'+si+'">＋ ઉમેરો</button></div>';
+    });
+    h += '</div>'
+      + '<div class="card pgc"><h3>પૂર્વાવલોકન</h3><div class="row" style="gap:6px;margin-bottom:8px"><button class="btn sm '+(PG.view==="sol"?'sec':'')+'" id="pv_q">પ્રશ્નપત્ર</button><button class="btn sm '+(PG.view==="sol"?'':'sec')+'" id="pv_s">ઉકેલ</button></div>'
+      + '<div style="max-width:800px;margin:0 auto;border:1px solid var(--line);padding:18px;background:#fff;border-radius:6px;overflow-x:auto">'+pgPaperHTML_(P, PG.view === "sol")+'</div></div>';
+  }
+  return h;
+};
+WIRE["paper:make"] = function(){
+  var P = PG.paper;
+  function gather(){
+    P.name = val("pm_name"); P.date = val("pm_date"); P.time = val("pm_time"); P.ins = $("pm_ins").value; P.level = val("pm_level");
+  }
+  ["pm_name","pm_date","pm_time","pm_ins"].forEach(function(id){ $(id).oninput = gather; });
+  $("pm_level").onchange = function(){ gather(); render(); };
+  $("pm_std").onchange = function(){ gather(); P.std = val("pm_std"); P.chaps = []; var sb = pgSubjectsOfBank_().filter(function(s){ return S.questions.some(function(q){ return String(q.std)===String(P.std) && q.subject===s; }); }); if (sb.length && sb.indexOf(P.subject) < 0) P.subject = sb[0]; P.secs.forEach(function(s){ s.qids = []; }); render(); };
+  $("pm_sub").onchange = function(){ gather(); P.subject = val("pm_sub"); P.chaps = []; P.secs.forEach(function(s){ s.qids = []; }); render(); };
+  Array.prototype.forEach.call(document.querySelectorAll("[data-pmch]"), function(c){
+    c.onchange = function(){ gather(); var n = c.dataset.pmch, i = P.chaps.indexOf(n); if (c.checked && i < 0) P.chaps.push(n); if (!c.checked && i > -1) P.chaps.splice(i, 1); render(); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-pmpre]"), function(b){
+    b.onclick = function(){ gather(); P.secs = PG_PRESETS[b.dataset.pmpre].map(function(x){ return {name:x[0], type:x[1], count:x[2], marks:x[3], qids:[]}; }); render(); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-pms]"), function(el){
+    el.onchange = function(){
+      gather(); var p = el.dataset.pms.split("|"), s = P.secs[Number(p[0])], k = p[1];
+      s[k] = (k === "count" || k === "marks") ? (el.value === "" ? 0 : Number(el.value)) : el.value;
+      if (k === "type") s.qids = [];
+      render();
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-pmdel]"), function(b){ b.onclick = function(){ gather(); P.secs.splice(Number(b.dataset.pmdel), 1); render(); }; });
+  $("pm_addsec").onclick = function(){ gather(); var L = String.fromCharCode(65 + P.secs.length); P.secs.push({name:L, type:"SHORT", count:2, marks:2, qids:[]}); render(); };
+  $("pm_gen").onclick = function(){
+    gather();
+    if (!P.secs.length) return toast("ઓછામાં ઓછો એક વિભાગ ઉમેરો");
+    if (!S.questions.some(function(q){ return String(q.std)===String(P.std) && q.subject===P.subject; })) return toast("આ ધોરણ/વિષય માટે બેંકમાં પ્રશ્ન નથી");
+    PG.short = pgGenerate_(P); render();
+    if (PG.short.length) toast("કેટલાક વિભાગમાં પ્રશ્નો ઓછા પડ્યા"); else toast("પેપર તૈયાર ✔");
+  };
+  function sec(d){ var p = d.split("|"); return {s:P.secs[Number(p[0])], id:p[1]}; }
+  Array.prototype.forEach.call(document.querySelectorAll("[data-pmrm]"), function(b){ b.onclick = function(){ gather(); var x = sec(b.dataset.pmrm); x.s.qids = x.s.qids.filter(function(i){ return i !== x.id; }); render(); }; });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-pmrep]"), function(b){
+    b.onclick = function(){
+      gather(); var x = sec(b.dataset.pmrep);
+      var free = pgPool_(P, x.s.type).filter(function(q){ return P.secs.every(function(z){ return (z.qids||[]).indexOf(q.id) < 0; }); });
+      if (!free.length) return toast("બદલવા માટે બીજો પ્રશ્ન બેંકમાં નથી");
+      var nq = pgPick_(free, 1, x.s.marks)[0];
+      x.s.qids = x.s.qids.map(function(i){ return i === x.id ? nq.id : i; }); render();
+    };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-pmadd]"), function(b){
+    b.onclick = function(){ gather(); var si = Number(b.dataset.pmadd), sl = document.querySelector('[data-pmaddsel="'+si+'"]'); if (sl && sl.value) P.secs[si].qids.push(sl.value); render(); };
+  });
+  if ($("pv_q")) { $("pv_q").onclick = function(){ PG.view = "q"; render(); }; $("pv_s").onclick = function(){ PG.view = "sol"; render(); }; }
+  $("pm_save").onclick = async function(){
+    gather();
+    if (!P.secs.some(function(s){ return (s.qids||[]).length; })) return toast("પહેલા પેપર બનાવો");
+    var rec = JSON.parse(JSON.stringify(P)); rec.total = pgTotal_(P, true); rec.count = P.secs.reduce(function(a, s){ return a + (s.qids||[]).length; }, 0); rec.saved = today();
+    var saved = await put("papers", rec); P.id = saved.id;
+    toast("પેપર સચવાયું ✔");
+  };
+  $("pm_new").onclick = function(){ if (P.secs.some(function(s){ return (s.qids||[]).length; }) && !confirm("વર્તમાન પેપર સાફ કરવું છે? (સાચવ્યું ન હોય તો ખોવાશે)")) return; PG.paper = pgNewPaper_(); PG.short = []; render(); };
+  function pr(mode){
+    gather();
+    if (!P.secs.some(function(s){ return (s.qids||[]).length; })) return toast("પહેલા પેપર બનાવો");
+    pgPrint_(P, mode);
+  }
+  $("pm_pq").onclick = function(){ pr("q"); }; $("pm_ps").onclick = function(){ pr("s"); }; $("pm_pb").onclick = function(){ pr("b"); };
+};
+function pgPrint_(P, mode){
+  var q = pgPaperHTML_(P, false), s = pgPaperHTML_(P, true);
+  var body = mode === "q" ? q : mode === "s" ? s : q + '<div style="break-before:page;page-break-before:always"></div>' + s;
+  printPage((mode === "s" ? "ઉકેલ — " : "પ્રશ્નપત્ર — ") + (P.name || "પેપર"), body, {block:true, pageNums:true});
+}
+
+/* ---------- સાચવેલા પેપર ---------- */
+VIEWS["paper:saved"] = function(){
+  var list = S.papers.slice().sort(function(a, b){ return String(b.saved || "").localeCompare(String(a.saved || "")); });
+  return '<div class="card pgc"><h3>સાચવેલા પેપર ('+list.length+')</h3>'
+    + (list.length ? '<div class="tw"><table><thead><tr><th class="num">ક્રમ</th><th>તારીખ</th><th>પરીક્ષા</th><th>ધોરણ</th><th>વિષય</th><th class="num">પ્રશ્નો</th><th class="num">કુલ ગુણ</th><th></th></tr></thead><tbody>'
+      + list.map(function(p, i){
+          return '<tr><td class="num">'+(i+1)+'</td><td>'+esc(dmy(p.date)||"")+'</td><td>'+esc(p.name)+'</td><td>'+esc(p.std)+'</td><td>'+esc(p.subject)+'</td><td class="num">'+esc(p.count||"")+'</td><td class="num">'+esc(p.total||"")+'</td>'
+            + '<td style="white-space:nowrap"><button class="btn sm sec" data-sv="open|'+p.id+'">ખોલો</button> <button class="btn sm sec" data-sv="pq|'+p.id+'">🖨 પ્રશ્નપત્ર</button> <button class="btn sm sec" data-sv="ps|'+p.id+'">🖨 ઉકેલ</button> <button class="btn sm sec" data-sv="dup|'+p.id+'">નકલ</button> <button class="btn sm sec" data-sv="del|'+p.id+'">કાઢો</button></td></tr>';
+        }).join("") + '</tbody></table></div>'
+      : '<div class="empty">હજુ કોઈ પેપર સાચવ્યું નથી. "પેપર બનાવો" માં પેપર બનાવીને 💾 દબાવો.</div>') + '</div>';
+};
+WIRE["paper:saved"] = function(){
+  Array.prototype.forEach.call(document.querySelectorAll("[data-sv]"), function(b){
+    b.onclick = async function(){
+      var p = b.dataset.sv.split("|"), act = p[0], rec = S.papers.filter(function(x){ return x.id === p[1]; })[0];
+      if (!rec) return;
+      if (act === "open"){ PG.paper = JSON.parse(JSON.stringify(rec)); PG.short = []; cur.t = "make"; drawMenu(); render(); }
+      else if (act === "pq") pgPrint_(rec, "q");
+      else if (act === "ps") pgPrint_(rec, "s");
+      else if (act === "dup"){ var c = JSON.parse(JSON.stringify(rec)); delete c.id; c.name = (c.name || "") + " (નકલ)"; await put("papers", c); toast("નકલ બની"); render(); }
+      else if (act === "del"){ if (!confirm("આ પેપર કાઢી નાખવું છે?")) return; await drop("papers", rec.id); toast("કાઢી નાખ્યું"); render(); }
+    };
+  });
 };
 
 /* ========== રીપોર્ટસ ========== */
