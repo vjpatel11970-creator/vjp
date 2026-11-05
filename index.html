@@ -1973,6 +1973,8 @@ function printTimetable_(only){
   if (!body) return toast("છાપવા માટે ટાઈમ ટેબલ નથી");
   printPage("ટાઈમ ટેબલ", body, {block:true});
 }
+/* ટાઈમ ટેબલ માટે વધારાના તાસ (ફક્ત અહીં) — આમાં શિક્ષકનું નામ જરૂરી નથી */
+var TT_EXTRA = ["C.A", "M.D."];
 VIEWS["shala:timetable"] = function(){
   var days = ["સોમવાર","મંગળવાર","બુધવાર","ગુરુવાર","શુક્રવાર","શનિવાર"];
   return '<div class="card"><h3>ટાઈમ ટેબલ એન્ટ્રી</h3><div class="grid">'
@@ -1980,8 +1982,8 @@ VIEWS["shala:timetable"] = function(){
     + sel("tt_div","વર્ગ",divList(),"")
     + sel("tt_day","વાર",days,"")
     + fld("tt_period","તાસ નં.","","number")
-    + sel("tt_sub","વિષય",subList(),"")
-    + fld("tt_teacher","શિક્ષકનું નામ","")
+    + sel("tt_sub","વિષય",subList().concat(TT_EXTRA),"")
+    + fld("tt_teacher","શિક્ષકનું નામ","") + '<datalist id="tt_tlist"></datalist>'
     + '</div><div style="margin-top:14px"><button class="btn" id="tt_add">ઉમેરો</button></div></div>'
     + '<div class="card"><div class="row" style="justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap"><h3 style="margin:0">ટાઈમ ટેબલ યાદી</h3>'
     + (S.timetable.length ? '<div class="row" style="gap:8px;align-items:center"><select id="tt_pcls" style="width:auto">' + ttClassOpts_() + '</select><button class="btn sec sm" id="tt_print">🖨 છાપવું</button></div>' : '') + '</div>'
@@ -1999,14 +2001,24 @@ VIEWS["shala:timetable"] = function(){
 };
 WIRE["shala:timetable"] = function(){
   if ($("tt_print")) $("tt_print").onclick = function(){ printTimetable_(val("tt_pcls")); };
-  $("tt_sub").onchange = function(){
-    var it = (S.settings.subjectsList || []).filter(function(x){ return x.gu === val("tt_sub"); })[0];
-    if (it && it.teachers && it.teachers.length === 1 && !val("tt_teacher")) $("tt_teacher").value = it.teachers[0];
-  };
+  /* વિષય બદલાય ત્યારે શિક્ષકનું નામ આપોઆપ ભરાય (પહેલેથી પસંદ થયેલા વિષય માટે પણ); જાતે લખ્યું હોય તો બદલાય નહીં */
+  var lastAuto = "";
+  function ttFill(){
+    var sub = val("tt_sub"), box = $("tt_teacher"), wrap = box.parentNode;
+    var extra = TT_EXTRA.indexOf(sub) > -1;
+    wrap.style.display = extra ? "none" : "";
+    if (extra){ box.value = ""; lastAuto = ""; return; }
+    var it = (S.settings.subjectsList || []).filter(function(x){ return x.gu === sub; })[0];
+    var tl = (it && it.teachers) ? it.teachers.filter(Boolean) : [];
+    box.setAttribute("list", "tt_tlist");
+    $("tt_tlist").innerHTML = tl.map(function(n){ return '<option value="'+esc(n)+'">'; }).join("");
+    if (!box.value.trim() || box.value === lastAuto){ box.value = tl[0] || ""; lastAuto = box.value; }
+  }
+  $("tt_sub").onchange = ttFill; ttFill();
   $("tt_add").onclick = async function(){
     var std=val("tt_std"), day=val("tt_day");
     if (!std || !day) return toast("ધોરણ અને વાર જરૂરી છે");
-    await put("timetable", {std:std, div:val("tt_div"), day:day, period:val("tt_period"), subject:val("tt_sub"), teacher:val("tt_teacher")});
+    await put("timetable", {std:std, div:val("tt_div"), day:day, period:val("tt_period"), subject:val("tt_sub"), teacher:TT_EXTRA.indexOf(val("tt_sub")) > -1 ? "" : val("tt_teacher")});
     toast("ઉમેરાયું"); render();
   };
   Array.prototype.forEach.call(document.querySelectorAll("[data-del]"), function(b){
@@ -2097,9 +2109,9 @@ function letterHTML(d){
                k.phone?("ફોન: "+k.phone):"", k.email||""].filter(Boolean).join("  ·  ");
   return '<div id="paper" style="background:#fff;color:#111;padding:26px 30px;border:1px solid var(--line);'
     + 'border-radius:8px;font-size:14.5px;line-height:1.9">'
-    + '<div style="text-align:center;border-bottom:2.5px solid #111;padding-bottom:10px">'
+    + '<div style="text-align:center;border-bottom:2.5px solid #111;padding-bottom:10px'+lgBox_()+'">'
       + (k.trustName ? '<div style="font-size:13px;font-weight:700;letter-spacing:.2px">'+esc(k.trustName)+'</div>' : '')
-      + '<div style="font-size:23px;font-weight:700;margin:3px 0">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
+      + '<div style="font-size:23px;font-weight:700;margin:3px 0'+'">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
       + '<div style="font-size:13px">'+esc(addr)+'</div>'
       + (line2?'<div style="font-size:11.5px;margin-top:3px">'+esc(line2)+'</div>':"")
     + '</div>'
@@ -2256,7 +2268,7 @@ WIRE["system:report"] = function(){
       + 'table{border-collapse:collapse;width:100%;font-size:12.5px}'
       + 'th,td{border:1px solid #999;padding:5px 7px;text-align:right}'
       + 'th{background:#eee}h2,h3{margin:2px 0;text-align:center}</style></head><body>'
-      + '<h2>'+lgImg_(50)+esc(k.name||"શાળા")+'</h2>'
+      + '<h2 style="position:relative'+lgBox_(50)+'">'+lgImg_(50)+esc(k.name||"શાળા")+'</h2>'
       + '<h3 style="font-weight:400;font-size:13px">'+esc([k.village,k.taluka,k.district].filter(Boolean).join(", "))+'</h3>'
       + '<h3>'+esc(val("rp_sel"))+' — વર્ષ '+esc(S.settings.year)+'</h3>'
       + $("rp_body").innerHTML.replace(/<div class="tw">|<\/div>/g,"") + '</body></html>');
@@ -2622,7 +2634,7 @@ WIRE["staff:add"] = function(){
     function row(label,v){ return '<tr><td style="color:#555">'+esc(label)+'</td><td style="text-align:right">'+esc(v||"—")+'</td></tr>'; }
     var k = S.school;
     var body = '<div style="max-width:560px">'
-      + '<div style="text-align:center;border-bottom:2px solid #111;padding-bottom:8px"><div style="font-size:19px;font-weight:700">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div></div>'
+      + '<div style="text-align:center;border-bottom:2px solid #111;padding-bottom:8px"><div style="font-size:19px;font-weight:700'+lgBox_()+'">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div></div>'
       + '<div style="text-align:center;font-weight:700;margin:10px 0">કર્મચારીની વિગત</div>'
       + '<table style="width:100%;border-collapse:collapse;font-size:13.5px">'
       + row("કર્મચારી ક્રમ", val("sf_empno")) + row("નામ", val("sf_name")) + row("હોદ્દો", val("sf_post"))
@@ -2677,10 +2689,17 @@ function classRoom_(std, div){
 }
 function classSign_(std, div, h){ var r = classRoom_(std, div); return r ? signTag_(r.sign, h) : ""; }
 function logoSrc_(){ return (S.school && S.school.logo && S.school.logoShow !== false && /^data:image\//.test(S.school.logo)) ? S.school.logo : ""; }
+/* લોગો: રીપોર્ટના હેડરમાં ડાબા ખૂણે (નામ વચ્ચે જ રહે) અને પહેલાં કરતાં થોડો મોટો */
+function lgSize_(h){ return Math.min(86, Math.round((h || 46) * 1.4)); }
+function lgBox_(h){
+  if (!logoSrc_()) return "";
+  var z = lgSize_(h), w = Math.round(z * 1.1) + 14;
+  return ";position:relative;min-height:" + (z + 6) + "px;padding-left:" + w + "px;padding-right:" + w + "px";
+}
 function lgImg_(h){
   var src = logoSrc_(); if (!src) return "";
-  h = h || 46;
-  return '<img class="schlogo" src="' + src + '" alt="" style="height:' + h + 'px;width:auto;max-width:' + Math.round(h * 2.2) + 'px;object-fit:contain;vertical-align:middle;margin-right:10px">';
+  var z = lgSize_(h);
+  return '<img class="schlogo" src="' + src + '" alt="" style="position:absolute;left:8px;top:6px;height:' + z + 'px;width:auto;max-width:' + Math.round(z * 1.3) + 'px;object-fit:contain;margin:0">';
 }
 function applyLogo_(){
   var src = (S.school && S.school.logo && /^data:image\//.test(S.school.logo)) ? S.school.logo : "";
@@ -2725,9 +2744,9 @@ function printHead_(title, sub){
   var k = S.school;
   var addr = [k.village, k.city, k.taluka ? ("તા. " + k.taluka) : "", k.district ? ("જિ. " + k.district) : ""].filter(Boolean).join(", ");
   var l2 = [k.udise ? ("યુ-ડાયસ: " + k.udise) : "", k.phone ? ("ફોન: " + k.phone) : "", k.email || ""].filter(Boolean).join("  ·  ");
-  return '<div style="text-align:center;border-bottom:2.5px solid #111;padding-bottom:8px;margin-bottom:10px">'
+  return '<div style="text-align:center;border-bottom:2.5px solid #111;padding-bottom:8px;margin-bottom:10px'+lgBox_(56)+'">'
     + (k.trustName ? '<div style="font-size:12.5px;font-weight:700">' + esc(k.trustName) + '</div>' : '')
-    + '<div style="font-size:21px;font-weight:700">' + lgImg_(56)+esc(k.name || "શાળાનું નામ") + '</div>'
+    + '<div style="font-size:21px;font-weight:700'+'">'+lgImg_(56)+esc(k.name || "શાળાનું નામ") + '</div>'
     + (addr ? '<div style="font-size:12.5px">' + esc(addr) + '</div>' : '')
     + (l2 ? '<div style="font-size:11.5px">' + esc(l2) + '</div>' : '') + '</div>'
     + '<div style="text-align:center;font-weight:700;font-size:16px;margin:6px 0 2px">' + esc(title) + '</div>'
@@ -3046,8 +3065,8 @@ function payslipHTML(p){
   var t = S.staff.find(function(x){return x.id===p.staffId;}) || {};
   var k = S.school;
   return '<div style="background:#fff;color:#111;padding:26px 30px;border:1px solid #ccc;border-radius:8px;font-size:14px;line-height:1.7;max-width:520px">'
-    + '<div style="text-align:center;border-bottom:2px solid #111;padding-bottom:8px">'
-      + '<div style="font-size:20px;font-weight:700">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
+    + '<div style="text-align:center;border-bottom:2px solid #111;padding-bottom:8px'+lgBox_()+'">'
+      + '<div style="font-size:20px;font-weight:700'+'">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
       + '<div style="font-size:12px">'+esc(k.village||"")+'</div></div>'
     + '<div style="text-align:center;font-weight:700;margin:10px 0">પગાર સ્લિપ — '+esc(p.month)+'</div>'
     + '<table style="width:100%;border-collapse:collapse;font-size:13.5px">'
@@ -3122,8 +3141,8 @@ function f16HTML(staffId, fy){
   var pf = rows.reduce(function(a,p){return a+Number(p.pf||0);},0);
   var pt = rows.reduce(function(a,p){return a+Number(p.pt||0);},0);
   return '<div style="background:#fff;color:#111;padding:26px 30px;border:1px solid #ccc;border-radius:8px;font-size:14px;line-height:1.8">'
-    + '<div style="text-align:center;border-bottom:2px solid #111;padding-bottom:8px">'
-      + '<div style="font-size:20px;font-weight:700">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
+    + '<div style="text-align:center;border-bottom:2px solid #111;padding-bottom:8px'+lgBox_()+'">'
+      + '<div style="font-size:20px;font-weight:700'+'">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
       + '<div style="font-size:12px">'+esc(k.village||"")+'</div></div>'
     + '<div style="text-align:center;font-weight:700;margin:10px 0">વાર્ષિક પગાર પ્રમાણપત્ર (ફોર્મ 16) — નાણાકીય વર્ષ '+esc(fy)+'</div>'
     + '<p>કર્મચારીનું નામ: <b>'+esc(t.name||"—")+'</b>&nbsp;&nbsp;&nbsp; હોદ્દો: '+esc(t.post||"—")+'</p>'
@@ -3768,7 +3787,7 @@ function staffSheetHTML(staffId){
   function row(label,v){ return '<tr><td style="color:#555">'+esc(label)+'</td><td style="text-align:right">'+esc(v||"—")+'</td></tr>'; }
   return '<div style="max-width:560px">'
     + '<div style="text-align:center;border-bottom:2px solid #111;padding-bottom:8px">'
-      + '<div style="font-size:19px;font-weight:700">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div></div>'
+      + '<div style="font-size:19px;font-weight:700'+lgBox_()+'">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div></div>'
     + '<div style="text-align:center;font-weight:700;margin:10px 0">સ્ટાફ માહિતી પત્રક</div>'
     + '<table style="width:100%;border-collapse:collapse;font-size:13.5px">'
     + row("નામ", t.name) + row("હોદ્દો", t.post) + row("મુખ્ય વિષય", t.subject)
@@ -4208,7 +4227,7 @@ function grInfoWire(){
     var k = S.school;
     var body = '<div style="max-width:560px">'
       + '<div style="text-align:center;border-bottom:2px solid #111;padding-bottom:8px">'
-      + '<div style="font-size:19px;font-weight:700">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div></div>'
+      + '<div style="font-size:19px;font-weight:700'+lgBox_()+'">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div></div>'
       + '<div style="text-align:center;font-weight:700;margin:10px 0">જી.આર.ની વિગત</div>'
       + '<table style="width:100%;border-collapse:collapse;font-size:13.5px">'
       + row("જી.આર. નં.", val("sd_gr")) + row("નામ", val("sd_name")) + row("પિતાનું નામ", val("sd_father"))
@@ -4471,9 +4490,9 @@ function lcHTML(d, s){
   var nums = ["1","2","3","4","5","6","7","8","9","10","11","12","13","14","15","16","17","18"];
   return '<div id="paper" style="background:#fff;color:#111;padding:26px 30px;border:1px solid var(--line);'
     + 'border-radius:8px;font-size:13.5px;line-height:1.6">'
-    + '<div style="text-align:center;border-bottom:2.5px solid #111;padding-bottom:10px">'
+    + '<div style="text-align:center;border-bottom:2.5px solid #111;padding-bottom:10px'+lgBox_()+'">'
       + '<div style="font-size:12px">'+esc(k.board||"")+'</div>'
-      + '<div style="font-size:21px;font-weight:700;margin:3px 0">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
+      + '<div style="font-size:21px;font-weight:700;margin:3px 0'+'">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
       + '<div style="font-size:12.5px">'+esc(addr)+'</div>'
       + (line2?'<div style="font-size:11px;margin-top:3px">'+esc(line2)+'</div>':"")
       + '<div style="font-size:16px;font-weight:700;margin-top:10px;text-decoration:underline">શાળા છોડ્યાનું પ્રમાણપત્ર</div>'
@@ -5505,8 +5524,8 @@ function resHeadHTML_(ex, title, extra){
   var subs = examSubjects_(ex), full = 0;
   kids.forEach(function(st){ var f = examStuResult_(ex, st, subs).full; if (f > full) full = f; });
   var cell = 'padding:3px 8px;text-align:left;font-size:13px;';
-  return '<div style="border:1.5px solid #000;text-align:center;padding:6px 8px">'
-    + '<div style="font-size:22px;font-weight:700;color:#b00000;line-height:1.3">'+lgImg_()+esc(k.name || "શાળાનું નામ")+'</div>'
+  return '<div style="border:1.5px solid #000;text-align:center;padding:6px 8px'+lgBox_()+'">'
+    + '<div style="font-size:22px;font-weight:700;color:#b00000;line-height:1.3'+'">'+lgImg_()+esc(k.name || "શાળાનું નામ")+'</div>'
     + (addr ? '<div style="font-size:12.5px">'+esc(addr)+'</div>' : '') + '</div>'
     + '<div style="text-align:center;font-weight:700;font-size:16px;margin:8px 0 6px;color:#0a1a8a">'+esc(title)+'</div>'
     + '<table style="width:100%;border-collapse:collapse;margin-bottom:8px"><tr>'
@@ -5824,7 +5843,7 @@ function rrHead_(title, ex, div, mode){
   var nm = (k.name || "શાળાનું નામ") + (k.village ? " , " + k.village : "");
   var info = '<span>ધોરણ : <b>'+esc(ex.std)+'</b></span><span>વર્ગ : <b>'+esc(div || "બધા")+'</b></span><span>પરીક્ષા : <b>'+esc(ex.name)+'</b></span>';
   var yr = 'વર્ષ : <b>'+esc(S.settings.year || "")+'</b>';
-  return '<div style="border:1px solid #777;box-shadow:3px 3px 0 #bbb;text-align:center;padding:6px 8px;margin-bottom:8px"><div style="font-size:24px;font-weight:700;color:#d01010;line-height:1.3">'+lgImg_(38)+esc(nm)+'</div></div>'
+  return '<div style="border:1px solid #777;box-shadow:3px 3px 0 #bbb;text-align:center;padding:6px 8px;margin-bottom:8px"><div style="font-size:24px;font-weight:700;color:#d01010;line-height:1.3'+lgBox_(38)+'">'+lgImg_(38)+esc(nm)+'</div></div>'
     + (mode === "box"
       ? '<div style="border:2px solid #000;text-align:center;font-weight:700;font-size:15px;color:#1a2f9a;padding:4px;margin-bottom:4px">'+esc(title)+'</div>'
         + '<div style="display:flex;justify-content:space-between;font-size:12.5px;padding:3px 6px;border-bottom:1px solid #000">'+info+'<span>'+yr+'</span></div>'
@@ -5926,7 +5945,7 @@ function rrSum_(ex, div, noGrade){
   var top = D.passers.filter(function(r){ return r.rank <= 3; }).sort(function(a, b){ return a.rank - b.rank; });
   var t4 = top.length ? '<table style="border-collapse:collapse;margin:18px auto 0"><tr>'+['રોલ નંબર','જી.આર. નંબર','સીટ નંબર','વિદ્યાર્થીનું નામ','ટકાવારી','રેન્ક'].map(function(x){ return '<th style="'+th+'color:#1a2f9a">'+x+'</th>'; }).join("")+'</tr>'
     + top.map(function(r){ return '<tr><td style="'+RR_B+'">'+esc(r.s.roll || "")+'</td><td style="'+RR_B+'">'+esc(r.s.gr)+'</td><td style="'+RR_B+'">'+esc(r.s.seat || "")+'</td><td style="'+RR_B+'text-align:left;padding:3px 14px">'+esc(rrNm_(r.s))+'</td><td style="'+RR_B+'">'+r.pct.toFixed(2)+'</td><td style="'+RR_B+'">'+r.rank+'</td></tr>'; }).join("") + '</table>' : '';
-  var head = '<div style="border:1px solid #777;box-shadow:3px 3px 0 #bbb;text-align:center;padding:6px 8px;margin-bottom:6px"><div style="font-size:24px;font-weight:700;color:#1a2f9a">'+lgImg_(38)+esc(nm)+'</div></div>'
+  var head = '<div style="border:1px solid #777;box-shadow:3px 3px 0 #bbb;text-align:center;padding:6px 8px;margin-bottom:6px"><div style="font-size:24px;font-weight:700;color:#1a2f9a'+lgBox_(38)+'">'+lgImg_(38)+esc(nm)+'</div></div>'
     + '<div style="display:flex;justify-content:space-between;align-items:center;padding:2px 8px"><span style="font-size:18px;font-weight:700;color:#d01010;flex:1;text-align:center">પરિણામ ની તારીજ</span><span>વર્ષ : <b>'+esc(S.settings.year || "")+'</b></span></div>'
     + '<div style="display:flex;justify-content:space-between;gap:14px;font-size:12.5px;padding:4px 8px;border:1px solid #000;margin:6px 0;color:#1a2f9a;flex-wrap:wrap"><span>પરીક્ષા : <b>'+esc(ex.name)+'</b></span><span>ધોરણ : <b>'+esc(ex.std)+'</b></span><span>વર્ગ : <b>'+esc(div || "બધા")+'</b></span><span>વર્ગ શિક્ષકનું નામ : <b>'+esc(room && room.teacher ? room.teacher : "")+'</b></span></div>';
   return {html: rrWrap_(head + t1 + t2 + t3 + t4), empty:false, landscape:false};
@@ -6679,8 +6698,8 @@ function anHead_(title, en){
   var k = S.school || {};
   var name = en ? schEn_() : (k.name || "શાળાનું નામ");
   var addr = en ? schAddrEn_() : [k.village, k.city, k.taluka ? "તા. "+k.taluka : "", k.district ? "જિ. "+k.district : ""].filter(Boolean).join(", ");
-  return '<div style="border:1.5px solid #000;text-align:center;padding:6px 8px">'
-    + '<div style="font-size:22px;font-weight:700;color:#b00000;line-height:1.3">'+lgImg_()+esc(name)+'</div>'
+  return '<div style="border:1.5px solid #000;text-align:center;padding:6px 8px'+lgBox_()+'">'
+    + '<div style="font-size:22px;font-weight:700;color:#b00000;line-height:1.3'+'">'+lgImg_()+esc(name)+'</div>'
     + (addr ? '<div style="font-size:12.5px">'+esc(addr)+'</div>' : '') + '</div>'
     + '<div style="text-align:center;font-weight:700;font-size:16px;margin:8px 0 4px;color:#0a1a8a">'+esc(title)+'</div>'
     + '<div style="text-align:center;font-size:12.5px;margin-bottom:8px">'+(en ? 'Academic Year' : 'શૈક્ષણિક વર્ષ')+': <b>'+esc(AN.year)+'</b> &nbsp; '+(en ? 'Std' : 'ધોરણ')+': <b>'+esc(AN.std)+'</b>'+(AN.div ? ' &nbsp; '+(en ? 'Div' : 'વર્ગ')+': <b>'+esc(AN.div)+'</b>' : '')+'</div>';
@@ -6820,7 +6839,7 @@ function anMarksheet_(s, D, en){
   return '<div class="anms" style="background:#fff;color:#111;padding:6px;border:3px double '+P+';border-radius:14px;font-size:13px;line-height:1.5'+(en ? ';font-family:Georgia,serif' : '')+'">'
     + '<div style="border:1.5px solid '+P+';border-radius:10px;padding:0 0 10px;overflow:hidden">'
     + '<div style="height:7px;background:linear-gradient(90deg,#d62828,#f77f00,#7b2cbf,#1d4ed8,#15803d)"></div>'
-    + '<div style="display:flex;align-items:center;justify-content:center;gap:14px;padding:10px 12px 0">'+lgImg_(70)
+    + '<div style="display:flex;align-items:center;justify-content:center;gap:14px;padding:10px 12px 0'+lgBox_(70)+'">'+lgImg_(70)
     + '<div style="text-align:center"><div style="font-size:27px;font-weight:800;color:#d00000;line-height:1.25;text-shadow:1px 1px 0 #f3c6c6">'+esc(name)+'</div>'
     + (addr ? '<div style="font-size:13px;color:#333;margin-top:2px">'+esc(addr)+'</div>' : '')+'</div></div>'
     + '<div style="text-align:center;margin:12px 0 4px"><span style="display:inline-block;padding:5px 26px;border:2px solid '+P+';border-radius:12px;background:linear-gradient(#f6ecff,#e3cdfa);color:'+P+';font-weight:800;font-size:16px;box-shadow:2px 2px 0 #c9a8e6">'+L.t1+' &nbsp;'+L.yr+' '+esc(yr)+'</span></div></div>'
@@ -6859,7 +6878,7 @@ function anCum_(D, kids){
   /* કૌંસમાં દર્શાવતા મહત્તમ ગુણ (વિષયો પરથી સૌથી સામાન્ય) */
   var brace = [0,1,2,3].map(function(i){ return anModal_(subs.map(function(sb){ var ex = exams[i]; return ex && exHasSub_(ex, sb) ? subjectMax(ex, sb) : ""; })); });
   var wsum = anModal_(subs.map(function(sb){ var t = 0, any = false; exams.forEach(function(ex){ if (ex && exHasSub_(ex, sb)){ any = true; t += Number(ex.weight) > 0 ? Number(ex.weight) : subjectMax(ex, sb); } }); return any ? t : ""; }));
-  var head = '<thead><tr><th colspan="'+nC+'" style="'+B+'padding:5px;text-align:center;color:#1a2fb0;font-size:17px">'+lgImg_(30)+esc(k.name || "શાળાનું નામ")+(k.village ? " , "+esc(k.village) : "")+'</th></tr>'
+  var head = '<thead><tr><th colspan="'+nC+'" style="'+B+'padding:5px;text-align:center;color:#1a2fb0;font-size:17px'+lgBox_(30)+'">'+lgImg_(30)+esc(k.name || "શાળાનું નામ")+(k.village ? " , "+esc(k.village) : "")+'</th></tr>'
     + '<tr><th colspan="'+nC+'" style="'+B+'padding:4px 8px;font-size:12px"><div style="display:flex;justify-content:space-between;align-items:center"><span style="color:#1a2fb0">ધોરણ : <b style="color:#000">'+esc(AN.std)+'</b> &nbsp;&nbsp; વર્ગ: <b style="color:#000">'+esc(AN.div || "બધા")+'</b></span><span style="color:#c00000;font-size:14px">સંગ્રહિત પરિણામ પત્રક</span><span style="color:#1a2fb0">વર્ષ : <b style="color:#000">'+esc(AN.year.replace(/^(\d{4})-(\d{2})$/, function(m, a, b){ return a + "-" + (String(a).slice(0, 2) + b); }))+'</b></span></div></th></tr>'
     + '<tr><th colspan="2" style="'+B+pd+fs+'height:92px;vertical-align:bottom;text-align:left;color:#1a2fb0;font-size:12px"><div style="display:flex;justify-content:space-between"><span>ગુણ વિવરણ</span><span>ગુણ માંથી</span></div></th>'
     + subs.map(function(sb){ return '<th style="'+B+pd+'width:'+Math.max(14, Math.floor(150 / Math.max(nS, 6)))+'px;vertical-align:bottom;color:#1a2fb0;font-size:10px"><div style="writing-mode:vertical-rl;transform:rotate(180deg);margin:0 auto;white-space:nowrap">'+esc(sb)+'</div></th>'; }).join("")
@@ -6938,7 +6957,7 @@ function anSum_(D, kids){
   var rd = anRDate_();
   return '<div class="sumrep" style="color:#000;font-size:12px">'
     + '<div style="text-align:center;margin:2px 0 10px"><span style="display:inline-block;border:1.5px solid #000;padding:5px 28px;color:#1a2fb0;font-weight:700;font-size:16px;box-shadow:3px 3px 0 #bbb">-: વાર્ષિક પરિણામની તારીજ :-</span></div>'
-    + '<div style="border:1.5px solid #000;border-radius:12px;text-align:center;padding:6px;font-size:24px;font-weight:700;color:#c00000">'+lgImg_(38)+esc(k.name || "શાળાનું નામ")+(k.village ? " , "+esc(k.village) : "")+'</div>'
+    + '<div style="border:1.5px solid #000;border-radius:12px;text-align:center;padding:6px;font-size:24px;font-weight:700;color:#c00000'+lgBox_(38)+'">'+lgImg_(38)+esc(k.name || "શાળાનું નામ")+(k.village ? " , "+esc(k.village) : "")+'</div>'
     + '<div style="display:flex;gap:8px;margin:8px 0 12px;align-items:center;font-weight:700;font-size:13px"><span style="'+pill+';flex:1;text-align:left;border-radius:14px">વર્ગ શિક્ષક શ્રી : '+esc(ct)+'</span>'
     + '<span style="'+pill+'">ધોરણ : '+esc(AN.std)+'</span><span style="'+pill+'">વર્ગ : '+esc(AN.div || "બધા")+'</span><span style="'+pill+'">સને : '+esc(AN.year.replace(/^(\d{4})-(\d{2})$/, function(m, a, b){ return a + "-" + a.slice(0, 2) + b; }))+'</span></div>'
     + '<div style="display:flex;gap:18px;align-items:flex-start"><div style="flex:0 0 46%">'
@@ -6959,7 +6978,7 @@ function anSum_(D, kids){
 function anMemo_(s, D){
   var c = D.by[s.id] || anStudentCalc_(s, D.subs, D.exams), k = S.school || {}, ok = c.result === "પાસ";
   return '<div style="border:1.5px dashed #111;padding:10px 14px;margin-bottom:12px;font-size:13px;page-break-inside:avoid">'
-    + '<div style="text-align:center;font-weight:700;font-size:16px;color:#b00000">'+lgImg_(34)+esc(k.name || "શાળાનું નામ")+'</div>'
+    + '<div style="text-align:center;font-weight:700;font-size:16px;color:#b00000'+lgBox_(34)+'">'+lgImg_(34)+esc(k.name || "શાળાનું નામ")+'</div>'
     + '<div style="text-align:center;font-weight:700;margin:2px 0 6px;color:#0a1a8a">પરિણામ મેમો — શૈક્ષણિક વર્ષ '+esc(AN.year)+'</div>'
     + '<table style="width:100%"><tr><td>નામ: <b>'+esc(stuFull_(s))+'</b></td><td>જી.આર.: <b>'+esc(s.gr)+'</b></td><td>ધોરણ/વર્ગ: <b>'+esc(s.std)+'/'+esc(s.div||"")+'</b></td><td>રોલ: <b>'+esc(s.roll||"—")+'</b></td></tr>'
     + '<tr><td>કુલ ગુણ: <b>'+(c.any ? c.max : "—")+'</b></td><td>મેળવેલ: <b>'+(c.any ? anFmt_(c.got) : "—")+'</b></td><td>ટકા: <b>'+(c.any ? c.pct.toFixed(2)+"%" : "—")+'</b></td><td>ગ્રેડ: <b>'+esc(c.grade||"—")+'</b></td></tr>'
@@ -7085,8 +7104,8 @@ function marksheetHTML(ex, s){
   var pass = r.result === "પાસ";
   return '<div id="paper" style="background:#fff;color:#111;padding:26px 30px;border:1px solid var(--line);'
     + 'border-radius:8px;font-size:13.5px;line-height:1.6">'
-    + '<div style="text-align:center;border-bottom:2.5px solid #111;padding-bottom:10px">'
-      + '<div style="font-size:21px;font-weight:700;margin:3px 0">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
+    + '<div style="text-align:center;border-bottom:2.5px solid #111;padding-bottom:10px'+lgBox_()+'">'
+      + '<div style="font-size:21px;font-weight:700;margin:3px 0'+'">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
       + (addr ? '<div style="font-size:12.5px">'+esc(addr)+'</div>' : '')
       + '<div style="font-size:12.5px;margin-top:2px">શૈક્ષણિક વર્ષ: <b>'+esc(S.settings.year||"—")+'</b></div>'
       + '<div style="font-size:16px;font-weight:700;margin-top:8px;text-decoration:underline">ગુણ પત્રક — '+esc(ex.name)+'</div>'
@@ -7110,7 +7129,7 @@ function marksheetHTML(ex, s){
     + (r.rank ? ' &nbsp;&nbsp; રેન્ક: <b>'+r.rank+'</b>' : '')+'</p>'
     + '<div style="margin-top:30px;display:flex;justify-content:space-between;align-items:flex-end;font-size:13px">'
       + '<div style="font-weight:700;text-align:center">'+classSign_(s.std, s.div)+'વર્ગ શિક્ષક</div>'
-      + '<div style="text-align:center;font-weight:700">'+princSign_()+(k.principal ? esc(k.principal)+'<div style="font-weight:400">આચાર્યશ્રી</div>' : 'આચાર્યશ્રી')+'</div>'
+      + '<div style="text-align:center;font-weight:700">'+princSign_()+'આચાર્યશ્રી</div>'
     + '</div></div>';
 }
 WIRE["exam:marksheet"] = function(){
@@ -7266,7 +7285,7 @@ function resultSheetHTML(r){
     + '<b style="color:'+(pass?'#166534':'#b91c1c')+'">'+esc(r.result)+'</b>'
     + ((r.rank && pass) ? ' &nbsp;&nbsp; ક્રમ: <b>'+esc(r.rank)+'</b>' : '')+'</p>'
     + '<div style="margin-top:34px;display:flex;justify-content:space-between;font-size:13px">'
-    + '<div></div><div style="font-weight:700">'+esc(sc.principal||"આચાર્યશ્રી")+'<div style="font-weight:400">આચાર્યશ્રી</div></div></div>'
+    + '<div></div><div style="font-weight:700">આચાર્યશ્રી</div></div>'
     + '<p style="margin:16px 0 0;font-size:11px;color:#555;border-top:1px dashed #aaa;padding-top:6px">'
     + 'આ ઓનલાઇન પરિણામ શાળાના રેકોર્ડ પરથી કમ્પ્યુટર દ્વારા તૈયાર થયેલ છે. સત્તાવાર ગુણપત્રક માટે શાળાનો સંપર્ક કરવો.</p>'
     + '</div>';
@@ -7493,7 +7512,7 @@ function feeReceiptHTML(l){
   var k = S.school;
   return '<div style="max-width:480px;background:#fff;color:#111;padding:20px 26px;border:1px solid #ccc;border-radius:8px;font-size:14px">'
     + '<div style="text-align:center;border-bottom:2px solid #111;padding-bottom:8px">'
-    + '<div style="font-size:18px;font-weight:700">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div></div>'
+    + '<div style="font-size:18px;font-weight:700'+lgBox_()+'">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div></div>'
     + '<div style="text-align:center;font-weight:700;margin:10px 0">ફી પહોંચ</div>'
     + '<p>પહોંચ નં.: <b>'+esc(l.rno||"—")+'</b> &nbsp; તારીખ: '+esc(l.date)+'</p>'
     + '<p>વિદ્યાર્થીનું નામ: <b>'+esc(studentName(l.stuId))+'</b></p>'
@@ -7570,7 +7589,7 @@ function letterBodyHTML_(title, paragraphs, s){
   var k = S.school;
   return '<div style="max-width:650px;border:3px double #111;border-radius:4px;padding:18px 24px">'
     + '<div style="border:1px solid #111;padding:8px;text-align:center;margin-bottom:4px">'
-    + '<div style="font-size:19px;font-weight:700;color:#1a2f6b">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div></div>'
+    + '<div style="font-size:19px;font-weight:700;color:#1a2f6b'+lgBox_()+'">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div></div>'
     + '<div style="text-align:center;font-size:12px;color:#1a2f6b;font-weight:600;margin-bottom:2px">'
     + esc(k.village||"")+(k.taluka?", તા. "+esc(k.taluka):"")+(k.district?", જિ. "+esc(k.district):"")+'</div>'
     + (k.udise ? '<div style="text-align:center;font-size:12px;font-weight:700">DISE Code : '+esc(k.udise)+'</div>' : "")
@@ -7795,7 +7814,7 @@ WIRE["reports:idcard"] = function(){
     $("ic_body").innerHTML = !kids.length ? '<div class="empty">કોઈ વિદ્યાર્થી મળ્યો નહીં.</div>'
       : kids.map(function(s){
           return '<div style="display:inline-block;width:260px;border:2px solid #333;border-radius:10px;padding:10px 14px;margin:6px;vertical-align:top;font-size:12.5px">'
-            + '<div style="text-align:center;font-weight:700;font-size:13px;border-bottom:1px solid #999;padding-bottom:4px">'+lgImg_(24)+esc(k.name||"શાળા")+'</div>'
+            + '<div style="text-align:center;font-weight:700;font-size:13px;border-bottom:1px solid #999;padding-bottom:4px'+lgBox_(24)+'">'+lgImg_(24)+esc(k.name||"શાળા")+'</div>'
             + '<div style="text-align:center;font-weight:700;margin:6px 0">વિદ્યાર્થી ઓળખપત્ર</div>'
             + '<div>નામ: '+esc(s.name)+'</div>'
             + '<div>જી.આર.: '+esc(s.gr)+' &nbsp; ધોરણ: '+esc(s.std)+'-'+esc(s.div)+'</div>'
@@ -7891,7 +7910,7 @@ WIRE["reports:stdwise"] = function(){
       cols.push(["બેંકનું નામ","bankName",""]); cols.push(["ખાતા નં.","bankAcc3","num"]);
     }
     $("sw_body").innerHTML = '<div style="text-align:center;margin-bottom:10px">'
-      + '<div style="font-weight:700;font-size:16px">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
+      + '<div style="font-weight:700;font-size:16px'+lgBox_()+'">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
       + '<div style="font-size:13px;color:var(--muted)">ધોરણ : '+esc(std)+' &nbsp; વર્ગ : '+esc(div||"બધા")+' &nbsp; તારીખ : '+today()+'</div></div>'
       + '<div class="tw"><table><thead><tr>'+cols.map(function(c){return '<th'+(c[2]==="num"?' class="num"':'')+'>'+esc(c[0])+'</th>';}).join("")+'</tr></thead><tbody>'
       + kids.map(function(s){
@@ -7931,7 +7950,7 @@ WIRE["reports:truecopy"] = function(){
     var fullGu = [s.surname, s.name, s.father].filter(Boolean).join(" ") || s.name;
     var fullEn = [s.surnameEn, s.nameEn, s.fatherEn].filter(Boolean).join(" ");
     $("tc_body").innerHTML = '<div style="max-width:600px">'
-      + '<div style="text-align:center;border:1px solid #111;padding:6px;font-size:17px;font-weight:700;color:#1a2f6b">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
+      + '<div style="text-align:center;border:1px solid #111;padding:6px;font-size:17px;font-weight:700;color:#1a2f6b'+lgBox_()+'">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
       + '<div style="text-align:center;color:#c00;font-weight:700;font-size:16px;margin:8px 0">વિદ્યાર્થીની માહિતી ખરાઈ ફોર્મ</div>'
       + '<div style="display:flex;justify-content:space-between;font-size:13px;border-bottom:1px solid #111;padding-bottom:4px;margin-bottom:10px">'
       + '<span>વર્ષ : <b>'+esc(S.settings.year||"—")+'</b></span><span>તારીખ : <b>'+today()+'</b></span></div>'
@@ -7959,7 +7978,7 @@ WIRE["reports:genreg"] = function(){
     var kids = S.students.filter(function(s){ return !std || String(s.std)===std; })
       .slice().sort(function(a,b){return (Number(a.gr)||0)-(Number(b.gr)||0);});
     var left = {}; S.lcs.forEach(function(l){ left[l.stuId] = l; });
-    $("gn_body").innerHTML = '<div style="text-align:center;font-weight:700;font-size:16px;color:#1a2f6b">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
+    $("gn_body").innerHTML = '<div style="text-align:center;font-weight:700;font-size:16px;color:#1a2f6b'+lgBox_()+'">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
       + '<div style="text-align:center;font-weight:700;color:#c00;margin:4px 0 8px">જનરલ રજીસ્ટરની માહિતી</div>'
       + '<div class="tw"><table style="font-size:11.5px"><thead><tr><th class="num">ક્રમ</th><th class="num">જી.આર.</th><th>વિદ્યાર્થીનું પુરું નામ</th><th>ધર્મ</th><th>જ્ઞાતિ</th>'
       + '<th>જન્મ સ્થળ</th><th>જન્મ તારીખ</th><th>પ્રવેશ તારીખ</th><th>ધોરણ</th><th>શાળા છોડ્યા તારીખ</th><th>એલ.સી. નં.</th></tr></thead><tbody>'
@@ -7985,7 +8004,7 @@ VIEWS["reports:namekami"] = function(){
 WIRE["reports:namekami"] = function(){
   var k = S.school;
   var rows = S.lcs.slice().sort(function(a,b){return (a.date||"").localeCompare(b.date||"");});
-  $("nk_body").innerHTML = '<div style="text-align:center;font-weight:700;font-size:16px;color:#1a2f6b">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
+  $("nk_body").innerHTML = '<div style="text-align:center;font-weight:700;font-size:16px;color:#1a2f6b'+lgBox_()+'">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
     + '<div style="text-align:center;font-weight:700;color:#c00;margin:4px 0 8px">વિદ્યાર્થી નામ કમી રજીસ્ટર</div>'
     + '<div class="tw"><table><thead><tr><th class="num">ક્રમ નં.</th><th class="num">જી.આર. નં.</th><th>વિદ્યાર્થીનું નામ</th><th>ધોરણ/વર્ગ</th>'
     + '<th class="num">કમી કર્યા તારીખ</th><th>નામ કમી કરવાનું કારણ</th><th class="num">લીવીંગ સર્ટી નંબર</th><th>નોંધ</th><th>આચાર્યની નોંધ</th></tr></thead><tbody>'
@@ -8051,8 +8070,8 @@ VIEWS["reports:feereg"] = function(){
   var k = S.school;
   return '<div class="card"><h3>ફી પહોંચ રજીસ્ટર</h3><div style="margin-bottom:10px"><button class="btn sec" id="fr_print">છાપો</button></div>'
     + '<div id="fr_body">'
-    + '<div style="text-align:center;border:1px solid #111;padding:6px;margin-bottom:8px">'
-    + '<div style="font-weight:700;font-size:16px;color:#c00">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
+    + '<div style="text-align:center;border:1px solid #111;padding:6px;margin-bottom:8px'+lgBox_()+'">'
+    + '<div style="font-weight:700;font-size:16px;color:#c00'+'">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
     + '<div style="font-size:12px;color:#1a2f6b">'+esc(k.village||"")+(k.taluka?", તા. "+esc(k.taluka):"")+(k.district?", જિ. "+esc(k.district):"")+'</div>'
     + '<div style="font-weight:700;color:#1a2f6b">ફી પહોંચ રજીસ્ટર</div></div>'
     + '<div class="tw"><table><thead><tr><th class="num">રોલ નંબર</th><th class="num">જી.આર. નંબર</th><th class="num">તારીખ</th><th class="num">રસીદ નંબર</th>'
@@ -8086,7 +8105,7 @@ WIRE["reports:bday"] = function(){
     }).slice().sort(function(a,b){ return (a.dob||"").slice(5).localeCompare((b.dob||"").slice(5)); });
     var dd = d.slice(8,10)+"-"+d.slice(5,7)+"-"+d.slice(0,4);
     $("bd_body").innerHTML = '<div style="max-width:700px">'
-      + '<div style="border:1px solid #111;padding:8px;text-align:center;font-size:19px;font-weight:700;color:#1a2f6b;box-shadow:3px 3px 0 #bbb">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
+      + '<div style="border:1px solid #111;padding:8px;text-align:center;font-size:19px;font-weight:700;color:#1a2f6b;box-shadow:3px 3px 0 #bbb'+lgBox_()+'">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
       + '<div style="border:2px solid #111;margin:10px 0;text-align:center;padding:6px;font-size:30px;font-weight:700;font-style:italic;font-family:Georgia,serif;color:#d00">Wish you Happy Birthday</div>'
       + '<table style="width:100%;border-collapse:collapse;font-size:13px" border="1"><thead><tr>'
       + '<th style="padding:6px">ક્રમ</th><th style="padding:6px">જી.આર. નંબર</th><th>વિદ્યાર્થીનું નામ</th><th>ગામ</th><th>ધોરણ</th><th>રોલ નં.</th></tr></thead><tbody>'
@@ -8139,7 +8158,7 @@ WIRE["reports:utaro"] = function(){
     $("ut_body").innerHTML = '<div style="max-width:560px;border:1px solid #111;padding:12px 16px;font-size:12.5px">'
       + '<div style="text-align:center;font-size:11.5px;line-height:1.6">સામાજિક અને શૈક્ષણિક રીતે પછાત વર્ગના વિદ્યાર્થીઓને જાતિ પ્રમાણપત્ર મેળવવા માટેની અરજી સાથે જોડવા માટે, શાળાના આચાર્યશ્રીએ આપવા માટેનો</div>'
       + '<div style="text-align:center;margin:8px 0"><span style="display:inline-block;border:1px solid #111;padding:6px 20px;font-size:17px;font-weight:700;color:#1a2f6b;box-shadow:3px 3px 0 #bbb">શાળાના વયપત્રકના આધારે ઉતારો</span></div>'
-      + '<div style="text-align:center;font-size:17px;font-weight:700;color:#c00">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
+      + '<div style="text-align:center;font-size:17px;font-weight:700;color:#c00'+lgBox_()+'">'+lgImg_()+esc(k.name||"શાળાનું નામ")+'</div>'
       + '<div style="text-align:center;font-size:12px;color:#1a2f6b;border-bottom:1px solid #111;padding-bottom:8px">'+esc(k.village||"")+(k.taluka?", તા. "+esc(k.taluka):"")+(k.district?", જિ. "+esc(k.district):"")+'</div>'
       + '<div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0">'
       + '<div style="border:2px solid #111;padding:6px 10px;font-weight:700">વિદ્યાર્થી જી.આર. નંબર : <span style="border:1px solid #111;padding:2px 8px">'+esc(s.gr)+'</span></div>'
