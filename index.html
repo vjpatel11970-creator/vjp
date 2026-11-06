@@ -756,7 +756,7 @@ function pwaInstall(){
 }
 
 /* ---------- app data ---------- */
-var COLLS =["students","staff","books","issues","ledger","exams","attendance","letters","lcs","payslips","holidays","rooms","heads","feeMaster","timetable","examtt","leaves","scholarships","increments","payM1","payM3","payM10","payM12","smsLog","assignments","materials","notices","messages","markLog","questions","papers","chapters","paperLog"];
+var COLLS =["students","staff","books","issues","ledger","exams","attendance","letters","lcs","payslips","holidays","rooms","heads","feeMaster","timetable","examtt","leaves","scholarships","increments","payM1","payM3","payM10","payM12","smsLog","assignments","materials","notices","messages","markLog","questions","papers","chapters","paperLog"].concat(["t_Class_det", "t_Subject_Mst_New", "t_Dist", "t_AppendixIII_Category", "t_GuestMst", "t_PartyMst", "t_A_RegisterInward", "t_A_RegisterOutward", "t_DeadStockKamiPatrak", "t_SVC_Mst", "t_RosterMst", "t_School_Patrak_A", "t_GradeMst", "t_GradeMst_OptSub", "t_Marks_ExamMaster", "t_Marks_InternalMaster", "t_Marks_MarksSlip", "t_Marks_ResultRegister", "t_UnitTest_Mst", "t_UnitTest_Mst_A", "t_UnitTest_A", "t_Attendence_Mst_MonthWise", "t_StudentClassChange", "t_Student_EBC_Fee_Mafi", "t_Fee_Receipt", "t_Fee_Register", "t_EmployeePostMst", "t_Pay_HeadMst", "t_EmployeeQualificationDet", "t_EmployeeLeaveOpeningBalance", "t_GPFLoan"]);
 var S = {
   school:{name:"",udise:"",index:"",village:"",taluka:"",district:"",principal:"",
           medium:"ગુજરાતી",type:"માધ્યમિક",board:"ગુજરાત માધ્યમિક અને ઉચ્ચતર માધ્યમિક શિક્ષણ બોર્ડ, ગાંધીનગર",
@@ -770,7 +770,8 @@ var S = {
   students:[], staff:[], books:[], issues:[], ledger:[], exams:[], attendance:[], letters:[], lcs:[], payslips:[],
   holidays:[], rooms:[], heads:[], feeMaster:[], timetable:[], examtt:[], leaves:[], scholarships:[], increments:[],
   payM1:[], payM3:[], payM10:[], payM12:[], smsLog:[],
-  assignments:[], materials:[], notices:[], markLog:[], questions:[], papers:[], chapters:[], paperLog:[]
+  assignments:[], materials:[], notices:[], markLog:[], questions:[], papers:[], chapters:[], paperLog:[],
+  t_Class_det:[], t_Subject_Mst_New:[], t_Dist:[], t_AppendixIII_Category:[], t_GuestMst:[], t_PartyMst:[], t_A_RegisterInward:[], t_A_RegisterOutward:[], t_DeadStockKamiPatrak:[], t_SVC_Mst:[], t_RosterMst:[], t_School_Patrak_A:[], t_GradeMst:[], t_GradeMst_OptSub:[], t_Marks_ExamMaster:[], t_Marks_InternalMaster:[], t_Marks_MarksSlip:[], t_Marks_ResultRegister:[], t_UnitTest_Mst:[], t_UnitTest_Mst_A:[], t_UnitTest_A:[], t_Attendence_Mst_MonthWise:[], t_StudentClassChange:[], t_Student_EBC_Fee_Mafi:[], t_Fee_Receipt:[], t_Fee_Register:[], t_EmployeePostMst:[], t_Pay_HeadMst:[], t_EmployeeQualificationDet:[], t_EmployeeLeaveOpeningBalance:[], t_GPFLoan:[]
 };
 
 var DEFAULT_SUBJECTS_STR = S.settings.subjects;
@@ -907,7 +908,7 @@ async function loadData_(){
   if (!GAS_READY || !TOKEN) return;
   var hadMirror = (S.students.length || S.staff.length || S.exams.length) ? true : false;
   DATA_READY = false; setLoading_(true);
-  var cols = COLLS.slice(), third = Math.ceil(cols.length / 3);
+  var cols = COLLS.filter(function(c){ return c.indexOf("t_") !== 0; }), third = Math.ceil(cols.length / 3);
   var chunks = [cols.slice(0, third), cols.slice(third, 2*third), cols.slice(2*third)];
   var jobs = chunks.map(function(ch, i){ return gasPost({action:"getAll", colls:ch, meta:(i === 0)}); });
   var ok = true, firstDone = false;
@@ -1221,13 +1222,14 @@ var MENU = [
   {k:"library", t:"પુસ્તકાલય", tabs:[["books","પુસ્તક યાદી"],["issue","ઇશ્યુ / પરત"]]},
   {k:"account", t:"એકાઉન્ટ", tabs:[["sum","સરવૈયું"],["entry","નવી નોંધ"],["fee","ફી ભરપાઈ"],["paygw","ઓનલાઇન પેમેન્ટ ગેટવે"]]},
   {k:"paper", t:"પેપર જનરેશન", tabs:[["dash","ડેશબોર્ડ"],["bank","પ્રશ્ન બેંક"],["chapters","પ્રકરણો"],["make","પેપર બનાવો"],["saved","સાચવેલા પેપર"],["key","ઉકેલ / Answer Key"],["report","રીપોર્ટ"]]},
+  {k:"dbt", t:"ડેટાબેઝ ખાના", tabs:[["list","બધા ખાના"],["view","ખાનું ખોલો"]]},
   {k:"reports", t:"રીપોર્ટસ", tabs:[["idcard","આઈ કાર્ડ"],["parentletter","વાલી-પિતાને લેટર"],["grreg","જી.આર.રજીસ્ટર"],["genreg","જનરલ રજીસ્ટર"],["leavereg","લીવીંગ રજીસ્ટર"],["namekami","નામ કમી રજીસ્ટર"],["stdwise","વર્ગ પ્રમાણે માહિતી"],["truecopy","માહિતી ખરાઈ ફોર્મ"],["feereg","ફી રજીસ્ટર"],["character","કેરેક્ટર સર્ટી"],["bonafide","બોનાફાઈડ સર્ટી"],["caste","જ્ઞાતિ પ્રમાણપત્ર"],["utaro","વયપત્રકનો ઉતારો"],["transfer","બદલી પ્રમાણપત્ર"],["trialcert","ટ્રાયલ સર્ટી"],["birth","જન્મ પ્રમાણપત્ર"],["bday","જન્મ તારીખની શુભેચ્છા"],["avgatt","સરાસરી હાજરી પત્રક"],["attmatrix","માસવાર હાજરી પત્રક"],["sms","એસ.એમ.એસ"],["smsapi","API સેટિંગ (WhatsApp/SMS)"],["scholarship","શિષ્યવૃત્તિ"],["newadm","નવા દાખલ રીપોર્ટ"],["leftrpt","છોડી ગયેલ રીપોર્ટ"],["datewise","માહિતી (તારીખ વાઈઝ)"]]}
 ];
 var cur = {m:"shala", t:"dash"};
 
 function drawMenu(){
   var groups = MENU.filter(function(m){ return !LOGGED_IN || allowed(m.k); });
-  var NAV_ICON = {shala:"🏫", system:"⚙️", staff:"👨‍🏫", student:"🎓", exam:"📝", portal:"📲", library:"📚", account:"💰", reports:"📊", paper:"📄"};
+  var NAV_ICON = {shala:"🏫", system:"⚙️", staff:"👨‍🏫", student:"🎓", exam:"📝", portal:"📲", library:"📚", account:"💰", reports:"📊", paper:"📄", dbt:"🗄️"};
   $("sidebar").innerHTML = '<div class="sbrand"><div class="lg">શા</div><div><b>' + esc((S.school && S.school.name) || "શાળા વ્યવસ્થાપન") + '</b><small>શૈક્ષણિક વર્ષ ' + esc((S.settings && S.settings.year) || "—") + '</small></div></div>'
     + '<button class="navhead" id="navHome"><span><i class="ni">🏠</i>ડેશબોર્ડ (હોમ)</span></button>' + groups.map(function(m){
     var isCur = cur.m === m.k;
@@ -2433,7 +2435,8 @@ function fixXlsxDates_(rows){
   });
 }
 WIRE["system:backup"] = function(){
-  $("bk_exp").onclick = function(){
+  $("bk_exp").onclick = async function(){
+    await dbtLoad_();
     if (typeof XLSX === "undefined") return toast("Excel લાયબ્રેરી લોડ થઈ નથી, ફરી પ્રયત્ન કરો");
     var wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(objToRows(S.school)), "school");
@@ -2472,6 +2475,7 @@ WIRE["system:backup"] = function(){
   };
   $("bk_clear").onclick = async function(){
     if (!confirm("બધા રેકોર્ડ કાયમ માટે ભૂંસાઈ જશે. ચાલુ રાખવું?")) return;
+    await dbtLoad_();
     for (var i=0;i<COLLS.length;i++){
       var c = COLLS[i], ids = S[c].map(function(x){return x.id;});
       for (var j=0;j<ids.length;j++){ await drop(c, ids[j]); }
@@ -8534,6 +8538,192 @@ WIRE["paper:report"] = function(){
     var wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([D.head].concat(D.rows)), "report");
     XLSX.writeFile(wb, "paper-report-" + PG.rep.kind + ".xlsx"); pgLog_("dl_xl", D.title);
   };
+};
+
+/* ========== ડેટાબેઝ ખાના (Access જેવા અલગ ટેબલ — Google Sheet માં દરેકની અલગ શીટ + અલગ કોલમ) ========== */
+var DBT = [{"k": "t_Class_det", "mdb": "Class_det", "t": "વર્ગની વિગત (વર્ગ શિક્ષક, સંખ્યા)", "g": "શાળા", "f": ["School_No", "class", "class_type", "no_of_student", "Size_Of_Class", "ClassTeacher", "TotalPeriod_Mon_Fri", "TotalPeriod_Sat", "class_type_Eng"], "ty": ["Long", "Integer", "Text", "Integer", "Long", "Text", "Long", "Long", "Text"], "n": 2}, {"k": "t_Subject_Mst_New", "mdb": "Subject_Mst_New", "t": "વિષય માસ્ટર", "g": "શાળા", "f": ["School_No", "Subject_name", "Subject_Type", "Subject_desc", "FieldNo", "FieldSerialNo", "SrNo", "IsMAin", "ClassTeacher", "IsShowMarksNotInTotalForStd11"], "ty": ["Long", "Text", "Text", "Text", "Text", "Long", "Long", "Yes/No", "Text", "Yes/No"], "n": 10}, {"k": "t_Dist", "mdb": "Dist", "t": "જિલ્લા યાદી", "g": "શાળા", "f": ["DistCode", "ComCode", "DistName", "DistNameG", "IsCancel"], "ty": ["Byte", "Long", "Text", "Text", "Yes/No"], "n": 34}, {"k": "t_AppendixIII_Category", "mdb": "AppendixIII_Category", "t": "પરિશિષ્ટ-III કેટેગરી", "g": "શાળા", "f": ["Category", "Value"], "ty": ["Text", "Double"], "n": 5}, {"k": "t_GuestMst", "mdb": "GuestMst", "t": "મહેમાન / અતિથિ", "g": "શાળા", "f": ["Invitation", "PrincipalName1", "PrincipalName2", "PrincipalName3", "PrincipalAdd", "Village", "PrincipalPhone", "PrincipalMobile", "SchoolName", "SRNO"], "ty": ["Yes/No", "Text", "Text", "Text", "Memo", "Text", "Text", "Text", "Text", "Long"], "n": 1}, {"k": "t_PartyMst", "mdb": "PartyMst", "t": "પાર્ટી / પેઢી માસ્ટર", "g": "શાળા", "f": ["CCode", "CName", "ConPerson", "ConPerDesign1", "Email", "Url", "Remarks", "Add1", "Add2", "Add3", "City", "District", "State", "Country", "Pincode", "OStdCode", "ShortName", "Type"], "ty": ["Long", "Text", "Text", "Text", "Text", "Text", "Text", "Text", "Text", "Text", "Text", "Text", "Text", "Text", "Long", "Text", "Text", "Text"], "n": 0}, {"k": "t_A_RegisterInward", "mdb": "A_RegisterInward", "t": "આવક રજીસ્ટર (Inward)", "g": "રજીસ્ટર", "f": ["SchoolNO", "ID", "Srno", "IsReply", "InwardDate", "Letterdate", "InwardNO", "Subject", "SubDepartment", "SentFrom", "SentFromAddress", "Summary", "OutwardNo", "OutwardDate", "LetterdateOutward", "Notes", "FileName", "YearId"], "ty": ["Long", "Long", "Long", "Yes/No", "Date/Time", "Date/Time", "Text", "Text", "Text", "Text", "Text", "Memo", "Text", "Date/Time", "Date/Time", "Text", "Text", "Long"], "n": 0}, {"k": "t_A_RegisterOutward", "mdb": "A_RegisterOutward", "t": "જાવક રજીસ્ટર (Outward)", "g": "રજીસ્ટર", "f": ["SchoolNO", "ID", "Srno", "OutwardDate", "Letterdate", "Subject", "SentTo", "SentToAddress", "Summary", "Madhyam", "TicketExp", "Notes", "FileName", "YearId"], "ty": ["Long", "Long", "Long", "Date/Time", "Date/Time", "Text", "Text", "Text", "Memo", "Text", "Double", "Text", "Text", "Long"], "n": 0}, {"k": "t_DeadStockKamiPatrak", "mdb": "DeadStockKamiPatrak", "t": "ડેડસ્ટોક / કમી પત્રક", "g": "રજીસ્ટર", "f": ["Schoolno", "DYear", "DRegNo", "Date", "Srno", "DStNo", "ItemName", "Qty", "Rate", "Amount", "PDate", "Reason", "Bidding"], "ty": ["Long", "Text", "Text", "Text", "Long", "Text", "Text", "Double", "Double", "Double", "Date/Time", "Text", "Text"], "n": 0}, {"k": "t_SVC_Mst", "mdb": "SVC_Mst", "t": "એસ.વી.સી. માસ્ટર", "g": "રજીસ્ટર", "f": ["SrNo", "SchoolUnit", "UnitName", "UnitSchool", "UnitCode", "SchoolName", "Village", "OPhone", "PrincipalName1", "PrincipalName2", "PrincipalName3", "PrincipalAdd", "PrincipalPhone", "PrincipalMobile"], "ty": ["Long", "Text", "Text", "Text", "Text", "Text", "Text", "Text", "Text", "Text", "Text", "Memo", "Text", "Text"], "n": 0}, {"k": "t_RosterMst", "mdb": "RosterMst", "t": "રોસ્ટર", "g": "રજીસ્ટર", "f": ["Field1_1", "Field1_2", "Field1_3", "Field1_4", "Field2_1", "Field2_2", "Field2_3", "Field2_4", "Field3_1", "Field3_2", "Field3_3", "Field3_4", "Field4_1", "Field4_2", "Field4_3", "Field4_4", "Field5_1", "Field5_2", "Field5_3", "Field5_4"], "ty": ["Long", "Long", "Long", "Long", "Long", "Long", "Long", "Long", "Long", "Long", "Long", "Long", "Long", "Long", "Long", "Long", "Long", "Long", "Long", "Long"], "n": 0}, {"k": "t_School_Patrak_A", "mdb": "School_Patrak_A", "t": "શાળા પત્રક-A", "g": "રજીસ્ટર", "f": ["School_No", "Month", "MonthInNumber", "ChalanNo", "ChalanDate", "JamaRakam", "Upad", "ProgresiveSar", "Bill", "Others"], "ty": ["Long", "Text", "Long", "Text", "Text", "Double", "Double", "Double", "Long", "Double"], "n": 12}, {"k": "t_GradeMst", "mdb": "GradeMst", "t": "ગ્રેડ માસ્ટર", "g": "પરિક્ષા", "f": ["SchoolNo", "PercentageMin", "PercentageMax", "Grade", "DeptName"], "ty": ["Long", "Double", "Double", "Text", "Text"], "n": 14}, {"k": "t_GradeMst_OptSub", "mdb": "GradeMst_OptSub", "t": "ગ્રેડ માસ્ટર (વૈકલ્પિક વિષય)", "g": "પરિક્ષા", "f": ["SchoolNO", "Mini", "Maxi", "Grade"], "ty": ["Long", "Double", "Double", "Text"], "n": 11}, {"k": "t_Marks_ExamMaster", "mdb": "Marks_ExamMaster", "t": "પરીક્ષા માળખું (વિષય-ગુણ)", "g": "પરિક્ષા", "f": ["SchoolNo", "ExamType", "Subject", "SubjectMarks", "PassingMarks", "Standard", "CountInTotal", "SubjectMarks_T", "PassingMarks_T", "SubjectMarks_P", "PassingMarks_P", "TakeHalf", "Srno"], "ty": ["Long", "Text", "Text", "Long", "Long", "Long", "Yes/No", "Long", "Long", "Long", "Long", "Yes/No", "Long"], "n": 44}, {"k": "t_Marks_InternalMaster", "mdb": "Marks_InternalMaster", "t": "આંતરિક ગુણ માસ્ટર", "g": "પરિક્ષા", "f": ["SchoolNo", "Subject", "Desc1", "Marks1", "Desc2", "Marks2", "Desc3", "Marks3", "Desc4", "Marks4", "Desc5", "Marks5", "TotalMarks", "Std"], "ty": ["Long", "Text", "Text", "Long", "Text", "Long", "Text", "Long", "Text", "Long", "Text", "Long", "Long", "Long"], "n": 19}, {"k": "t_Marks_MarksSlip", "mdb": "Marks_MarksSlip", "t": "ગુણપત્રક (Marks Slip)", "g": "પરિક્ષા", "f": ["SrNo", "GrNo", "Name", "RollNo", "SeatNo", "GettingMarks", "Absent", "FailLine", "SrNo1", "GrNo1", "Name1", "RollNo1", "SeatNo1", "GettingMarks1", "Absent1", "FailLine1", "GettingMarks_T", "GettingMarks_P", "GettingMarks1_T", "GettingMarks1_P"], "ty": ["Long", "Text", "Text", "Long", "Long", "Long", "Yes/No", "Text", "Long", "Text", "Text", "Long", "Long", "Long", "Yes/No", "Text", "Long", "Long", "Long", "Long"], "n": 23}, {"k": "t_Marks_ResultRegister", "mdb": "Marks_ResultRegister", "t": "પરિણામ રજીસ્ટર", "g": "પરિક્ષા", "f": ["SchoolNo", "Standard", "Class", "Subject", "GrNo", "Attendence", "FirstExam_TotalMarks", "FirstExam_GettingMarks", "SecondExam_TotalMarks", "SecondExam_GettingMarks", "ThirdExam_TotalMarks", "ThirdExam_GettingMarks", "InternalExam_TotalMarks", "InternalExam_GettingMarks", "TotalOfFour_TotalMarks", "TotalOfFour_GettingMarks", "CondonMarks", "KrupaMarks", "PrincipalMarks", "SubjectDeSelectMarks", "Total_TotalMarks", "Total_GettingMarks", "Percentage", "Rank", "Grade", "Result", "NoOfFailSubject", "Total_PassingMarks", "Total_GettingMarks_IncludingAllExtras", "StudentName", "FirstExam_PassingMarks", "SecondExam_PassingMarks", "ThirdExam_PassingMarks", "FirstExam_Absent", "SecondExam_Absent", "ThirdExam_Absent", "Rank_FirstExam", "Rank_SecondExam", "Rank_ThirdExam", "Result_FirstExam", "Result_SecondExam", "Result_ThirdExam", "NoOfFailSubject_First", "NoOfFailSubject_Second", "NoOfFailSubject_Third", "FirstExam_TotalMarks_T", "FirstExam_GettingMarks_T", "FirstExam_PassingMarks_T", "SecondExam_TotalMarks_T", "SecondExam_GettingMarks_T", "SecondExam_PassingMarks_T", "ThirdExam_TotalMarks_T", "ThirdExam_GettingMarks_T", "ThirdExam_PassingMarks_T", "FirstExam_TotalMarks_P", "FirstExam_GettingMarks_P", "FirstExam_PassingMarks_P", "SecondExam_TotalMarks_P", "SecondExam_GettingMarks_P", "SecondExam_PassingMarks_P", "ThirdExam_TotalMarks_P", "ThirdExam_GettingMarks_P", "ThirdExam_PassingMarks_P", "Sub_Id", "Stud_SeatNO", "IsCntInTotal", "Sub_Id_Srno", "Is_HandiCap", "TotalAnnualMarks_Board", "TotalGettingMarks_Board"], "ty": ["Long", "Long", "Text", "Text", "Long", "Text", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Long", "Numeric", "Long", "Text", "Text", "Text", "Double", "Double", "Text", "Double", "Double", "Double", "Yes/No", "Yes/No", "Yes/No", "Text", "Text", "Text", "Text", "Text", "Text", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Long", "Text", "Yes/No", "Long", "Yes/No", "Long", "Long"], "n": 176}, {"k": "t_UnitTest_Mst", "mdb": "UnitTest_Mst", "t": "એકમ કસોટી માસ્ટર", "g": "પરિક્ષા", "f": ["SchoolNO", "TeacherName", "Std", "Class", "UnitName", "Marks", "UnitNO", "ExamDt", "SubName"], "ty": ["Long", "Text", "Long", "Text", "Text", "Double", "Single", "Date/Time", "Text"], "n": 14}, {"k": "t_UnitTest_Mst_A", "mdb": "UnitTest_Mst_A", "t": "એકમ કસોટી માસ્ટર (A)", "g": "પરિક્ષા", "f": ["SchoolNO", "Std", "SubName", "UnitNO", "Srno", "ExamDt", "UnitName", "UnitMarks"], "ty": ["Long", "Long", "Text", "Single", "Long", "Date/Time", "Text", "Single"], "n": 42}, {"k": "t_UnitTest_A", "mdb": "UnitTest_A", "t": "એકમ કસોટી ગુણ", "g": "પરિક્ષા", "f": ["SchoolNO", "Std", "Class", "Subject", "GrNo", "Test1", "Test2", "Test3", "Test4", "Test5", "Test6", "Test7", "Test8", "Ab1", "Ab2", "Ab3", "Ab4", "Ab5", "Ab6", "Ab7", "Ab8"], "ty": ["Long", "Long", "Text", "Text", "Long", "Single", "Single", "Single", "Single", "Single", "Single", "Single", "Single", "Yes/No", "Yes/No", "Yes/No", "Yes/No", "Yes/No", "Yes/No", "Yes/No", "Yes/No"], "n": 426}, {"k": "t_Attendence_Mst_MonthWise", "mdb": "Attendence_Mst_MonthWise", "t": "માસવાર હાજરી સરવાળો", "g": "વિદ્યાર્થી", "f": ["School_no", "Standard", "Class", "StudentName", "GrNo", "Roll_No", "June", "July", "August", "September", "October", "November", "December", "January", "February", "March", "April", "May", "Total"], "ty": ["Long", "Long", "Text", "Text", "Long", "Long", "Long", "Long", "Long", "Long", "Long", "Long", "Long", "Long", "Long", "Long", "Long", "Long", "Long"], "n": 47}, {"k": "t_StudentClassChange", "mdb": "StudentClassChange", "t": "વર્ગ/ધોરણ ફેરફાર", "g": "વિદ્યાર્થી", "f": ["SchoolNo", "GrNo", "Name", "OldStd", "OldClass", "OldRollNo", "NewStd", "NewClass", "NewRollNo", "Applied", "AppliedDate"], "ty": ["Long", "Long", "Text", "Long", "Text", "Long", "Long", "Text", "Text", "Yes/No", "Date/Time"], "n": 0}, {"k": "t_Student_EBC_Fee_Mafi", "mdb": "Student_EBC_Fee_Mafi", "t": "EBC ફી માફી", "g": "વિદ્યાર્થી", "f": ["Show_Hide", "SrNo", "Name", "Address", "Pass_Fail_LastYear", "LastStandard", "CurrentStandard", "SchoolNo", "GrNo"], "ty": ["Yes/No", "Long", "Text", "Text", "Yes/No", "Long", "Long", "Long", "Long"], "n": 0}, {"k": "t_Fee_Receipt", "mdb": "Fee_Receipt", "t": "ફી રસીદ", "g": "વિદ્યાર્થી", "f": ["ReceiptNo", "SchoolNo", "GrNo", "FeeDept", "FeeDesc", "FeeValue", "ReceiptDate", "Notes", "FeeInWords", "TakeFee", "LoginName", "SRNO"], "ty": ["Long", "Long", "Long", "Text", "Text", "Double", "Date/Time", "Text", "Text", "Yes/No", "Text", "Single"], "n": 0}, {"k": "t_Fee_Register", "mdb": "Fee_Register", "t": "ફી રજીસ્ટર", "g": "વિદ્યાર્થી", "f": ["Rno", "RDate", "GrNo", "Name", "Std", "Class", "FeeDept", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "FTotal", "ClassEng", "RollNO"], "ty": ["Long", "Date/Time", "Long", "Text", "Long", "Text", "Text", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Text", "Long"], "n": 0}, {"k": "t_EmployeePostMst", "mdb": "EmployeePostMst", "t": "કર્મચારી હોદ્દા", "g": "કર્મચારી", "f": ["SrNo", "Post_Eng", "Post_Guj"], "ty": ["Long", "Text", "Text"], "n": 5}, {"k": "t_Pay_HeadMst", "mdb": "Pay_HeadMst", "t": "પગાર હેડ માસ્ટર", "g": "કર્મચારી", "f": ["Id", "headName", "HeadType"], "ty": ["Single", "Text", "Text"], "n": 8}, {"k": "t_EmployeeQualificationDet", "mdb": "EmployeeQualificationDet", "t": "કર્મચારી લાયકાત", "g": "કર્મચારી", "f": ["EmpCode", "EmpName", "Srno", "Qualification", "Year", "Class", "MainSubject", "SecondSubject", "University"], "ty": ["Long", "Text", "Long", "Text", "Text", "Text", "Text", "Text", "Text"], "n": 1}, {"k": "t_EmployeeLeaveOpeningBalance", "mdb": "EmployeeLeaveOpeningBalance", "t": "રજા ઉઘડતી સિલક", "g": "કર્મચારી", "f": ["EmpCode", "EmpName", "CL", "EL", "ML", "PL", "HPL", "Special", "Comput", "Others", "LastUpgradeDate"], "ty": ["Long", "Text", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Double", "Date/Time"], "n": 0}, {"k": "t_GPFLoan", "mdb": "GPFLoan", "t": "જી.પી.એફ. લોન", "g": "કર્મચારી", "f": ["ApplicationDate", "EmployeeName", "Post", "Subject", "Type", "SrNo", "Hetu", "Amount", "JamaGPF", "YearOfService", "Notes", "AddressOfDOOffice1", "AddressOfDOOffice2", "AddressOfDOOffice3"], "ty": ["Date/Time", "Text", "Text", "Text", "Text", "Long", "Text", "Double", "Double", "Text", "Text", "Text", "Text", "Text"], "n": 0}];
+var DBS = {k:"", q:"", page:0, edit:null, loaded:false, busy:false};
+function dbtDef_(k){ for (var i=0;i<DBT.length;i++) if (DBT[i].k === k) return DBT[i]; return null; }
+function dbtKeys_(){ return DBT.map(function(d){ return d.k; }); }
+async function dbtLoad_(force){
+  if (DBS.loaded && !force) return false;
+  DBS.loaded = true;
+  try{ await refreshColl_(dbtKeys_()); }catch(e){}
+  return true;
+}
+function dbtVal_(ty, v){
+  if (v == null || v === "") return "";
+  if (ty === "Date/Time") return String(v).replace(/ 00:00(:00)?$/, "");
+  return v;
+}
+function dbtRows_(d){
+  var q = DBS.q.toLowerCase();
+  var rows = S[d.k] || [];
+  if (!q) return rows;
+  return rows.filter(function(r){
+    for (var i=0;i<d.f.length;i++){ var v = r[d.f[i]]; if (v != null && String(v).toLowerCase().indexOf(q) > -1) return true; }
+    return false;
+  });
+}
+function dbtInput_(d, i, rec){
+  var f = d.f[i], ty = d.ty[i], v = rec ? dbtVal_(ty, rec[f]) : "", id = 'dbf_' + i;
+  if (ty === "Memo") return '<textarea id="'+id+'" rows="3">'+esc(v)+'</textarea>';
+  if (ty === "Yes/No") return '<select id="'+id+'"><option value=""></option><option value="હા"'+(v==="હા"?" selected":"")+'>હા</option><option value="ના"'+(v==="ના"?" selected":"")+'>ના</option></select>';
+  if (ty === "Date/Time") return '<input id="'+id+'" type="text" placeholder="YYYY-MM-DD" value="'+esc(v)+'">';
+  if (ty === "Text") return '<input id="'+id+'" type="text" value="'+esc(v)+'">';
+  return '<input id="'+id+'" type="number" step="any" value="'+esc(v)+'">';
+}
+VIEWS["dbt:list"] = function(){
+  var groups = {}, order = [];
+  DBT.forEach(function(d){ if (!groups[d.g]){ groups[d.g] = []; order.push(d.g); } groups[d.g].push(d); });
+  return '<div class="card"><h3>ડેટાબેઝ ખાના ('+DBT.length+')</h3>'
+    + '<p class="hint">Access ડેટાબેઝની જેમ દરેક ખાનું (ટેબલ) Google Sheet માં અલગ શીટ છે (નામ <b>t_…</b>) અને દરેક ફીલ્ડની અલગ કોલમ છે — એટલે Sheet માં સીધું પણ જોઈ/સુધારી શકાય. '
+    + 'વિદ્યાર્થી, કર્મચારી, પુસ્તકાલય, ફી, હિસાબ વગેરે મુખ્ય ખાના બીજા મેનુમાં પહેલેથી છે.</p>'
+    + '<div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn sec" id="dbt_xall">⬇ બધા ખાના Excel</button>'
+    + '<button class="btn sec" id="dbt_iall">⬆ Excel માંથી ચઢાવો</button><input type="file" id="dbt_file" accept=".xlsx,.xls" style="display:none">'
+    + '<button class="btn sec" id="dbt_ref">⟳ Sheet માંથી ફરી લાવો</button></div></div>'
+    + order.map(function(g){
+      return '<div class="card"><h3>'+esc(g)+'</h3><div class="tw"><table><thead><tr><th>ખાનું</th><th>Sheet નામ</th><th class="num">કોલમ</th><th class="num">રેકોર્ડ</th><th></th></tr></thead><tbody>'
+        + groups[g].map(function(d){
+          return '<tr><td>'+esc(d.t)+'</td><td style="font-size:12px;color:#667">'+esc(d.k)+'</td><td class="num">'+d.f.length+'</td><td class="num">'+(S[d.k]||[]).length+'</td>'
+            + '<td><button class="btn sm" data-open="'+d.k+'">ખોલો</button></td></tr>';
+        }).join("") + '</tbody></table></div></div>';
+    }).join("");
+};
+WIRE["dbt:list"] = function(){
+  dbtLoad_().then(function(did){ if (did && cur.m === "dbt" && cur.t === "list") { var y = window.scrollY; render(); window.scrollTo(0, y); } });
+  var bs = document.querySelectorAll("[data-open]");
+  for (var i=0;i<bs.length;i++) bs[i].onclick = function(){ DBS.k = this.getAttribute("data-open"); DBS.q = ""; DBS.page = 0; DBS.edit = null; cur.t = "view"; drawMenu(); render(); };
+  $("dbt_ref").onclick = async function(){ await dbtLoad_(true); toast("Sheet માંથી તાજું થયું"); render(); };
+  $("dbt_xall").onclick = async function(){
+    if (!(await ensureXLSX_())) return alert("Excel લાયબ્રેરી લોડ થઈ નથી. ઇન્ટરનેટ ચકાસો.");
+    var wb = XLSX.utils.book_new();
+    DBT.forEach(function(d){ XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dbtSheetRows_(d), {header:["id"].concat(d.f)}), d.k); });
+    XLSX.writeFile(wb, "shala-database-" + today() + ".xlsx");
+  };
+  $("dbt_iall").onclick = function(){ $("dbt_file").click(); };
+  $("dbt_file").onchange = function(e){ dbtImport_(e.target.files[0], ""); e.target.value = ""; };
+};
+function dbtSheetRows_(d){
+  return (S[d.k] || []).map(function(r){
+    var o = {id: r.id};
+    d.f.forEach(function(f, i){ o[f] = dbtVal_(d.ty[i], r[f]); });
+    return o;
+  });
+}
+async function dbtImport_(file, onlyKey){
+  if (!file) return;
+  if (!(await ensureXLSX_())) return alert("Excel લાયબ્રેરી લોડ થઈ નથી. ઇન્ટરનેટ ચકાસો.");
+  var buf = await new Promise(function(res){ var fr = new FileReader(); fr.onload = function(){ res(fr.result); }; fr.readAsArrayBuffer(file); });
+  var wb;
+  try{ wb = XLSX.read(new Uint8Array(buf), {type:"array", cellDates:true}); }catch(e){ return toast("ફાઇલ વાંચી શકાઈ નહીં"); }
+  var total = 0, tabs = 0;
+  for (var i=0;i<DBT.length;i++){
+    var d = DBT[i];
+    if (onlyKey && d.k !== onlyKey) continue;
+    var nm = null;
+    [d.k, d.mdb].forEach(function(n){ if (!nm && wb.SheetNames.indexOf(n) > -1) nm = n; });
+    if (!nm && onlyKey && wb.SheetNames.length === 1) nm = wb.SheetNames[0];
+    if (!nm) continue;
+    var rows = fixXlsxDates_(XLSX.utils.sheet_to_json(wb.Sheets[nm], {defval:""}));
+    var objs = [];
+    rows.forEach(function(r, n){
+      var o = {}, any = false;
+      Object.keys(r).forEach(function(k){
+        var v = r[k]; if (v === "" || v == null) return;
+        if (k !== "id") any = true;
+        o[k] = (typeof v === "string") ? dbtVal_("Date/Time", v) : v;
+      });
+      if (!any) return;
+      if (!o.id) o.id = d.k + "_" + (n + 1) + "_" + Date.now().toString(36);
+      o.id = String(o.id);
+      objs.push(o);
+    });
+    if (!objs.length) continue;
+    toast(d.t + ": " + objs.length + " રેકોર્ડ ચઢાવી રહ્યા છીએ…");
+    await putMany(d.k, objs);
+    total += objs.length; tabs++;
+  }
+  toast(tabs ? (tabs + " ખાનામાં " + total + " રેકોર્ડ ચઢાવાયા") : "આ ફાઇલમાં મેળ ખાતી શીટ મળી નહીં");
+  render();
+}
+VIEWS["dbt:view"] = function(){
+  var d = dbtDef_(DBS.k);
+  var pick = '<select id="dbv_k" style="width:auto;max-width:100%"><option value="">— ખાનું પસંદ કરો —</option>'
+    + DBT.map(function(x){ return '<option value="'+x.k+'"'+(x.k===DBS.k?" selected":"")+'>'+esc(x.g+" › "+x.t)+'</option>'; }).join("") + '</select>';
+  if (!d) return '<div class="card"><h3>ખાનું ખોલો</h3>'+pick+'<p class="hint">ઉપરથી ખાનું પસંદ કરો અથવા "બધા ખાના" માંથી ખોલો.</p></div>';
+  var all = dbtRows_(d), PS = 50, pages = Math.max(1, Math.ceil(all.length / PS));
+  if (DBS.page >= pages) DBS.page = pages - 1;
+  var rows = all.slice(DBS.page * PS, DBS.page * PS + PS);
+  var ed = DBS.edit;
+  var form = '';
+  if (ed){
+    var rec = ed === "new" ? null : (S[d.k].filter(function(r){ return r.id === ed; })[0] || null);
+    form = '<div class="card"><h3>'+(rec ? "સુધારો" : "નવો રેકોર્ડ")+' — '+esc(d.t)+'</h3><div class="grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:8px">'
+      + d.f.map(function(f, i){ return '<label style="font-size:12.5px">'+esc(f)+'<span style="color:#889"> · '+esc(d.ty[i])+'</span>'+dbtInput_(d, i, rec)+'</label>'; }).join("")
+      + '</div><div class="row" style="margin-top:10px;gap:8px"><button class="btn" id="dbv_save">સાચવો</button><button class="btn sec" id="dbv_cancel">રદ</button></div></div>';
+  }
+  var showCols = d.f.length > 12 ? d.f.slice(0, 12) : d.f;
+  return '<div class="card"><h3>'+esc(d.t)+' <span style="font-size:12px;color:#667;font-weight:400">('+esc(d.k)+' · '+(S[d.k]||[]).length+' રેકોર્ડ)</span></h3>'
+    + '<div class="row" style="gap:8px;flex-wrap:wrap;align-items:center">'+pick
+    + '<input id="dbv_q" type="search" placeholder="શોધો…" value="'+esc(DBS.q)+'" style="width:auto;flex:1;min-width:140px">'
+    + '<button class="btn" id="dbv_new">➕ નવો</button>'
+    + '<button class="btn sec" id="dbv_xl">⬇ Excel</button><button class="btn sec" id="dbv_tpl">⬇ ખાલી ફોર્મેટ</button>'
+    + '<button class="btn sec" id="dbv_imp">⬆ Excel ચઢાવો</button><input type="file" id="dbv_file" accept=".xlsx,.xls" style="display:none"></div>'
+    + (d.f.length > 12 ? '<p class="hint">કોષ્ટકમાં પહેલા 12 કોલમ દેખાય છે (કુલ '+d.f.length+'); બધી કોલમ "✏" થી અથવા Excel માં જુઓ.</p>' : '')
+    + '</div>' + form
+    + '<div class="card">' + (all.length ? '<div class="tw"><table><thead><tr>'+showCols.map(function(f){ return '<th>'+esc(f)+'</th>'; }).join("")+'<th></th></tr></thead><tbody>'
+      + rows.map(function(r){
+        return '<tr>'+showCols.map(function(f){ var i = d.f.indexOf(f); return '<td>'+esc(dbtVal_(d.ty[i], r[f]))+'</td>'; }).join("")
+          + '<td style="white-space:nowrap"><button class="btn sm" data-e="'+r.id+'">✏</button> <button class="btn sm warn" data-d="'+r.id+'">🗑</button></td></tr>';
+      }).join("") + '</tbody></table></div>'
+      + '<div class="row" style="gap:8px;margin-top:8px;align-items:center"><button class="btn sm sec" id="dbv_prev"'+(DBS.page?'':' disabled')+'>◀</button><span>પાનું '+(DBS.page+1)+' / '+pages+' ('+all.length+')</span><button class="btn sm sec" id="dbv_next"'+(DBS.page < pages-1?'':' disabled')+'>▶</button></div>'
+      : '<div class="empty">આ ખાનામાં હજુ કોઈ રેકોર્ડ નથી. "➕ નવો" અથવા "Excel ચઢાવો" વાપરો.</div>') + '</div>';
+};
+WIRE["dbt:view"] = function(){
+  var d = dbtDef_(DBS.k);
+  $("dbv_k").onchange = function(){ DBS.k = val("dbv_k"); DBS.q = ""; DBS.page = 0; DBS.edit = null; render(); };
+  if (!d) return;
+  dbtLoad_().then(function(did){ if (did && cur.m === "dbt" && cur.t === "view" && !DBS.edit) render(); });
+  $("dbv_q").oninput = function(){ DBS.q = this.value; DBS.page = 0; var pos = this.selectionStart; render(); var q = $("dbv_q"); q.focus(); try{ q.setSelectionRange(pos, pos); }catch(e){} };
+  $("dbv_new").onclick = function(){ DBS.edit = "new"; render(); window.scrollTo(0, 0); };
+  var es = document.querySelectorAll("[data-e]"), ds = document.querySelectorAll("[data-d]");
+  for (var i=0;i<es.length;i++) es[i].onclick = function(){ DBS.edit = this.getAttribute("data-e"); render(); window.scrollTo(0, 0); };
+  for (var j=0;j<ds.length;j++) ds[j].onclick = async function(){
+    if (!confirm("આ રેકોર્ડ કાઢી નાખવો?")) return;
+    await drop(d.k, this.getAttribute("data-d")); toast("રેકોર્ડ કાઢ્યો"); render();
+  };
+  if ($("dbv_prev")){ $("dbv_prev").onclick = function(){ DBS.page--; render(); }; $("dbv_next").onclick = function(){ DBS.page++; render(); }; }
+  if ($("dbv_save")){
+    $("dbv_save").onclick = async function(){
+      var rec = DBS.edit === "new" ? {} : Object.assign({}, S[d.k].filter(function(r){ return r.id === DBS.edit; })[0] || {});
+      var any = false;
+      d.f.forEach(function(f, i){
+        var v = val("dbf_" + i), ty = d.ty[i];
+        if (v === "") { delete rec[f]; return; }
+        any = true;
+        rec[f] = (ty === "Text" || ty === "Memo" || ty === "Date/Time" || ty === "Yes/No") ? v : (isNaN(Number(v)) ? v : Number(v));
+      });
+      if (!any) return toast("ઓછામાં ઓછું એક ખાનું ભરો");
+      if (DBS.edit === "new") rec.id = uid();
+      await put(d.k, rec); DBS.edit = null; toast("સચવાયું"); render();
+    };
+    $("dbv_cancel").onclick = function(){ DBS.edit = null; render(); };
+  }
+  $("dbv_xl").onclick = async function(){
+    if (!(await ensureXLSX_())) return alert("Excel લાયબ્રેરી લોડ થઈ નથી. ઇન્ટરનેટ ચકાસો.");
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(dbtSheetRows_(d), {header:["id"].concat(d.f)}), d.k);
+    XLSX.writeFile(wb, "dbt-" + d.mdb + "-" + today() + ".xlsx");
+  };
+  $("dbv_tpl").onclick = async function(){
+    if (!(await ensureXLSX_())) return alert("Excel લાયબ્રેરી લોડ થઈ નથી. ઇન્ટરનેટ ચકાસો.");
+    var wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([["id"].concat(d.f)]), d.k);
+    XLSX.writeFile(wb, "dbt-format-" + d.mdb + ".xlsx");
+  };
+  $("dbv_imp").onclick = function(){ $("dbv_file").click(); };
+  $("dbv_file").onchange = function(e){ dbtImport_(e.target.files[0], d.k); e.target.value = ""; };
 };
 
 /* ========== રીપોર્ટસ ========== */
