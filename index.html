@@ -8582,6 +8582,9 @@ VIEWS["dbt:list"] = function(){
     + '<div class="row" style="gap:8px;flex-wrap:wrap"><button class="btn sec" id="dbt_xall">⬇ બધા ખાના Excel</button>'
     + '<button class="btn sec" id="dbt_iall">⬆ Excel માંથી ચઢાવો</button><input type="file" id="dbt_file" accept=".xlsx,.xls" style="display:none">'
     + '<button class="btn sec" id="dbt_ref">⟳ Sheet માંથી ફરી લાવો</button></div></div>'
+    + '<div class="card"><h3>Access (જૂના સોફ્ટવેર) ના વિદ્યાર્થી / કર્મચારી ચઢાવો</h3>'
+    + '<p class="hint"><b>Shala_App_Import.xlsx</b> ફાઇલ (શીટ <b>students</b> અને <b>staff</b>) પસંદ કરો. નવા વિદ્યાર્થી/કર્મચારી ઉમેરાશે. જે જી.આર. નંબર (કે કર્મચારી) એપમાં પહેલેથી હોય તેમાં ફક્ત <b>ખાલી ખાના</b> ભરાશે — તમારી ભરેલી માહિતી બદલાશે નહીં. જી.આર. સરખો પણ નામ અલગ હોય તો તે છોડી દેવાશે. ચઢાવતા પહેલાં સંખ્યા બતાવી પૂછશે.</p>'
+    + '<button class="btn" id="dbt_app">⬆ Access ડેટા ચઢાવો</button><input type="file" id="dbt_appfile" accept=".xlsx,.xls" style="display:none"></div>'
     + order.map(function(g){
       return '<div class="card"><h3>'+esc(g)+'</h3><div class="tw"><table><thead><tr><th>ખાનું</th><th>Sheet નામ</th><th class="num">કોલમ</th><th class="num">રેકોર્ડ</th><th></th></tr></thead><tbody>'
         + groups[g].map(function(d){
@@ -8602,6 +8605,8 @@ WIRE["dbt:list"] = function(){
     XLSX.writeFile(wb, "shala-database-" + today() + ".xlsx");
   };
   $("dbt_iall").onclick = function(){ $("dbt_file").click(); };
+  $("dbt_app").onclick = function(){ $("dbt_appfile").click(); };
+  $("dbt_appfile").onchange = function(e){ appImport_(e.target.files[0]); e.target.value = ""; };
   $("dbt_file").onchange = function(e){ dbtImport_(e.target.files[0], ""); e.target.value = ""; };
 };
 function dbtSheetRows_(d){
@@ -8645,6 +8650,61 @@ async function dbtImport_(file, onlyKey){
     total += objs.length; tabs++;
   }
   toast(tabs ? (tabs + " ખાનામાં " + total + " રેકોર્ડ ચઢાવાયા") : "આ ફાઇલમાં મેળ ખાતી શીટ મળી નહીં");
+  render();
+}
+
+/* Access માંથી ફેરવેલ વિદ્યાર્થી/કર્મચારી ચઢાવવા: નવા ઉમેરાય, હાલનામાં ફક્ત ખાલી ખાના ભરાય */
+async function appImport_(file){
+  if (!file) return;
+  if (!(await ensureXLSX_())) return alert("Excel લાયબ્રેરી લોડ થઈ નથી. ઇન્ટરનેટ ચકાસો.");
+  var buf = await new Promise(function(res){ var fr = new FileReader(); fr.onload = function(){ res(fr.result); }; fr.readAsArrayBuffer(file); });
+  var wb;
+  try{ wb = XLSX.read(new Uint8Array(buf), {type:"array"}); }catch(e){ return toast("ફાઇલ વાંચી શકાઈ નહીં"); }
+  function rowsOf(n){
+    if (wb.SheetNames.indexOf(n) < 0) return [];
+    return XLSX.utils.sheet_to_json(wb.Sheets[n], {defval:"", raw:false}).map(function(r){
+      var o = {}; Object.keys(r).forEach(function(k){ var v = String(r[k] == null ? "" : r[k]).trim(); if (v !== "") o[k] = v; }); return o;
+    });
+  }
+  var stuRows = rowsOf("students"), stfRows = rowsOf("staff");
+  if (!stuRows.length && !stfRows.length) return alert("આ ફાઇલમાં 'students' કે 'staff' શીટ મળી નહીં.");
+  function cmp(x){ return String(x == null ? "" : x).replace(/\s+/g, "").toLowerCase(); }
+  function fillOnly(old, r){
+    var out = Object.assign({}, old), n = 0;
+    Object.keys(r).forEach(function(k){ if (k === "id") return; var ov = old[k]; if (ov == null || ov === "") { out[k] = r[k]; n++; } });
+    return n ? out : null;
+  }
+  var addS = [], updS = [], clashS = [];
+  stuRows.forEach(function(r){
+    if (!r.gr && !r.name) return;
+    if (r.roll) r.roll = Number(r.roll) || r.roll;
+    var ex = r.gr ? S.students.find(function(x){ return String(x.gr) === String(r.gr); }) : null;
+    if (!ex) { r.id = uid(); addS.push(r); return; }
+    if (cmp(ex.name) !== cmp(r.name) || (ex.surname && r.surname && cmp(ex.surname) !== cmp(r.surname))) { clashS.push(r.gr + " " + (r.name || "")); return; }
+    var u = fillOnly(ex, r); if (u) updS.push(u);
+  });
+  var addT = [], updT = [];
+  stfRows.forEach(function(r){
+    if (!r.name) return;
+    if (r.currentBasic) r.currentBasic = Number(r.currentBasic) || 0;
+    var ex = S.staff.find(function(x){
+      return (r.empNo && String(x.empNo) === String(r.empNo) && cmp(x.name) === cmp(r.name)) ||
+             (cmp(x.name) === cmp(r.name));
+    });
+    if (!ex) { r.id = uid(); addT.push(r); return; }
+    var u = fillOnly(ex, r); if (u) updT.push(u);
+  });
+  var msg = "વિદ્યાર્થી: નવા " + addS.length + ", હાલનામાં ખાલી ખાના ભરાશે " + updS.length + (clashS.length ? ", નામ મેળ ન ખાતા છોડાશે " + clashS.length : "")
+    + "\nકર્મચારી: નવા " + addT.length + ", હાલનામાં ખાલી ખાના ભરાશે " + updT.length
+    + (clashS.length ? "\n\nછોડાનાર: " + clashS.slice(0, 8).join(", ") + (clashS.length > 8 ? "…" : "") : "")
+    + "\n\nચઢાવવું છે?";
+  if (!addS.length && !updS.length && !addT.length && !updT.length) return alert("કંઈ નવું ચઢાવવા જેવું નથી.\n\n" + msg.split("\n\nચઢાવવું")[0]);
+  if (!confirm(msg)) return;
+  toast("ચઢાવી રહ્યા છીએ…");
+  if (addS.length || updS.length) await putMany("students", addS.concat(updS));
+  if (addT.length || updT.length) await putMany("staff", addT.concat(updT));
+  alert("✔ પૂર્ણ.\nવિદ્યાર્થી: નવા " + addS.length + ", સુધારેલા " + updS.length + "\nકર્મચારી: નવા " + addT.length + ", સુધારેલા " + updT.length
+    + "\n\nવૈકલ્પિક વિષયની પસંદગી વિદ્યાર્થી › વૈકલ્પિક વિષયની પસંદગી માંથી કરવી.");
   render();
 }
 VIEWS["dbt:view"] = function(){
