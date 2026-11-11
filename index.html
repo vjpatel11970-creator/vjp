@@ -606,6 +606,30 @@ tbody tr:hover td{background:color-mix(in srgb, var(--brand) 8%, var(--panel))}
 .an-grid .an-x:focus{outline:2px solid #2563eb;background:#fff;color:#000}
 .an-grid .an-x.bad{border-color:#dc2626;background:#fee2e2;color:#000}
 .an-grid td.s3{cursor:pointer}
+
+.pd-wrap{margin-bottom:4px}
+.pd-sel{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.pd-card{display:flex;align-items:center;gap:8px;background:var(--card,#fff);border:1px solid var(--line,#e2e8f0);border-radius:16px;padding:10px 10px;box-shadow:0 1px 4px rgba(0,0,0,.06);cursor:pointer;min-width:0}
+.pd-ic{font-size:22px;flex:none}
+.pd-tx{display:flex;flex-direction:column;min-width:0;flex:1}
+.pd-tx small{font-size:11px;color:var(--muted,#64748b);font-weight:600}
+.pd-tx select{border:0;background:transparent;padding:0;font-weight:800;font-size:14px;color:inherit;width:100%;min-width:0;outline:none;margin:0}
+.pd-ban{margin-top:12px;border-radius:18px;padding:16px 18px;color:#fff;background:linear-gradient(135deg,#0f172a,#1e3a8a);display:flex;align-items:center;justify-content:space-between;gap:12px}
+.pd-b1{font-size:19px;font-weight:800}.pd-b2{font-size:13px;opacity:.85;margin-top:3px}.pd-b3{font-size:12.5px;opacity:.7;margin-top:2px}
+.pd-badge{flex:none;width:68px;height:68px;border-radius:50%;background:rgba(255,255,255,.14);border:2px solid rgba(255,255,255,.4);display:flex;flex-direction:column;align-items:center;justify-content:center;line-height:1.1}
+.pd-badge b{font-size:20px}.pd-badge span{font-size:10.5px;opacity:.85}
+.pd-h{font-weight:800;margin:14px 2px 8px;font-size:15px}
+.pd-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(84px,1fr));gap:12px 8px}
+.pd-sub{background:none;border:0;padding:4px 2px;display:flex;flex-direction:column;align-items:center;gap:6px;cursor:pointer;font:inherit;color:inherit}
+.pd-circ{position:relative;width:64px;height:64px;border-radius:50%;background:#eaf1ff;border:2px solid #c7dafc;display:flex;align-items:center;justify-content:center;font-size:27px;font-weight:800;color:#1e3a8a;transition:transform .12s}
+.pd-circ i{position:absolute;right:-4px;top:-4px;background:#2563eb;color:#fff;border-radius:10px;font-size:10.5px;font-style:normal;padding:1px 6px;font-weight:700}
+.pd-sub:active .pd-circ{transform:scale(.94)}
+.pd-sub.on .pd-circ{background:#1e3a8a;color:#fff;border-color:#1e3a8a;box-shadow:0 0 0 3px #bfd3ff}
+.pd-sub.zero .pd-circ{opacity:.5}
+.pd-nm{font-size:12.5px;font-weight:600;text-align:center;line-height:1.2;word-break:break-word}
+.pd-act{margin-top:12px;border:1px solid var(--line,#e2e8f0);border-radius:16px;padding:12px 14px;background:var(--card,#fff)}
+.pd-at{font-weight:800;margin-bottom:8px}
+@media(max-width:520px){.pd-card{flex-direction:column;align-items:flex-start;gap:2px;padding:8px 10px;border-radius:14px}.pd-ic{font-size:18px}.pd-tx{width:100%}.pd-tx select{font-size:13px}.pd-badge{width:58px;height:58px}.pd-b1{font-size:17px}}
 </style>
 </head>
 <body>
@@ -7778,7 +7802,93 @@ function pgStdsOfBank_(){
 function pgQ_(id){ return S.questions.filter(function(q){ return q.id === id; })[0]; }
 function pgBadge_(q){ return pgOk_(q) ? '<span class="pill good" style="background:#dcfce7;color:#166534;border-radius:10px;padding:1px 8px;font-size:11.5px">મંજૂર</span>' : '<span style="background:#fef3c7;color:#92400e;border-radius:10px;padding:1px 8px;font-size:11.5px">મંજૂરી બાકી</span>'; }
 
-/* ---------- ડેશબોર્ડ ---------- */
+/* ---------- ડેશબોર્ડ (Board / Medium / Standard + વિષય આઇકન) ---------- */
+PG.dash = {board:"GSEB", medium:"ગુજરાતી", std:"", sub:""};
+var PG_BOARDS = ["GSEB","CBSE","NCERT","અન્ય"];
+var PG_SUBICON = [
+  [/ગણિત|math/i,"🧮"],[/વિજ્ઞાન|science/i,"🔬"],[/સામાજિક|social|SS/i,"🏛️"],[/અંગ્રેજી|english/i,"🔤"],
+  [/ગુજરાતી|gujarati/i,"અ"],[/હિન્દી|hindi/i,"हि"],[/સંસ્કૃત|sanskrit/i,"ॐ"],[/કમ્પ્યુટર|computer|IT/i,"💻"],
+  [/યોગ|શારીરિક|PT|sport|રમત/i,"🧘"],[/ચિત્ર|કલા|art|drawing/i,"🎨"],[/સંગીત|music/i,"🎵"],[/ભૂગોળ|geograph/i,"🌍"],
+  [/ઇતિહાસ|history/i,"📜"],[/નાગરિક|civics/i,"⚖️"],[/અર્થ|econom/i,"📈"],[/હિસાબ|account/i,"🧾"],[/ભૌતિક|physics/i,"⚛️"],
+  [/રસાયણ|chem/i,"🧪"],[/જીવ|biolog/i,"🧬"]
+];
+function pgSubIcon_(n){ for (var i = 0; i < PG_SUBICON.length; i++){ if (PG_SUBICON[i][0].test(n)) return PG_SUBICON[i][1]; } return "📘"; }
+function pgDashBoards_(){
+  var out = PG_BOARDS.slice();
+  S.questions.forEach(function(q){ if (q.board && out.indexOf(q.board) < 0) out.push(q.board); });
+  return out;
+}
+function pgDashFix_(){
+  var D = PG.dash, stds = pgStdsOfBank_();
+  if (pgDashBoards_().indexOf(D.board) < 0) D.board = "GSEB";
+  if (PQ_MEDIUMS.indexOf(D.medium) < 0) D.medium = PQ_MEDIUMS[0];
+  if (!D.std || stds.map(String).indexOf(String(D.std)) < 0){
+    var withQ = stds.filter(function(x){ return S.questions.some(function(q){ return String(q.std) === String(x); }); })[0];
+    D.std = String(withQ || stds[0] || "");
+  }
+  return D;
+}
+function pgDashCount_(sub){
+  var D = PG.dash;
+  return S.questions.filter(function(q){
+    return String(q.std) === String(D.std) && (!sub || q.subject === sub) && pgOk_(q)
+      && (!q.board || q.board === D.board) && (!q.medium || q.medium === D.medium);
+  }).length;
+}
+function pgDashTop_(){
+  var D = pgDashFix_(), subs = pgSubjectsOfBank_(), stds = pgStdsOfBank_();
+  var total = pgDashCount_("");
+  var cnt = {}; subs.forEach(function(x){ cnt[x] = pgDashCount_(x); });
+  var shown = subs.filter(function(x){ return cnt[x] > 0 || subList().indexOf(x) > -1; });
+  if (D.sub && shown.indexOf(D.sub) < 0) D.sub = "";
+  function sel(id, ic, lab, list, cur, fmt){
+    return '<label class="pd-card" for="'+id+'"><span class="pd-ic">'+ic+'</span><span class="pd-tx"><small>'+lab+'</small>'
+      + '<select id="'+id+'">'+list.map(function(x){ return '<option value="'+esc(x)+'"'+(String(x) === String(cur) ? ' selected' : '')+'>'+esc(fmt ? fmt(x) : x)+'</option>'; }).join("")+'</select></span></label>';
+  }
+  var papers = S.papers.filter(function(p){ return String(p.std) === String(D.std) && (!D.sub || p.subject === D.sub); }).length;
+  var h = '<div class="pd-wrap"><div class="pd-sel">'
+    + sel("pd_board", "🏫", "Board", pgDashBoards_(), D.board)
+    + sel("pd_med", "🗣️", "Medium", PQ_MEDIUMS, D.medium)
+    + sel("pd_std", "🎓", "Standard", stds, D.std, function(x){ return "ધોરણ " + x; })
+    + '</div>'
+    + '<div class="pd-ban"><div><div class="pd-b1">📝 પેપર જનરેશન</div>'
+    + '<div class="pd-b2">'+esc(D.board)+' · '+esc(D.medium)+' · ધોરણ '+esc(D.std)+(D.sub ? ' · '+esc(D.sub) : '')+'</div>'
+    + '<div class="pd-b3">'+total+' પ્રશ્નો ઉપલબ્ધ · '+papers+' પેપર બન્યા</div></div>'
+    + '<div class="pd-badge"><b>'+(D.sub ? cnt[D.sub] : total)+'</b><span>પ્રશ્નો</span></div></div>'
+    + '<div class="pd-h">વિષય પસંદ કરો</div>'
+    + (shown.length ? '<div class="pd-grid">' + shown.map(function(x){
+        return '<button type="button" class="pd-sub'+(D.sub === x ? ' on' : '')+(cnt[x] ? '' : ' zero')+'" data-psub="'+esc(x)+'">'
+          + '<span class="pd-circ">'+pgSubIcon_(x)+(cnt[x] ? '<i>'+cnt[x]+'</i>' : '')+'</span><span class="pd-nm">'+esc(x)+'</span></button>';
+      }).join("") + '</div>' : '<div class="empty">વિષયો ઉપલબ્ધ નથી — સેટિંગ્સમાં વિષય ઉમેરો.</div>')
+    + (D.sub ? '<div class="pd-act"><div class="pd-at">'+pgSubIcon_(D.sub)+' '+esc(D.sub)+' — ધોરણ '+esc(D.std)+'</div><div class="row" style="gap:8px;flex-wrap:wrap">'
+      + '<button class="btn" data-pact="make">✨ પેપર બનાવો</button><button class="btn sec" data-pact="bank">📚 પ્રશ્ન બેંક</button><button class="btn sec" data-pact="chapters">📖 પ્રકરણો</button>'
+      + '<button class="btn sec" data-pact="saved">📁 સાચવેલા પેપર</button></div></div>'
+      : '<p class="hint" style="text-align:center;margin:4px 0 0">વિષય પર ટેપ કરો — પછી પેપર બનાવો / પ્રશ્ન બેંક / પ્રકરણો ખુલશે.</p>')
+    + '</div>';
+  return h;
+}
+function pgDashWire_(){
+  var D = PG.dash;
+  [["pd_board","board"],["pd_med","medium"],["pd_std","std"]].forEach(function(x){
+    var e = $(x[0]); if (e) e.onchange = function(){ D[x[1]] = e.value; if (x[1] === "std") D.sub = ""; render(); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-psub]"), function(b){
+    b.onclick = function(){ D.sub = (D.sub === b.dataset.psub ? "" : b.dataset.psub); render(); };
+  });
+  Array.prototype.forEach.call(document.querySelectorAll("[data-pact]"), function(b){
+    b.onclick = function(){
+      var a = b.dataset.pact;
+      if (a === "make"){
+        var has = PG.paper && PG.paper.secs && PG.paper.secs.some(function(s){ return (s.qids || []).length; });
+        if (has && !confirm("વર્તમાન પેપર સાફ કરી નવું બનાવવું છે? (સાચવ્યું ન હોય તો ખોવાશે)")) return;
+        var P = pgNewPaper_(); P.board = D.board; P.medium = D.medium; P.std = D.std; P.subject = D.sub; P.chaps = [];
+        PG.paper = P; PG.short = [];
+      } else if (a === "bank"){ PG.bank.std = D.std; PG.bank.sub = D.sub; PG.bank.chap = ""; PG.bank.edit = ""; }
+      else if (a === "chapters"){ PG.chap.std = D.std; PG.chap.sub = D.sub; PG.chap.edit = ""; }
+      pgGo_(a);
+    };
+  });
+}
 VIEWS["paper:dash"] = function(){
   var qs = S.questions, ps = S.papers, logs = (S.paperLog || []).slice().sort(function(a, b){ return String(b.at).localeCompare(String(a.at)); });
   var subs = {}, chs = {}; qs.forEach(function(q){ subs[q.subject] = 1; if (q.chapter) chs[q.std + "|" + q.subject + "|" + q.chapter] = 1; });
@@ -7790,7 +7900,7 @@ VIEWS["paper:dash"] = function(){
   var byType = {}; qs.forEach(function(q){ byType[q.type] = (byType[q.type] || 0) + 1; });
   var recent = ps.slice().sort(function(a, b){ return String(b.saved || "").localeCompare(String(a.saved || "")); }).slice(0, 6);
   function lt(l){ return esc(dmy(String(l.at).slice(0, 10)) + " " + String(l.at).slice(11, 16)); }
-  return '<div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px">'
+  return pgDashTop_() + '<div class="grid" style="margin-top:12px;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px">'
     + card(qs.length, "કુલ પ્રશ્નો", "#2563eb") + card(ps.length, "કુલ પ્રશ્નપત્રો", "#7c3aed") + card(Object.keys(subs).length, "વિષયો (બેંકમાં)", "#0891b2")
     + card(Object.keys(chs).length, "પ્રકરણો", "#16a34a") + card(pend, "મંજૂરી બાકી પ્રશ્નો", "#d97706") + card(drafts, "ડ્રાફ્ટ પેપર", "#64748b") + '</div>'
     + '<div class="card pgc" style="margin-top:12px"><h3>ઝડપી કામ</h3><div class="row" style="gap:8px;flex-wrap:wrap">'
@@ -7807,6 +7917,7 @@ VIEWS["paper:dash"] = function(){
     + '</div>';
 };
 WIRE["paper:dash"] = function(){
+  pgDashWire_();
   Array.prototype.forEach.call(document.querySelectorAll("[data-go]"), function(b){ b.onclick = function(){ pgGo_(b.dataset.go); }; });
 };
 
