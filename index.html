@@ -527,6 +527,56 @@ tbody tr:hover td{background:color-mix(in srgb, var(--brand) 8%, var(--panel))}
 .te-act.wa{background:#1fa855}
 @media print{#teGate{display:none !important}}
 
+/* ---------- શિક્ષક એપ: નવી ડિઝાઇન (હોમ) ---------- */
+#teGate,#teDr,#teAl{--brand:#2b64b0}
+#teGate .te-top{background:linear-gradient(180deg,var(--brand),var(--brand));padding:9px 12px;gap:10px;box-shadow:0 2px 8px rgba(0,0,0,.18)}
+#teGate .te-top .te-logo{width:38px;height:38px;border-radius:50%;background:#fff;color:var(--brand);display:grid;place-items:center;font-weight:800;font-size:17px;overflow:hidden;flex:none;border:2px solid rgba(255,255,255,.7)}
+#teGate .te-top .te-logo img{width:100%;height:100%;object-fit:contain}
+#teGate .te-top .t1{font-size:15px;font-weight:800;opacity:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#teGate .te-top .t2{font-size:11.5px;font-weight:500;opacity:.85}
+#teGate .te-top button#teMenu{font-size:20px;padding:5px 9px;background:none}
+#teGate .te-top .te-bell{position:relative;width:40px;height:40px;border-radius:50%;background:#f3b440;display:grid;place-items:center;font-size:19px;padding:0}
+#teGate .te-top .te-bell i{position:absolute;top:-3px;right:-3px;min-width:18px;height:18px;border-radius:9px;background:#e23b3b;color:#fff;font:700 11px/18px system-ui,sans-serif;text-align:center;font-style:normal;padding:0 4px;border:2px solid var(--brand);box-sizing:content-box}
+.te-prof{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:12px;box-shadow:0 2px 10px rgba(0,0,0,.06);margin-bottom:10px}
+.te-ph{width:56px;height:56px;border-radius:50%;background:var(--brand);color:#fff;display:grid;place-items:center;font-size:24px;font-weight:800;overflow:hidden;flex:none;border:2px solid var(--line)}
+.te-ph img{width:100%;height:100%;object-fit:cover}
+.te-prof .pn{flex:1;min-width:0}
+.te-prof .pn b{display:block;font-size:17px;line-height:1.25;overflow-wrap:anywhere}
+.te-prof .pn span{font-size:13px;color:var(--muted)}
+.te-prof .vb{border:0;background:var(--brand);color:#fff;border-radius:20px;padding:8px 14px;font:inherit;font-size:13px;font-weight:700;cursor:pointer;flex:none}
+.te-two{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.te-sum{border-radius:14px;padding:12px 12px 10px;color:#fff;position:relative;overflow:hidden;min-width:0;box-shadow:0 3px 10px rgba(0,0,0,.14)}
+.te-sum.b{background:linear-gradient(135deg,#1a3f8f,#2f6fd0)}
+.te-sum.o{background:linear-gradient(135deg,#e89628,#f6c15c)}
+.te-sum h4{margin:0 0 8px;font-size:15px;font-weight:800;padding-right:30px}
+.te-sum .ic{position:absolute;top:8px;right:10px;font-size:26px;opacity:.55}
+.te-sum .r{display:flex;justify-content:space-between;align-items:center;font-size:13px;margin-top:6px;gap:6px}
+.te-sum .r b{background:rgba(255,255,255,.9);color:#222;border-radius:12px;min-width:28px;text-align:center;padding:1px 8px;font-size:12.5px}
+.te-wide{display:flex;align-items:center;gap:12px;background:linear-gradient(135deg,#46b8ee,#6dd0f7);color:#fff;border-radius:16px;padding:14px;margin-bottom:12px;cursor:pointer;box-shadow:0 3px 10px rgba(0,0,0,.12);border:0;width:100%;font:inherit;text-align:left}
+.te-wide .wi{width:50px;height:50px;border-radius:50%;background:#fff;display:grid;place-items:center;font-size:26px;flex:none}
+.te-wide .wt{flex:1;min-width:0}.te-wide .wt b{display:block;font-size:17px}.te-wide .wt span{font-size:12.5px;opacity:.95}
+.te-wide .wn{width:48px;height:48px;border-radius:50%;background:#2b5aa8;display:grid;place-items:center;font-weight:800;font-size:17px;flex:none}
+.te-grid{display:grid;grid-template-columns:repeat(3,1fr);background:var(--panel);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:12px}
+.te-grid button{background:none;border:0;border-right:1px solid var(--line);border-bottom:1px solid var(--line);padding:16px 4px 12px;font:inherit;color:var(--text);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0;position:relative}
+.te-grid button:nth-child(3n){border-right:0}
+.te-grid button:nth-last-child(-n+3){border-bottom:0}
+.te-grid .gi{width:46px;height:46px;border-radius:12px;display:grid;place-items:center;font-size:24px}
+.te-grid .gl{font-size:12.8px;font-weight:600;text-align:center;line-height:1.25;overflow-wrap:anywhere}
+.te-grid button i{position:absolute;top:8px;right:14px;min-width:18px;height:18px;border-radius:9px;background:#e23b3b;color:#fff;font:700 11px/18px system-ui,sans-serif;font-style:normal;text-align:center;padding:0 4px}
+#teDr{position:fixed;inset:0;z-index:240;display:none}
+#teDr.on{display:block}
+#teDr .bd{position:absolute;inset:0;background:rgba(0,0,0,.45)}
+#teDr .pn{position:absolute;top:0;bottom:0;left:0;width:78%;max-width:300px;background:var(--panel);box-shadow:4px 0 18px rgba(0,0,0,.3);display:flex;flex-direction:column;overflow:auto}
+#teDr .hd{background:var(--brand);color:#fff;padding:18px 14px;display:flex;gap:10px;align-items:center}
+#teDr .hd .te-ph{width:46px;height:46px;font-size:20px;background:#fff;color:var(--brand)}
+#teDr .it{display:flex;gap:12px;align-items:center;padding:13px 16px;border:0;border-bottom:1px solid var(--line);background:none;font:inherit;font-size:15px;color:var(--text);text-align:left;cursor:pointer;width:100%}
+#teDr .it b{font-size:19px;width:26px;text-align:center}
+#teAl{position:fixed;inset:0;z-index:240;display:none;background:rgba(0,0,0,.45);align-items:flex-start;justify-content:center;padding:62px 12px 12px}
+#teAl.on{display:flex}
+#teAl .bx{background:var(--panel);border-radius:14px;max-width:420px;width:100%;padding:14px;box-shadow:0 8px 30px rgba(0,0,0,.35);max-height:80vh;overflow:auto}
+@media print{#teDr,#teAl{display:none !important}}
+
+
 .an-banner{display:flex;align-items:center;gap:10px;background:linear-gradient(180deg,#a8610f,#8d4f0a);color:#fff;border-radius:8px;padding:10px 16px;margin:0 0 14px}
 .an-banner .an-bh{flex:1;font-size:13px;line-height:1.5;color:#ffe9c9}
 .an-title{font-size:30px;font-weight:800;text-align:center;letter-spacing:.5px;margin:0;color:inherit}
@@ -658,10 +708,13 @@ tbody tr:hover td{background:color-mix(in srgb, var(--brand) 8%, var(--panel))}
 </div>
 <div id="teGate">
   <div class="te-top">
+    <button id="teMenu" title="મેનુ">☰</button>
+    <div class="te-logo" id="teLogo">શ</div>
     <div class="sp"><div class="t1" id="teT1">—</div><div class="t2" id="teT2">—</div></div>
-    <button id="teRef" title="તાજી માહિતી લાવો">⟳</button>
-    <button id="teOut" title="બહાર નીકળો">⏻</button>
+    <button class="te-bell" id="teBell" title="સૂચના">🔔<i id="teBellN" style="display:none">0</i></button>
   </div>
+  <div id="teDr"><div class="bd" id="teDrBd"></div><div class="pn" id="teDrPn"></div></div>
+  <div id="teAl"><div class="bx" id="teAlBx"></div></div>
   <div class="te-scroll" id="teScroll"><div class="te-in" id="teBody"></div></div>
   <div class="te-tabs" id="teTabs"></div>
 </div>
@@ -10867,7 +10920,8 @@ async function teLogin(auto){
 function teStart(d){
   TE.d = d; TE.tab = "home"; TE.ci = 0; TE.date = ptToday(); TE.marks = null; TE.more = "tt"; TE.msgSeg = "send";
   $("teT1").textContent = (d.school && d.school.name) || "શિક્ષક એપ";
-  $("teT2").textContent = "નમસ્તે, " + (d.me && d.me.tname || "");
+  $("teT2").textContent = "શિક્ષક એપ";
+  $("teLogo").innerHTML = (d.school && d.school.logo) ? '<img alt="" src="'+esc(d.school.logo)+'">' : esc(teInitial_((d.school && d.school.name) || "શાળા"));
   teShowApp(); tePaint();
 }
 async function teRefresh(quiet){
@@ -10916,14 +10970,90 @@ function teNoClass(){
 }
 
 /* ---------- ટૅબ: હોમ ---------- */
+function teInitial_(n){ n = String(n == null ? "" : n).trim(); return n ? n.charAt(0) : "શ"; }
+function teAvatar_(d){ var ph = d.me && d.me.photo; return ph ? '<img alt="" src="'+esc(ph)+'">' : esc(teInitial_(d.me && d.me.tname)); }
+function teGo_(tab, more, seg){
+  TE.tab = tab; if (more) TE.more = more;
+  if (seg) TP.seg = seg;
+  if (tab === "att"){ TE.date = ptToday(); TE.marks = null; }
+  tePaint(); try{ $("teScroll").scrollTop = 0; }catch(e){}
+}
+function teStats_(){
+  var d = TE.d, today = ptToday(), dn = teDayOf(today), me = teNk(d.me.tname), cls = teCls(), hol = teHoliday(today);
+  var st = {today:today, dn:dn, hol:hol, nStu:0, present:0, absent:0, recorded:0, pend:[], periods:0};
+  cls.forEach(function(c, i){
+    st.nStu += c.students.length;
+    var rec = null; c.attendance.forEach(function(r){ if (r.date === today) rec = r; });
+    if (rec){ st.recorded++; c.students.forEach(function(s){ if (rec.marks[s.id] !== false) st.present++; else st.absent++; }); }
+    else if (c.isCT && dn !== "રવિવાર" && !hol) st.pend.push(i);
+  });
+  st.periods = d.timetable.filter(function(t){ return teNk(t.teacher) === me && t.day === dn; }).length;
+  return st;
+}
+function teAlerts_(){
+  var st = teStats_(), cls = teCls(), out = [];
+  if (st.hol) out.push({ic:"🎉", t:"આજે રજા: " + st.hol, go:["more","ho"]});
+  st.pend.forEach(function(i){ out.push({ic:"✅", t:teClsName(cls[i]) + " ની આજની હાજરી બાકી છે", go:["att", null, null, i]}); });
+  if (st.periods) out.push({ic:"🗓", t:"આજે તમારા " + st.periods + " તાસ છે", go:["more","tt"]});
+  var hl = (TE.d.holidays || []).slice().sort(function(a, b){ return String(a.date).localeCompare(String(b.date)); });
+  var nx = hl.filter(function(x){ return (x.to || x.date) >= st.today && !(x.date <= st.today); })[0];
+  if (nx) out.push({ic:"📅", t:"આગામી રજા: " + nx.name + " · " + ptD(nx.date), go:["more","ho"]});
+  return out;
+}
+function teBell_(){
+  var n = TE.d ? teStats_().pend.length + (teStats_().hol ? 1 : 0) : 0, b = $("teBellN");
+  if (b){ b.textContent = n; b.style.display = n ? "" : "none"; }
+}
+function teAlertsShow_(){
+  var al = teAlerts_();
+  $("teAlBx").innerHTML = '<h3 style="margin:0 0 8px">🔔 સૂચનાઓ</h3>' + (al.length ? al.map(function(a, i){
+    return '<button class="btn sec" style="width:100%;text-align:left;margin-bottom:6px;white-space:normal" data-al="'+i+'">'+a.ic+' '+esc(a.t)+'</button>'; }).join("") : '<div class="hint">કોઈ નવી સૂચના નથી.</div>')
+    + '<div style="margin-top:8px"><button class="btn sm sec" id="teAlX">બંધ કરો</button></div>';
+  $("teAl").className = "on";
+  $("teAlX").onclick = function(){ $("teAl").className = ""; };
+  Array.prototype.forEach.call(document.querySelectorAll("#teAlBx [data-al]"), function(b){
+    b.onclick = function(){ var g = al[Number(b.dataset.al)].go; $("teAl").className = ""; if (g[3] != null) TE.ci = g[3]; teGo_(g[0], g[1], g[2]); };
+  });
+}
+function teDrawer_(on){
+  var d = TE.d; if (!d) return;
+  var it = [["🏠","હોમ","home"],["✅","હાજરી","att"],["📤","પોસ્ટ / ગૃહકાર્ય","post"],["💬","સંદેશ","msg"],["📄","પેપર જનરેશન","pp"],["🗓","ટાઇમ ટેબલ","tt"],["🏫","વર્ગ માહિતી","cl"],["🎉","રજાઓ","ho"],["👤","મારી પ્રોફાઇલ","me"],["⟳","તાજી માહિતી લાવો","ref"],["⏻","બહાર નીકળો","out"]];
+  $("teDrPn").innerHTML = '<div class="hd"><div class="te-ph">'+teAvatar_(d)+'</div><div style="min-width:0"><b style="display:block;overflow-wrap:anywhere">'+esc(d.me.tname)+'</b><span style="font-size:12.5px;opacity:.9">'+esc((d.me.post || "શિક્ષક"))+'</span></div></div>'
+    + it.map(function(x){ return '<button class="it" data-dr="'+x[2]+'"><b>'+x[0]+'</b>'+x[1]+'</button>'; }).join("");
+  $("teDr").className = on ? "on" : "";
+  if (!on) return;
+  Array.prototype.forEach.call(document.querySelectorAll("#teDrPn [data-dr]"), function(b){
+    b.onclick = function(){
+      var k = b.dataset.dr; $("teDr").className = "";
+      if (k === "ref") return teRefresh();
+      if (k === "out") return teLogout();
+      if (k === "tt" || k === "cl" || k === "ho" || k === "me") return teGo_("more", k);
+      teGo_(k, null, k === "pp" ? "make" : null);
+    };
+  });
+}
+function teHero_(d, cls){
+  var st = teStats_(), c0 = cls.filter(function(c){ return c.isCT; })[0];
+  var sub = esc(d.me.post || "શિક્ષક") + (c0 ? ' · વર્ગ શિક્ષક: ધોરણ ' + esc(c0.std) + (c0.div ? ' / ' + esc(c0.div) : '') : '');
+  var all = d.posts.assignments.length + d.posts.materials.length + d.posts.notices.length;
+  var tiles = [["📇","પ્રોફાઇલ","#fde4ee","prof"],["🏛️","મારા વર્ગો","#dfeafc","cls"],["📚","પોસ્ટ / ગૃહકાર્ય","#e1ecfb","post"],
+    ["📋","વિદ્યાર્થી હાજરી","#efe3fb","att"],["👆","ટાઇમ ટેબલ","#dcf1fb","tt"],["🗓️","રજાઓ","#ece4fa","hol"],
+    ["🔄","સંદેશ / પરિપત્ર","#fde6e0","msg"],["📝","પેપર બનાવો","#fff1d6","mk"],["🏦","પ્રશ્ન બેંક","#e0f4ec","bank"],
+    ["📁","મારા પેપર","#fde3d6","saved"],["🎓","વિદ્યાર્થી યાદી","#fde4f1","stu"],["⟳","તાજી માહિતી","#e4eef7","ref"]];
+  return '<div class="te-prof"><div class="te-ph">'+teAvatar_(d)+'</div><div class="pn"><b>'+esc(d.me.tname)+'</b><span>'+sub+'</span></div><button class="vb" data-tg="prof">પ્રોફાઇલ જુઓ</button></div>'
+    + '<div class="te-two"><div class="te-sum b"><span class="ic">🎓</span><h4>શિક્ષણ સારાંશ</h4>'
+    + '<div class="r">મારા વર્ગ<b>'+cls.length+'</b></div><div class="r">આજના તાસ<b>'+st.periods+'</b></div><div class="r">મારી પોસ્ટ<b>'+all+'</b></div></div>'
+    + '<div class="te-sum o"><span class="ic">👥</span><h4>વિદ્યાર્થી સારાંશ</h4>'
+    + '<div class="r">વિદ્યાર્થી<b>'+st.nStu+'</b></div><div class="r">આજે હાજર<b>'+st.present+'</b></div><div class="r">આજે ગેરહાજર<b>'+st.absent+'</b></div></div></div>'
+    + '<button class="te-wide" data-tg="tt"><span class="wi">🗓️</span><span class="wt"><b>આજના તાસ</b><span>('+esc(st.dn)+' · ટાઇમ ટેબલ જુઓ)</span></span><span class="wn">'+st.periods+'</span></button>'
+    + '<div class="te-grid">' + tiles.map(function(t){
+        return '<button data-tg="'+t[3]+'"><span class="gi" style="background:'+t[2]+'">'+t[0]+'</span><span class="gl">'+t[1]+'</span>'
+          + (t[3] === "att" && st.pend.length ? '<i>'+st.pend.length+'</i>' : '') + '</button>'; }).join("") + '</div>';
+}
 function teHome(){
   var d = TE.d, today = ptToday(), dn = teDayOf(today), me = teNk(d.me.tname);
-  var cls = teCls(), nStu = 0;
-  cls.forEach(function(c){ nStu += c.students.length; });
-  var h = '<div class="stats" style="margin-bottom:10px">'
-    + '<div class="stat brand"><div class="n">'+cls.length+'</div><div class="l">મારા વર્ગ</div></div>'
-    + '<div class="stat good"><div class="n">'+nStu+'</div><div class="l">કુલ વિદ્યાર્થી</div></div>'
-    + '<div class="stat accent"><div class="n">'+(d.posts.assignments.length + d.posts.materials.length + d.posts.notices.length)+'</div><div class="l">મારી પોસ્ટ</div></div></div>';
+  var cls = teCls();
+  var h = teHero_(d, cls);
   if (d.__offline) h += '<p class="hint" style="color:var(--bad)">ઇન્ટરનેટ નથી — છેલ્લી વખતની માહિતી બતાવી છે. હાજરી/પોસ્ટ માટે ઇન્ટરનેટ જોઈએ.</p>';
   var hol = teHoliday(today);
   h += '<div class="card"><h3 style="margin-top:0">📅 આજે — '+esc(dn)+', '+ptD(today)+'</h3>';
@@ -11214,7 +11344,11 @@ function teMore(){
         }).join("") : '<div class="empty">વિદ્યાર્થી નથી.</div>')
       + (c.isCT ? '<p class="hint">વર્ગ શિક્ષક તરીકે તમે વાલીનો મોબાઇલ નંબર સુધારી શકો.</p>' : '') + '</div>';
   }
-  return seg + '<div class="card"><h3 style="margin-top:0">👤 '+esc(d.me.tname)+'</h3>'
+  var pr = [["હોદ્દો", d.me.post], ["વિષય", d.me.subject], ["લાયકાત", d.me.qualification], ["મોબાઇલ", d.me.mobile], ["કર્મચારી ક્રમ", d.me.empNo], ["નોકરીમાં જોડાયા", d.me.joined ? ptD(d.me.joined) : ""]]
+    .filter(function(x){ return x[1]; });
+  return seg + '<div class="card"><div class="te-prof" style="box-shadow:none;border:0;padding:0;margin-bottom:8px"><div class="te-ph" style="width:70px;height:70px;font-size:30px">'+teAvatar_(d)+'</div><div class="pn"><b>'+esc(d.me.tname)+'</b><span>'+esc(d.me.post || "શિક્ષક")+'</span></div></div>'
+    + (pr.length ? '<div class="tw"><table style="min-width:0"><tbody>'+pr.map(function(x){ return '<tr><td style="color:var(--muted)">'+esc(x[0])+'</td><td style="white-space:normal"><b>'+esc(x[1])+'</b></td></tr>'; }).join("")+'</tbody></table></div>' : '')
+    + '</div><div class="card"><h3 style="margin-top:0">👤 ખાતું</h3>'
     + '<p class="hint">લોગિન: '+esc(d.me.name)+(d.me.all ? ' · બધા વર્ગની પરવાનગી' : '')+'<br>મારા વર્ગ: '+(cls.length ? cls.map(function(x){ return esc(teClsName(x)); }).join(", ") : "—")+'</p>'
     + '<div class="row" style="gap:8px"><button class="btn sec" id="te_ref2">⟳ તાજી માહિતી લાવો</button><button class="btn warn" id="te_out2">બહાર નીકળો</button></div>'
     + (d.__offline ? '<p class="hint" style="color:var(--bad)">ઇન્ટરનેટ નથી — જૂની માહિતી.</p>' : '')
@@ -11265,6 +11399,21 @@ function tePaint(){
   if (TE.tab === "home") Array.prototype.forEach.call(document.querySelectorAll("#teBody [data-att]"), function(b){
     b.onclick = function(){ TE.ci = Number(b.dataset.att) || 0; TE.tab = "att"; TE.date = ptToday(); TE.marks = null; tePaint(); try{ $("teScroll").scrollTop = 0; }catch(e){} };
   });
+  if (TE.tab === "home") Array.prototype.forEach.call(document.querySelectorAll("#teBody [data-tg]"), function(b){
+    b.onclick = function(){
+      var k = b.dataset.tg;
+      if (k === "prof") return teGo_("more", "me");
+      if (k === "cls" || k === "stu") return teGo_("more", "cl");
+      if (k === "tt") return teGo_("more", "tt");
+      if (k === "hol") return teGo_("more", "ho");
+      if (k === "post") return teGo_("post");
+      if (k === "att") return teGo_("att");
+      if (k === "msg") return teGo_("msg");
+      if (k === "mk" || k === "bank" || k === "saved") return teGo_("pp", null, k === "mk" ? "make" : k);
+      if (k === "ref") return teRefresh();
+    };
+  });
+  teBell_();
   if (TE.tab === "att") teAttWire();
   if (TE.tab === "post") tePostWire();
   if (TE.tab === "msg") teMsgWire();
@@ -11539,8 +11688,10 @@ function tpWire(){
 
 $("te_go").onclick = function(){ teLogin(); };
 $("te_p").onkeydown = $("te_u").onkeydown = function(e){ if (e.key === "Enter") teLogin(); };
-$("teRef").onclick = function(){ teRefresh(); };
-$("teOut").onclick = teLogout;
+$("teMenu").onclick = function(){ teDrawer_(true); };
+$("teDrBd").onclick = function(){ teDrawer_(false); };
+$("teBell").onclick = function(){ teAlertsShow_(); };
+$("teAl").onclick = function(e){ if (e.target === $("teAl")) $("teAl").className = ""; };
 if (IN_APP_T()) { var aw = $("te_apk_wrap"); if (aw) aw.style.display = "none"; }
 function IN_APP_T(){ return /VJPTeacherApp/.test(navigator.userAgent || ""); }
 function teBoot(){
