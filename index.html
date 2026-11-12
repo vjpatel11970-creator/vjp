@@ -8056,58 +8056,108 @@ function pgRegListWire_(){
 PG.regE = {open:"", chip:"text", sel:{}};
 function pgNat_(a, b){ return String(a).localeCompare(String(b), undefined, {numeric:true}); }
 function pgIsExtra_(n){ return /additional|વધારાની/i.test(String(n)); }
-function pgRegChaps_(){
-  var R = PG.reg, E = PG.regE;
-  var l = pgChapters_(R.std, R.sub).filter(function(c){ return c.n > 0; });
+var PG_GRAM_EN = [
+  ["Reading Comprehension (Supplementary Reader)", [["B2","Reading Comprehension (Supplementary Reader) [5 M]"]]],
+  ["Reading Comprehension (Nonverbal)", [["B3","Reading Comprehension (Nonverbal) [5 M]"],["B3","Reading Comprehension (Nonverbal) [4 M]"]]],
+  ["Reading Comprehension (Unseen Dialogue / Interview)", [["B4","Reading Comprehension (Unseen Dialogue / Interview) [4 M]"]]],
+  ["Match the Columns", [["C1","Identify the Function (Match the Columns)"]]],
+  ["Complete the Dialogue (Respond to the Clue Function)", [["C2","Complete the Dialogue (Respond to the Clue Function)"]]],
+  ["Sentences Complete ( Function)", [["C3","Complete the Sentences ( Function Based)"]]],
+  ["Vocabulary : Complete the Para (Blanks)", [["C4","Vocabulary : Complete the Para (Blanks)"]]],
+  ["Nearest Meaning", [["C5","Vocabulary : Finding the Nearest Meaning"]]],
+  ["Indirect Speech", [["D1","Indirect Speech [3M]"],["D0","Indirect Speech - latest blueprint [2M]"]]],
+  ["Conjunction", [["D2","Conjunction (Three isolated sentences with three options each)"]]],
+  ["Editing", [["D3.1","Editing [ filling in the blanks with appropriate words in the brackets.]"],["D3.2","Rewrite the paragraph correcting the underline words:"]]],
+  ["Do as directed", [["D4","Do as directed [MCQ]"],["D4","Do as directed"]]],
+  ["Select the questions (MCQ)", [["D5","Select the questions (MCQ)"]]],
+  ["Paragraph Writing", [["E1","Paragraph Writing 6M"]]],
+  ["Email writing", [["E2","Email writing 5M"]]],
+  ["Report Writing", [["E2","Report Writing 5M"]]],
+  ["Picture Description", [["E4","Picture Description 5M"]]]
+];
+function pgRegChips_(){
+  var R = PG.reg, E = PG.regE, l = pgChapters_(R.std, R.sub).filter(function(c){ return c.n > 0; }), ch = [];
   var hasExtra = l.some(function(c){ return pgIsExtra_(c.name); }), hasMain = l.some(function(c){ return !pgIsExtra_(c.name); });
-  if (!(hasExtra && hasMain)) E.chip = "all";
-  else if (E.chip === "all" && !E.chipSet) E.chip = "text";
-  l = l.filter(function(c){ return E.chip === "all" || (E.chip === "extra") === pgIsExtra_(c.name); });
-  return l.sort(function(a, b){ return (pgIsExtra_(a.name) ? 1 : 0) - (pgIsExtra_(b.name) ? 1 : 0) || (a.no || 9999) - (b.no || 9999) || (/^poem/i.test(a.name) ? 1 : 0) - (/^poem/i.test(b.name) ? 1 : 0) || pgNat_(a.name, b.name); });
+  if (hasExtra && hasMain) ch.push(["text", "પાઠ્યપુસ્તક"], ["extra", "વધારાની પ્રેક્ટિસ"], ["all", "બધા"]); else ch.push(["all", "પ્રકરણ મુજબ"]);
+  var cats = pgRegCats_(), real = cats.length && !cats[0].byType;
+  if (real && /english|અંગ્રેજી/i.test(String(R.sub)) && !((S.settings && S.settings.pgCats) || {})[R.std + "|" + R.sub]) ch.push(["gram", "Grammar"]);
+  if (S.questions.some(function(q){ return q.year && String(q.std) === String(R.std) && q.subject === R.sub; })) ch.push(["pyq", "બોર્ડ પ્રશ્નપત્ર (PYQ)"]);
+  if (!ch.some(function(x){ return x[0] === E.chip; })) E.chip = ch[0][0];
+  return ch;
+}
+function pgGramGroups_(){
+  var cats = pgRegCats_();
+  return PG_GRAM_EN.map(function(g){
+    var items = g[1].map(function(it){
+      var ci = -1; cats.forEach(function(c, i){ if (ci < 0 && c.t === it[1]) ci = i; });
+      return ci < 0 ? null : {ci:ci, code:it[0]};
+    }).filter(function(x){ return x; });
+    return {key:"g:" + g[0], name:g[0], kind:"g", items:items};
+  }).filter(function(g){ return g.items.length; });
+}
+function pgYearGroups_(){
+  var R = PG.reg, seen = {}, out = [];
+  S.questions.forEach(function(q){ if (q.year && String(q.std) === String(R.std) && q.subject === R.sub && !seen[q.year]){ seen[q.year] = 1; out.push(String(q.year)); } });
+  return out.sort(function(a, b){ return pgNat_(b, a); }).map(function(y){ return {key:"y:" + y, name:y, kind:"y"}; });
+}
+function pgChapGroups_(all){
+  var R = PG.reg, E = PG.regE, l = pgChapters_(R.std, R.sub).filter(function(c){ return c.n > 0; });
+  if (!all) l = l.filter(function(c){ return E.chip === "all" || (E.chip === "extra") === pgIsExtra_(c.name); });
+  l = l.sort(function(a, b){ return (pgIsExtra_(a.name) ? 1 : 0) - (pgIsExtra_(b.name) ? 1 : 0) || (a.no || 9999) - (b.no || 9999) || (/^poem/i.test(a.name) ? 1 : 0) - (/^poem/i.test(b.name) ? 1 : 0) || pgNat_(a.name, b.name); });
+  return l.map(function(c){ return {key:"c:" + c.name, name:c.name, kind:"c"}; });
+}
+function pgRegChaps_(){
+  pgRegChips_();
+  var k = PG.regE.chip;
+  return k === "gram" ? pgGramGroups_() : k === "pyq" ? pgYearGroups_() : pgChapGroups_(false);
 }
 function pgRegCats_(){
   var R = PG.reg, cats = pgCats_(R.std, R.sub), cnt = {};
   return cats.map(function(c){ cnt[c.sec] = (cnt[c.sec] || 0) + 1; return Object.assign({}, c, {code:c.sec + cnt[c.sec]}); });
 }
-function pgRegCatQs_(c, chap){
+function pgRegCatQs_(c, g){
   var R = PG.reg;
   return S.questions.filter(function(q){
-    return String(q.std) === String(R.std) && q.subject === R.sub && q.chapter === chap && pgOk_(q)
+    return String(q.std) === String(R.std) && q.subject === R.sub && pgOk_(q)
+      && (g.kind === "c" ? q.chapter === g.name : g.kind === "y" ? String(q.year) === g.name : true)
       && (c.byType ? q.type === c.type : q.cat === c.t)
       && (!q.board || !R.board || q.board === R.board) && (!q.medium || !R.medium || q.medium === R.medium);
   });
 }
-function pgRegKey_(chap, c){ return chap + "\u0001" + c.t; }
+function pgRegKey_(g, c){ return g.key + "\u0001" + c.t; }
 function pgRegTotal_(){
   var E = PG.regE, cats = pgRegCats_(), n = 0, m = 0;
   cats.forEach(function(c){ Object.keys(E.sel).forEach(function(k){ if (k.split("\u0001")[1] === c.t){ n += E.sel[k]; m += E.sel[k] * c.m; } }); });
   return {n:n, m:m};
 }
+function pgRegRows_(g, cats){
+  if (g.kind === "g") return g.items.map(function(it){ return {c:cats[it.ci], ci:it.ci, code:it.code, av:pgRegCatQs_(cats[it.ci], g).length}; });
+  return cats.map(function(c, ci){ return {c:c, ci:ci, code:c.code, av:pgRegCatQs_(c, g).length}; }).filter(function(x){ return x.av > 0; });
+}
 function pgRegChapView_(){
   var R = PG.reg, E = PG.regE;
   if (!R.std || !R.sub){ var D = pgDashFix_(); R.std = D.std; R.sub = D.sub; R.board = D.board; R.medium = D.medium; }
-  var cats = pgRegCats_(), chaps = pgRegChaps_(), all = pgChapters_(R.std, R.sub);
+  var cats = pgRegCats_(), chips = pgRegChips_(), groups = pgRegChaps_();
   var real = cats.length && !cats[0].byType, tagged = S.questions.filter(function(q){ return q.cat && String(q.std) === String(R.std) && q.subject === R.sub; }).length;
-  var hasExtra = all.some(function(c){ return pgIsExtra_(c.name); }), hasMain = all.some(function(c){ return !pgIsExtra_(c.name); });
   var h = pgBack_("રેગ્યુલર પેપર");
-  if (hasExtra && hasMain) h += '<div class="rc-chips"><button type="button" class="'+(E.chip === "text" ? 'on' : '')+'" data-rcchip="text">પાઠ્યપુસ્તક</button><button type="button" class="'+(E.chip === "extra" ? 'on' : '')+'" data-rcchip="extra">વધારાની પ્રેક્ટિસ</button><button type="button" class="'+(E.chip === "all" ? 'on' : '')+'" data-rcchip="all">બધા</button></div>';
+  if (chips.length > 1) h += '<div class="rc-chips">' + chips.map(function(x){ return '<button type="button" class="'+(E.chip === x[0] ? 'on' : '')+'" data-rcchip="'+x[0]+'">'+esc(x[1])+'</button>'; }).join("") + '</div>';
   h += '<div class="row" style="gap:8px;margin:0 0 10px;flex-wrap:wrap"><span class="hint" style="margin:0">'+esc(R.sub)+' · ધોરણ '+esc(R.std)+'</span><button class="btn sm sec" id="rg_mode">✋ પ્રશ્નો જાતે ટીક કરો</button></div>';
   if (!cats.length) return h + '<div class="card pgc"><div class="empty">આ ધોરણ/વિષય માટે મંજૂર પ્રશ્નો નથી. "પ્રશ્ન બેંક" માં ઉમેરો.</div></div>';
-  if (real && !tagged) h += '<div class="card pgc" style="border-left:4px solid #f97316"><b>પ્રશ્નોને હજુ શ્રેણી (Category) મળી નથી.</b><div class="hint" style="margin:4px 0 8px">દરેક પ્રકરણમાં કયા પ્રકારના પ્રશ્નો છે તે બતાવવા શ્રેણી જોઈએ. બેંકમાં "શ્રેણી" ભરો, Excel માં "શ્રેણી" કોલમ ઉમેરો, અથવા અંદાજિત શ્રેણી સૂચવો.</div><button class="btn sm" id="rg_tag">🏷️ અંદાજિત શ્રેણી આપો</button></div>';
-  chaps.forEach(function(ch, i){
-    var open = E.open === ch.name;
-    h += '<div class="rc-card"><button type="button" class="rc-hd" data-rch="'+i+'"><span class="rc-tt"><b>Chap '+(i + 1)+'</b><small>'+esc(ch.name)+'</small></span><span class="rc-ch">'+(open ? '⌄' : '›')+'</span></button>';
+  if (real && !tagged) h += '<div class="card pgc" style="border-left:4px solid #f97316"><b>પ્રશ્નોને હજુ શ્રેણી (Category) મળી નથી.</b><div class="hint" style="margin:4px 0 8px">દરેક વિભાગમાં કયા પ્રકારના પ્રશ્નો છે તે બતાવવા શ્રેણી જોઈએ. બેંકમાં "શ્રેણી" ભરો, Excel માં "શ્રેણી" કોલમ ઉમેરો, અથવા અંદાજિત શ્રેણી સૂચવો.</div><button class="btn sm" id="rg_tag">🏷️ અંદાજિત શ્રેણી આપો</button></div>';
+  groups.forEach(function(g, i){
+    var open = E.open === g.key, head = g.kind === "y" ? esc(g.name) : 'Chap ' + (i + 1), sub = g.kind === "y" ? 'બોર્ડ પ્રશ્નપત્ર' : esc(g.name);
+    h += '<div class="rc-card"><button type="button" class="rc-hd" data-rch="'+i+'"><span class="rc-tt"><b>'+head+'</b><small>'+sub+'</small></span><span class="rc-ch">'+(open ? '⌄' : '›')+'</span></button>';
     if (open){
-      var rows = cats.map(function(c, ci){ return {c:c, ci:ci, av:pgRegCatQs_(c, ch.name).length}; }).filter(function(x){ return x.av > 0; });
+      var rows = pgRegRows_(g, cats);
       h += '<div class="rc-body">' + (rows.length ? rows.map(function(x){
-        var v = E.sel[pgRegKey_(ch.name, x.c)] || 0;
-        return '<div class="rc-row"><span class="rc-t">'+esc(x.c.code)+'. '+esc(x.c.t)+'<small>'+x.av+' પ્રશ્નો ઉપલબ્ધ</small></span>'
+        var v = E.sel[pgRegKey_(g, x.c)] || 0;
+        return '<div class="rc-row"><span class="rc-t">'+esc(x.code)+'. '+esc(x.c.t)+'<small>'+(x.av ? x.av + ' પ્રશ્નો ઉપલબ્ધ' : 'પ્રશ્નો નથી')+'</small></span>'
           + '<span class="rc-st"><button type="button" data-rcs="'+i+'|'+x.ci+'|-1">−</button><b>'+v+'</b><button type="button" data-rcs="'+i+'|'+x.ci+'|1">+</button></span></div>';
-      }).join("") : '<div class="hint" style="padding:10px 4px">આ પ્રકરણમાં શ્રેણી મુજબ પ્રશ્નો નથી.</div>') + '</div>';
+      }).join("") : '<div class="hint" style="padding:10px 4px">આમાં શ્રેણી મુજબ પ્રશ્નો નથી.</div>') + '</div>';
     }
     h += '</div>';
   });
-  if (!chaps.length) h += '<div class="card pgc"><div class="empty">આ વિભાગમાં પ્રકરણ નથી.</div></div>';
+  if (!groups.length) h += '<div class="card pgc"><div class="empty">આ વિભાગમાં કંઈ નથી.</div></div>';
   var T = pgRegTotal_();
   h += '<div class="rn-bar rc-bar"><div class="rc-m" id="rc_m"><b>'+T.m+'</b> marks <small>('+T.n+' પ્રશ્ન)</small></div><button class="btn'+(T.n ? '' : ' off')+'" id="rc_next">Next ➜</button></div>';
   return h;
@@ -8126,14 +8176,14 @@ function pgRegChapWire_(){
   Array.prototype.forEach.call(document.querySelectorAll("[data-rcchip]"), function(b){ b.onclick = function(){ E.chip = b.dataset.rcchip; E.chipSet = 1; E.open = ""; render(); }; });
   if ($("rg_mode")) $("rg_mode").onclick = function(){ R.mode = "list"; render(); };
   if ($("rg_tag")) $("rg_tag").onclick = function(){ pgTagRun_(R.std, R.sub); };
-  var chaps = pgRegChaps_(), cats = pgRegCats_();
+  var groups = pgRegChaps_(), cats = pgRegCats_();
   Array.prototype.forEach.call(document.querySelectorAll("[data-rch]"), function(b){
-    b.onclick = function(){ var ch = chaps[Number(b.dataset.rch)]; keep(function(){ E.open = (E.open === ch.name ? "" : ch.name); }); };
+    b.onclick = function(){ var g = groups[Number(b.dataset.rch)]; keep(function(){ E.open = (E.open === g.key ? "" : g.key); }); };
   });
   Array.prototype.forEach.call(document.querySelectorAll("[data-rcs]"), function(b){
     b.onclick = function(){
-      var p = b.dataset.rcs.split("|"), ch = chaps[Number(p[0])], c = cats[Number(p[1])], key = pgRegKey_(ch.name, c);
-      var av = pgRegCatQs_(c, ch.name).length, v = Math.max(0, Math.min(av, (E.sel[key] || 0) + Number(p[2])));
+      var p = b.dataset.rcs.split("|"), g = groups[Number(p[0])], c = cats[Number(p[1])], key = pgRegKey_(g, c);
+      var av = pgRegCatQs_(c, g).length, v = Math.max(0, Math.min(av, (E.sel[key] || 0) + Number(p[2])));
       if (v) E.sel[key] = v; else delete E.sel[key];
       b.parentNode.querySelector("b").textContent = v;
       var T = pgRegTotal_(), m = $("rc_m"); if (m) m.innerHTML = '<b>'+T.m+'</b> marks <small>('+T.n+' પ્રશ્ન)</small>';
@@ -8141,17 +8191,18 @@ function pgRegChapWire_(){
     };
   });
   if ($("rc_next")) $("rc_next").onclick = function(){
-    var T = pgRegTotal_(); if (!T.n) return toast("પ્રકરણ ખોલીને પ્રશ્નોની સંખ્યા પસંદ કરો");
+    var T = pgRegTotal_(); if (!T.n) return toast("વિભાગ ખોલીને પ્રશ્નોની સંખ્યા પસંદ કરો");
     var has = PG.paper && PG.paper.secs && PG.paper.secs.some(function(x){ return (x.qids || []).length; }) && !PG.paper.id;
     if (has && !confirm("વર્તમાન પેપર (સાચવ્યું ન હોય તો) ખોવાશે. નવું શરૂ કરવું છે?")) return;
-    var allCh = pgChapters_(R.std, R.sub), P = pgNewPaper_(); P.board = R.board; P.medium = R.medium; P.std = R.std; P.subject = R.sub; P.chaps = []; P.secs = []; P.qm = {};
+    var allG = pgChapGroups_(true).concat(pgGramGroups_(), pgYearGroups_());
+    var P = pgNewPaper_(); P.board = R.board; P.medium = R.medium; P.std = R.std; P.subject = R.sub; P.chaps = []; P.secs = []; P.qm = {};
     cats.forEach(function(c){
-      var picks = [];
-      allCh.forEach(function(ch){
-        var n = E.sel[pgRegKey_(ch.name, c)] || 0; if (!n) return;
-        var pool = pgRegCatQs_(c, ch.name).slice();
+      var picks = [], used = {};
+      allG.forEach(function(g){
+        var n = E.sel[pgRegKey_(g, c)] || 0; if (!n) return;
+        var pool = pgRegCatQs_(c, g).filter(function(q){ return !used[q.id]; });
         for (var i = pool.length - 1; i > 0; i--){ var j = Math.floor(Math.random() * (i + 1)), t = pool[i]; pool[i] = pool[j]; pool[j] = t; }
-        picks = picks.concat(pool.slice(0, n));
+        pool.slice(0, n).forEach(function(q){ used[q.id] = 1; picks.push(q); });
       });
       if (picks.length) P.secs.push({name:c.sec, cat:(c.byType ? "" : c.t), type:c.type, count:picks.length, marks:c.m, ins:"", qids:picks.map(function(q){ return q.id; })});
     });
