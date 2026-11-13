@@ -8204,6 +8204,7 @@ function pgRegChapWire_(){
         for (var i = pool.length - 1; i > 0; i--){ var j = Math.floor(Math.random() * (i + 1)), t = pool[i]; pool[i] = pool[j]; pool[j] = t; }
         pool.slice(0, n).forEach(function(q){ used[q.id] = 1; picks.push(q); });
       });
+      picks.forEach(function(q){ var mk = Number(q.marks) || 0; if (mk && mk !== c.m) P.qm[q.id] = mk; });
       if (picks.length) P.secs.push({name:c.sec, cat:(c.byType ? "" : c.t), type:c.type, count:picks.length, marks:c.m, ins:"", qids:picks.map(function(q){ return q.id; })});
     });
     PG.paper = P; PG.short = []; pgLog_("gen", "રેગ્યુલર: " + R.sub, T.n + " પ્રશ્નો · " + T.m + " ગુણ"); pgGo_("make");
@@ -8370,6 +8371,7 @@ VIEWS["paper:bank"] = function(){
     + '<button class="btn sec" id="pq_new">નવો / સાફ કરો</button>'
     + '<span style="flex:1"></span><button class="btn sec" id="pq_tpl">📄 નમૂના Excel</button><button class="btn sec" id="pq_exp">⬇ Excel Export</button>'
     + '<label class="btn sec" style="cursor:pointer;margin:0">⬆ Excel Import<input type="file" id="pq_imp" accept=".xlsx,.xls" style="display:none"></label></div>'
+    + '<p class="hint" style="margin:6px 0 0">💡 "QUESTION BANK" + "ANSWER KEY" શીટવાળી બ્લૂપ્રિન્ટ પ્રશ્ન-બેંક ફાઇલ પણ સીધી અપલોડ થાય છે — પ્રકરણ, પ્રકાર, જવાબ અને શ્રેણી આપોઆપ ગોઠવાશે. અગાઉ ચઢાવેલા પ્રશ્નોમાં ફક્ત શ્રેણી ઉમેરાશે (ડુપ્લિકેટ નહીં બને).</p>'
     + '<p class="hint" style="margin:8px 0 0">'+(pgIsAdmin_() ? 'આચાર્ય તરીકે ઉમેરેલા પ્રશ્નો સીધા મંજૂર ગણાય છે.' : 'તમે ઉમેરેલા પ્રશ્નો આચાર્યની મંજૂરી પછી જ પેપરમાં વપરાશે.')+' ટિપ: અંગ્રેજી/સંખ્યા લખવા Ctrl+Space થી ગુજરાતી ટાઈપિંગ બંધ કરો.</p></div>'
     + '<div class="card pgc"><div class="row" style="justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px"><h3 style="margin:0">પ્રશ્ન બેંક — '+S.questions.length+' પ્રશ્નો'+(list.length !== S.questions.length ? ' (ફિલ્ટર: '+list.length+')' : '')+'</h3>'
     + (pgIsAdmin_() && pendList ? '<button class="btn sm" id="pq_okall">✔ ફિલ્ટર કરેલા '+pendList+' પ્રશ્નો મંજૂર કરો</button>' : '') + '</div>'
@@ -8496,9 +8498,15 @@ WIRE["paper:bank"] = function(){
     if (!(await ensureXLSX_())) return alert("Excel લાયબ્રેરી લોડ થઈ નથી. ઇન્ટરનેટ ચકાસો.");
     var buf = await new Promise(function(res, rej){ var fr = new FileReader(); fr.onload = function(){ res(fr.result); }; fr.onerror = rej; fr.readAsArrayBuffer(f); }).catch(function(){ return null; });
     if (!buf) return alert("ફાઇલ ખોલી શકાઈ નહીં.");
-    var recs = [], bad = 0;
+    var recs = [], bad = 0, bpInfo = null;
     try{
       var wb = XLSX.read(new Uint8Array(buf), {type:"array"});
+      var up = wb.SheetNames.map(function(n){ return String(n).toUpperCase().trim(); });
+      if (up.indexOf("QUESTION BANK") > -1 && up.indexOf("ANSWER KEY") > -1){
+        bpInfo = pgBpRead_(wb, wb.SheetNames[up.indexOf("QUESTION BANK")], wb.SheetNames[up.indexOf("ANSWER KEY")], up.indexOf("START HERE") > -1 ? wb.SheetNames[up.indexOf("START HERE")] : "");
+        if (!bpInfo) return;
+        recs = bpInfo.recs; wb.SheetNames = [];
+      }
       wb.SheetNames.forEach(function(sn){
         var rows = XLSX.utils.sheet_to_json(wb.Sheets[sn], {header:1, defval:""}), hi = -1;
         for (var i = 0; i < Math.min(rows.length, 15); i++){ if (rows[i].some(function(c){ return /^(પ્રશ્ન|question)$/i.test(String(c).trim()); })){ hi = i; break; } }
@@ -8525,15 +8533,60 @@ WIRE["paper:bank"] = function(){
         }
       });
     }catch(err){ return alert("ફાઇલ વાંચી શકાઈ નહીં. .xlsx ફોર્મેટ અને નમૂના મુજબના હેડર જરૂરી છે.\n\n" + err.message); }
-    var seenQ = {}; S.questions.forEach(function(x){ seenQ[[x.std, x.subject, x.type, x.q].join("|")] = 1; });
-    var dup = 0; recs = recs.filter(function(x){ var k = [x.std, x.subject, x.type, x.q].join("|"); if (seenQ[k]){ dup++; return false; } seenQ[k] = 1; return true; });
-    if (!recs.length) return alert(dup ? "બધા પ્રશ્નો બેંકમાં પહેલેથી છે (" + dup + " ડુપ્લિકેટ)." : "કોઈ પ્રશ્ન મળ્યો નહીં. 'પ્રશ્ન' નામનો હેડર અને ધોરણ/વિષય ભરેલા હોવા જોઈએ. નમૂના Excel જુઓ.");
-    if (!confirm(recs.length + " પ્રશ્નો ઉમેરવા છે?" + (bad ? "\n(અધૂરી વિગતવાળી " + bad + " હરોળ છોડી દેવાઈ)" : "") + (dup ? "\n(" + dup + " ડુપ્લિકેટ છોડી દેવાયા)" : "") + (pgIsAdmin_() ? "" : "\n(મંજૂરી પછી જ વપરાશે)"))) return;
+    var seenQ = {}; S.questions.forEach(function(x){ seenQ[[x.std, x.subject, x.q].join("|")] = x; });
+    var dup = 0, upd = [];
+    recs = recs.filter(function(x){
+      var k = [x.std, x.subject, x.q].join("|"), old = seenQ[k];
+      if (old === true) return false;
+      if (old){
+        dup++; var ch = false;
+        if (x.cat && !old.cat){ old.cat = x.cat; ch = true; }
+        if (x.topic && !old.topic){ old.topic = x.topic; ch = true; }
+        if (x.src && !old.src){ old.src = x.src; ch = true; }
+        if (x.sol && !old.sol){ old.sol = x.sol; ch = true; }
+        if (ch) upd.push(old); return false;
+      }
+      seenQ[k] = true; return true;
+    });
+    if (upd.length){ toast("સાચવી રહ્યા છીએ…"); await putMany("questions", upd); pgLog_("qimp", upd.length + " પ્રશ્નોમાં શ્રેણી ઉમેરાઈ"); }
+    if (!recs.length) return alert(upd.length ? upd.length + " જૂના પ્રશ્નોમાં શ્રેણી/વિગત ઉમેરાઈ. નવા પ્રશ્નો નથી (" + dup + " પહેલેથી બેંકમાં હતા)." : dup ? "બધા પ્રશ્નો બેંકમાં પહેલેથી છે (" + dup + " ડુપ્લિકેટ)." : "કોઈ પ્રશ્ન મળ્યો નહીં. 'પ્રશ્ન' નામનો હેડર અને ધોરણ/વિષય ભરેલા હોવા જોઈએ. નમૂના Excel જુઓ.");
+    if (!confirm(recs.length + " નવા પ્રશ્નો ઉમેરવા છે?" + (bpInfo ? "\n(" + bpInfo.std + " · " + bpInfo.sub + " · શ્રેણી મુજબ ગોઠવાયા)" : "") + (upd.length ? "\n(" + upd.length + " જૂના પ્રશ્નોમાં શ્રેણી ઉમેરાઈ ગઈ)" : "") + (bad ? "\n(અધૂરી વિગતવાળી " + bad + " હરોળ છોડી દેવાઈ)" : "") + (dup ? "\n(" + dup + " ડુપ્લિકેટ છોડી દેવાયા)" : "") + (pgIsAdmin_() ? "" : "\n(મંજૂરી પછી જ વપરાશે)"))) return;
     toast("સાચવી રહ્યા છીએ…");
     await putMany("questions", recs); pgLog_("qimp", recs.length + " પ્રશ્નો");
     toast(recs.length + " પ્રશ્નો ઉમેરાયા"); render();
   };
 };
+/* ---------- બ્લૂપ્રિન્ટ પ્રશ્ન બેંક ફાઇલ (QUESTION BANK + ANSWER KEY) સીધી અપલોડ ---------- */
+var PG_BP_TYPE = {"Text / theme comprehension":"ONE","Question writing":"ONE","Original unseen comprehension":"ONE","Poetry skills":"ONE",
+  "Vocabulary":"VSHORT","Language functions":"SHORT","Grammar":"GRAM","Grammar / Do as directed":"GRAM","Grammar: sentence construction":"GRAM"};
+var PG_BP_LEV = {"Text / theme comprehension":"સરળ","Question writing":"સરળ","Vocabulary":"સરળ","Poetry skills":"સરળ"};
+function pgBpRead_(wb, qn, an, sn){
+  function rowsOf(n){ return XLSX.utils.sheet_to_json(wb.Sheets[n], {header:1, defval:""}); }
+  function colIx(H, names){ for (var i = 0; i < names.length; i++){ var ix = H.indexOf(names[i]); if (ix > -1) return ix; } return -1; }
+  var qr = rowsOf(qn), ar = rowsOf(an), QH = (qr[0] || []).map(function(c){ return String(c).trim().toLowerCase(); }), AH = (ar[0] || []).map(function(c){ return String(c).trim().toLowerCase(); });
+  var C = {id:colIx(QH,["id"]), unit:colIx(QH,["unit / category","unit","chapter"]), sec:colIx(QH,["section"]), type:colIx(QH,["question type","type"]), src:colIx(QH,["source classification","source"]), marks:colIx(QH,["marks"]), q:colIx(QH,["question"])};
+  var A = {id:colIx(AH,["id"]), key:colIx(AH,["model answer / key","answer","key"]), note:colIx(AH,["note"])};
+  if (C.q < 0 || C.id < 0 || A.id < 0 || A.key < 0){ alert("QUESTION BANK / ANSWER KEY શીટમાં ID, Question, Model answer / key કોલમ જોઈએ."); return null; }
+  var head = ""; if (sn){ var sr = rowsOf(sn); head = String((sr[0] || []).join(" ")); }
+  var std = (head.match(/STD\s*(\d+)/i) || [])[1] || "", sub = /english/i.test(head) ? "અંગ્રેજી" : /hindi/i.test(head) ? "હિન્દી" : /sanskrit/i.test(head) ? "સંસ્કૃત" : /math/i.test(head) ? "ગણિત" : "";
+  std = prompt("કયા ધોરણના પ્રશ્નો છે?", std || (PG.dash && PG.dash.std) || "10"); if (!std) return null;
+  sub = prompt("કયા વિષયના પ્રશ્નો છે? (એપમાં જે નામ છે તે જ લખો)", sub || (PG.dash && PG.dash.sub) || "અંગ્રેજી"); if (!sub) return null;
+  std = String(std).trim(); sub = String(sub).trim();
+  var key = {}, note = {}; ar.slice(1).forEach(function(r){ key[String(r[A.id])] = String(r[A.key] == null ? "" : r[A.key]).trim(); note[String(r[A.id])] = A.note > -1 ? String(r[A.note] == null ? "" : r[A.note]).trim() : ""; });
+  var body = qr.slice(1).filter(function(r){ return String(r[C.q] || "").trim(); }), grp = {};
+  body.forEach(function(r){ var k = r[C.type] + "\u0001" + String(r[C.q]).trim(); (grp[k] = grp[k] || {})[key[String(r[C.id])] || ""] = 1; });
+  var recs = [], seen = {}, status = pgIsAdmin_() ? "approved" : "pending";
+  body.forEach(function(r){
+    var qt = String(r[C.type] || "").trim(), text = String(r[C.q]).trim(), unit = String(r[C.unit] || "").trim(), marks = Number(r[C.marks]) || 1;
+    if (Object.keys(grp[qt + "\u0001" + text]).length > 1) text += " (" + unit.split(":")[0].trim() + ")";
+    var typ = qt === "Writing" ? (marks >= 6 ? "ESSAY" : "LONG") : (PG_BP_TYPE[qt] || "SHORT"), lv = qt === "Writing" ? "અઘરું" : (PG_BP_LEV[qt] || "મધ્યમ");
+    var dk = std + "|" + sub + "|" + text; if (seen[dk]) return; seen[dk] = 1;
+    var id = String(r[C.id]), sol = (key[id] || "") + (note[id] ? "\n(" + note[id] + ")" : "");
+    recs.push({std:std, subject:sub, chapter:unit, topic:qt, type:typ, marks:marks, level:lv, q:text, o:[], pairs:[], ans:"", sol:sol, board:"GSEB", medium:"ગુજરાતી",
+      cat:/english|અંગ્રેજી/i.test(sub) ? pgBpCat_(qt, text, marks) : "", src:C.src > -1 ? String(r[C.src] || "") : "", year:(S.settings && S.settings.year) || "", by:pgUser_(), status:status});
+  });
+  return {recs:recs, std:std, sub:sub};
+}
 
 
 /* ---------- શ્રેણી મુજબ (Random Paper) ---------- */
@@ -8548,12 +8601,22 @@ var PG_CATS_EN = [
   ["C","Rewrite the paragraph correcting the underline words:",3,"SHORT"],["C","Do as directed [MCQ]",1,"MCQ"],["C","Do as directed",2,"GRAM"],
   ["C","Select the questions (MCQ)",1,"MCQ"],
   ["D","Indirect Speech [3M]",3,"GRAM"],["D","Indirect Speech - latest blueprint [2M]",2,"GRAM"],["D","Conjunction (Three isolated sentences with three options each)",1,"MCQ"],
-  ["E","Paragraph Writing 6M",6,"ESSAY"],["E","Email writing 5M",5,"LONG"],["E","Report Writing 5M",5,"LONG"],["E","Picture Description 5M",5,"LONG"]
-].map(function(x){ return {sec:x[0], t:x[1], m:x[2], type:x[3]}; });
+  ["E","Paragraph Writing 6M",6,"ESSAY"],["E","Email writing 5M",5,"LONG"],["E","Report Writing 5M",5,"LONG"],["E","Picture Description 5M",5,"LONG"],
+  ["A","Text-based Question (Main Text) [1 M]",1,"ONE"],["B","Poetry Skills (Poem) [1 M]",1,"ONE"],["B","Reading Comprehension (Unseen Passage) [1 M]",1,"ONE"],
+  ["D","Sentence Construction [1 M]",1,"SHORT"],["E","Dialogue Writing 5M",5,"LONG"]
+].map(function(x, i){ return {sec:x[0], t:x[1], m:x[2], type:x[3], i:i}; }).sort(function(a, b){ return a.sec < b.sec ? -1 : a.sec > b.sec ? 1 : a.i - b.i; });
 function pgCats_(std, sub){
   var k = (S.settings && S.settings.pgCats) || {};
   if (k[std + "|" + sub]) return k[std + "|" + sub];
-  if (/english|અંગ્રેજી/i.test(String(sub || ""))) return PG_CATS_EN;
+  if (/english|અંગ્રેજી/i.test(String(sub || ""))){
+    /* બેંકમાં આ શ્રેણીના પ્રશ્નોનો સામાન્ય ગુણ (દા.ત. 1) હોય તો તે વાપરો, જેથી કુલ ગુણ સાચા આવે */
+    var mc = {};
+    S.questions.forEach(function(q){ if (q.cat && String(q.std) === String(std) && q.subject === sub){ var o = mc[q.cat] = mc[q.cat] || {}; var m = Number(q.marks) || 0; if (m) o[m] = (o[m] || 0) + 1; } });
+    return PG_CATS_EN.map(function(c){
+      var o = mc[c.t], best = 0, bn = 0; if (o) Object.keys(o).forEach(function(m){ if (o[m] > bn){ bn = o[m]; best = Number(m); } });
+      return best && best !== c.m ? Object.assign({}, c, {m:best}) : c;
+    });
+  }
   /* શ્રેણી યાદી ન હોય ત્યારે: બેંકમાં જે પ્રકારના પ્રશ્નો છે તે મુજબ સીધી યાદી */
   var have = {}; S.questions.forEach(function(q){ if (String(q.std) === String(std) && q.subject === sub && pgOk_(q)) have[q.type] = 1; });
   return PQ_TYPES.filter(function(t){ return have[t.k]; }).map(function(t){
@@ -8640,19 +8703,39 @@ function pgRndNext_(){
   pgLog_("gen", "રેન્ડમ પેપર: " + R.sub + " ધો." + R.std, P.secs.length + " શ્રેણી");
   pgGo_("make");
 }
-function pgAutoCat_(q){
-  var t = String(q.topic || ""), x = String(q.q || "");
-  if (t === "Vocabulary") return "Vocabulary : Finding the Nearest Meaning";
-  if (t === "Language functions") return /^complete (the|this)|^A:|two-turn|dialogue/i.test(x) ? "Complete the Dialogue (Respond to the Clue Function)" : "Complete the Sentences ( Function Based)";
-  if (t === "Grammar" || t === "Grammar / Do as directed") return "Do as directed";
+/* પ્રશ્ન પ્રકાર (Question type) + લખાણ પરથી અંગ્રેજી પેપરની શ્રેણી (Blueprint 2025-26) */
+function pgBpCat_(t, x, m){
+  t = String(t || "").trim(); x = String(x || "").trim(); m = Number(m) || 0;
+  if (t === "Text / theme comprehension" || t === "Question writing") return "Text-based Question (Main Text) [1 M]";
+  if (t === "Poetry skills") return "Poetry Skills (Poem) [1 M]";
+  if (t === "Original unseen comprehension") return "Reading Comprehension (Unseen Passage) [1 M]";
+  if (t === "Language functions"){
+    if (/^identify the (language )?function|^choose the communicative purpose/i.test(x)) return "Identify the Function (Match the Columns)";
+    if (/^complete (the|this)|^write a suitable reply|reply|dialogue|two-turn/i.test(x)) return "Complete the Dialogue (Respond to the Clue Function)";
+    return "Complete the Sentences ( Function Based)";
+  }
+  if (t === "Vocabulary") return /^complete:|^use |spelling|^find the/i.test(x) ? "Vocabulary : Complete the Para (Blanks)" : "Vocabulary : Finding the Nearest Meaning";
+  if (t === "Grammar") return "Do as directed";
+  if (t === "Grammar / Do as directed"){
+    if (/^report the speech/i.test(x)) return "Indirect Speech [3M]";
+    if (/^join with/i.test(x)) return "Conjunction (Three isolated sentences with three options each)";
+    if (/^frame a question/i.test(x)) return "Select the questions (MCQ)";
+    if (/^correct the error/i.test(x)) return "Rewrite the paragraph correcting the underline words:";
+    if (/^(choose the article|fill in the preposition|fill in:)/i.test(x)) return "Do as directed [MCQ]";
+    return "Do as directed";
+  }
+  if (t === "Grammar: sentence construction") return "Sentence Construction [1 M]";
   if (t === "Writing"){
+    if (m === 6) return "Paragraph Writing 6M";
     if (/e-?mail|letter/i.test(x)) return "Email writing 5M";
     if (/report/i.test(x)) return "Report Writing 5M";
-    if (/poster|picture|describ/i.test(x)) return "Picture Description 5M";
+    if (/dialogue/i.test(x)) return "Dialogue Writing 5M";
+    if (/picture|describ|poster/i.test(x)) return "Picture Description 5M";
     if (/paragraph/i.test(x)) return "Paragraph Writing 6M";
   }
   return "";
 }
+function pgAutoCat_(q){ return pgBpCat_(q.topic, q.q, q.marks); }
 WIRE["paper:random"] = function(){
   var R = PG.rnd; pgBackWire_();
   [["rn_std","std"],["rn_sub","sub"],["rn_board","board"],["rn_med","medium"]].forEach(function(x){
